@@ -1,0 +1,91 @@
+#!/usr/bin/python
+###########################################################################
+#
+#    Copyright (C) 2009-2011 Active Systems LLC, 
+#    url: http://www.active.ee, email: info@active.ee
+#
+#    This file is part of OpenNode.
+#
+#    OpenNode is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    OpenNode is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with OpenNode.  If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+
+from sys import exit
+from sys import argv
+from getopt import getopt
+from decimal import *
+import os, sys
+import opennode_lib.vzcfgproducer
+
+def _help():
+    print """
+NAME
+    vzcfgcreator: OpenVZ CT UBC configuration generator utility.
+
+SYNOPSIS
+    vzcfgcreator [OPTIONS] 
+
+OPTIONS:
+    -m, --memory=X
+        Guaranteed memory (in MB) for container
+        Default: 256MB 
+    -d, --disk=X 
+        Disk space allocation limit for container (in GB)
+        Default: 10GB
+    -c, --cpus=X
+	Number of CPUs enabled for container
+	Default: 1
+    -l, --limitcpu=X
+	CPU usage limit (in %)
+	Default: 50%
+    -h, --help
+	Display usage help.
+
+AUTHOR:
+    Andres Toomsalu (andres@active.ee)
+    Active Systems LLC 
+
+SEE ALSO:
+    OpenNode web page:
+    http://opennode.activesys.org
+    """
+    exit()
+
+if __name__ == '__main__':
+    #sys.stdout.write(os.popen('clear').read())
+    try:
+	options, args = getopt(argv[1:], 'm:d:c:l:h', ['memory=','disk=','cpus=','limitcpu=','help'])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        _help()
+        print str(err) # will print something like "option -a not recognized"
+        exit(2)
+    
+    mem = disk = cpus = cpulimit = ''    
+    
+    for o, a in options:
+	if o in ("-m", "--memory"): mem = a
+        elif o in ("-d", "--disk"): disk = a
+        elif o in ("-c", "--cpus"): cpus = a
+        elif o in ("-l", "--limitcpu"): cpulimit = a
+        elif o in ("-h", "--help"): _help()
+        else: assert False, "unhandled option"
+    
+    inputvars = [mem, disk, cpus, cpulimit]
+    #print inputvars
+    cfgObj = opennode_lib.vzcfgproducer.VzCfgProducer(inputvars)
+    vzconf = cfgObj.get_vzcfg_base()
+    print vzconf
+    
+    

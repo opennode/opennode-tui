@@ -1,0 +1,84 @@
+#!/usr/bin/python
+###########################################################################
+#
+#    Copyright (C) 2009-2011 Active Systems LLC, 
+#    url: http://www.active.ee, email: info@active.ee
+#
+#    This file is part of OpenNode.
+#
+#    OpenNode is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    OpenNode is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with OpenNode.  If not, see <http://www.gnu.org/licenses/>.
+#
+###########################################################################
+
+from sys import exit
+from sys import argv
+from getopt import getopt, GetoptError
+from decimal import *
+import os, sys
+
+import opennode_lib.opennode
+
+ACTIONS = { 
+            0 : "GUI mode",
+            1 : "Update templates",
+            2 : "List templates"
+          }
+
+def _help():
+    print """
+NAME
+    opennode: OpenNode Management Utility
+
+SYNOPSIS
+    opennode [OPTIONS]
+
+OPTIONS
+    -u, --update-templates
+        Update locally stored remote templates of given virtualization type
+    -l, --list-templates
+        List local and remote templates of given virtualization type
+    -h, --help
+        Display usage help
+
+AUTHOR:
+    Danel Ahman (danel@active.ee) 2010
+    Active Systems LLC
+
+SEE ALSO:
+    OpenNode web page:
+    http://opennode.activesys.org
+    """
+    exit(2)
+
+if __name__ == '__main__':
+    #Run OpenNode utility
+
+    try:
+        options, args = getopt(argv[1:], 'ulh', ['update-templates','list-templates','help'])
+    except GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        _help()
+        exit(2)
+
+    action = 0
+
+    for o, a in options:
+        if o in ("-u", "--update-templates"): action = 1
+        elif o in ("-l", "--list-templates"): action = 2
+        elif o in ("-h", "--help"): _help()
+        else: assert False, "unhandled option"
+
+    opennode_utility = opennode_lib.opennode.OpenNodeUtility()
+    opennode_utility.run(action)
