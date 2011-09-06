@@ -1,47 +1,7 @@
-#!/usr/bin/python
-###########################################################################
-#
-#    Copyright (C) 2009, 2010, 2011 Active Systems LLC, 
-#    url: http://www.active.ee, email: info@active.ee
-#
-#    This file is part of OpenNode.
-#
-#    OpenNode is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    OpenNode is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with OpenNode.  If not, see <http://www.gnu.org/licenses/>.
-#
-###########################################################################
-
-"""Provide KVM VM creation from an ISO image
-
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
+"""Provide KVM VM creation from an ISO image"""
 
 import os
-import sys
-import xml.dom.minidom
 import commands
-import shutil
-import re
-import string
-from stat import ST_SIZE
 import subprocess
 import shlex
 
@@ -50,7 +10,6 @@ import libvirt
 import opennode.cli.constants as constants
 import opennode.cli.kvmcfgproducer as kvmcfgproducer
 
-import tarfile
 
 class ISO2KVM:
     """Create KVM VM from ISO image"""

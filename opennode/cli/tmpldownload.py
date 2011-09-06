@@ -1,19 +1,6 @@
-#!/usr/bin/python
+"""OpenNode Management Menu Template Download"""
 
-"""Provide OpenNode Management Menu Template Download Library
-
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
-
-from snack import SnackScreen, Grid, Button, GridForm, ButtonChoiceWindow, Textbox, Entry, Button, CheckboxTree
+from snack import SnackScreen, Button, GridForm, Textbox, CheckboxTree
 import os
 import time
 import urllib
@@ -24,7 +11,6 @@ import sys
 import traceback
 import logging
 import tarfile
-from datetime import datetime
 
 from opennode.cli.constants import *
 import opennode.cli.progress
@@ -42,7 +28,6 @@ class TemplateDownload(object):
         """
         Print out information text
         """
-       	dt = datetime.now()
         print str(text)
 
 

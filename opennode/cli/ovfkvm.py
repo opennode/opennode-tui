@@ -1,33 +1,14 @@
-"""Provide OVF to KVM conversion
-
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
+"""OVF to KVM conversion"""
 
 import os
-import sys
 import xml.dom.minidom
 import commands
 import shutil
-import re
 import string
-from stat import ST_SIZE
 
 import libvirt
 
 from ovf.OvfFile import OvfFile
-from ovf.OvfReferencedFile import OvfReferencedFile
-from ovf import Ovf
-from ovf import validation
-from ovf.commands import cli
-from ovf.commands import VERSION_STR  
 
 import opennode.cli.constants as constants
 import opennode.cli.kvmcfgproducer as kvmcfgproducer

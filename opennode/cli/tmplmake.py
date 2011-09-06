@@ -1,31 +1,11 @@
-#!/usr/bin/python
+"""OpenNode CLI Template Creation"""
 
-"""Provide OpenNode Management Menu Template Creation Library
-
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
-
-from snack import SnackScreen, Grid, Button, GridForm, ButtonChoiceWindow, Textbox, Entry, Button, Listbox
+from snack import SnackScreen, GridForm, ButtonChoiceWindow, Textbox, Entry, Button, Listbox
 
 import os
-import time
-import urllib
-import random
 import commands
-import sys
-import xml.dom.minidom
 import traceback
 import logging
-import tarfile
-import shutil
 from datetime import datetime
 
 import libvirt

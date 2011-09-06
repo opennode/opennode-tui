@@ -1,32 +1,11 @@
-"""Provide OpenNode Management Menu Template Deploy Library
+"""OpenNode CLI Template Deploy Menu"""
 
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
-
-from snack import SnackScreen, Grid, Button, GridForm, ButtonChoiceWindow, Textbox, Entry, Button, Listbox, Checkbox
+from snack import SnackScreen, Button, GridForm, ButtonChoiceWindow, Textbox, Entry, Listbox
 
 import os
-import time
-import urllib
-import random
-import commands
-import sys
-import xml.dom.minidom
-import xml.dom
 import traceback
 import logging
-import tarfile
-from datetime import datetime
 
-import libvirt
 
 from constants import *
 
@@ -45,9 +24,6 @@ class TemplateDeploy(object):
         """
         Print out information text
         """
-        dt = datetime.now()
-        text_prefix = "[OpenNode]"
-        #print "[%02d.%02d.%04d %02d:%02d:%02d] %s %s" % (dt.day, dt.month, dt.year, dt.hour, dt.minute, dt.second, text_prefix, str(text))
         print str(text)
 
 

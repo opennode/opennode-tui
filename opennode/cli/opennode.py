@@ -1,46 +1,9 @@
-#!/usr/bin/python
-###########################################################################
-#
-#    Copyright (C) 2009, 2010, 2011 Active Systems LLC, 
-#    url: http://www.active.ee, email: info@active.ee
-#
-#    This file is part of OpenNode.
-#
-#    OpenNode is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    OpenNode is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with OpenNode.  If not, see <http://www.gnu.org/licenses/>.
-#
-###########################################################################
+"""OpenNode CLI Main Menu"""
 
-"""Provide OpenNode Server Management Menu Library          
-
-Copyright 2010, Active Systems
-Danel Ahman <danel@active.ee>
-
-This software may be freely redistributed under the terms of the GNU
-general public license.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
-
-from snack import SnackScreen, Grid, Button, GridForm, ButtonChoiceWindow, Textbox, Entry, Button, CheckboxTree
+from snack import SnackScreen, Button, GridForm, ButtonChoiceWindow, Textbox, Entry
 import os
 import time
-import urllib
-import random
 import commands
-import sys
 import socket
 
 import opennode.cli.template_download
@@ -127,7 +90,6 @@ class OpenNodeUtility(object):
         #Configuration form
         form = GridForm(screen, 'OpenNode Management Utility', 2, 2)
         text1 = Textbox(13, 2, "OMS address: ", 0, 0)
-        spacer1 = Textbox(1, 1, "", 0, 0)
         entry1 = Entry(20, certmaster, 0, 0, 1, 0)
         button1 = Button('Register')
        	button2	= Button('Main menu')

@@ -1,17 +1,4 @@
-#!/usr/bin/python
-	
-"""Provide OpenNode Management Menu Template Download Library	
-
-Copyright 2010, Active Systems LLC
-Andres Toomsalu <active@active.ee>
-
-This software may be freely redistributed under the terms of the GNU	
-general public license.
-
-You should have received a copy of the GNU General Public License	
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-"""
+"""OpenNode CLI Template Download Menu"""
 
 import datetime
 
