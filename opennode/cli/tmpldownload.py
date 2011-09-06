@@ -1,4 +1,4 @@
-"""OpenNode Management Menu Template Download"""
+"""OpenNode CLI Template Download"""
 
 from snack import SnackScreen, Button, GridForm, Textbox, CheckboxTree
 import os
@@ -22,26 +22,19 @@ from opennode.cli.constants import LOG_FILENAME, TEMPLATE_KVM, TEMPLATE_OPENVZ, 
 import opennode.cli.progress
 
 class TemplateDownload(object):
-    """OpenNode Management Menu Template Download Library"""
 
     def __init__(self):
         logging.basicConfig(filename=LOG_FILENAME,level=logging.ERROR)
         self.progressBarCounter = 0
         self.progressStartTime = None
 
-
-    def __printInformation(self, text):
-        """
-        Print out information text
-        """
-        print str(text)
-
+    def __printInformation(self, msg):
+        print msg
 
     def __prepareProgressBarHook(self):
         """Prepare variables needed to display progress bar"""
         self.progressBarCounter = 0
         self.progressStartTime = time.time()
-
 
     def __progressBarHook(self, downloaded, chunk, total):
         """Display download progress bar"""
@@ -71,11 +64,9 @@ class TemplateDownload(object):
         sys.stdout.flush()
         print "\r"
 
-
     def deleteTemplate(self, hypervizor, template):
         """Delete template archive, file system files and its configuration file"""
         return self.__deleteLocalTemplate(hypervizor, template)
-
 
     def __deleteLocalTemplate(self, hypervizor, local_template):
         """Delete local template archive, file system files and its configuration file"""
@@ -125,7 +116,6 @@ class TemplateDownload(object):
                 pass
         return True
 
-
     def __compareLocalRemoteTemplateList(self, hypervizor, local_template_list, selected_template_list, remote_template_list):
         """Compare local and remote template lists"""
         download_template_list = []
@@ -139,11 +129,9 @@ class TemplateDownload(object):
                 download_template_list.append(selected_template)
         return download_template_list
 
-
     def getTemplateList(self, hypervizor):
         """Get template list"""
         return self.__getLocalTemplateList(hypervizor)
-
 
     def __getLocalTemplateList(self, hypervizor):
         """Get template list from local server"""	
@@ -161,7 +149,6 @@ class TemplateDownload(object):
             template_list = []
         return template_list
 
-
     def __getRemoteTemplateList(self, mirror, hypervizor):
         """Get template list from remote server"""
         if (hypervizor == "openvz"):
@@ -177,7 +164,6 @@ class TemplateDownload(object):
             if (len(template) > 0):
                 template_list.append(template)
         return template_list
-
 
     def __downloadRemoteTemplate(self, mirror, hypervizor, remote_template):
         """Download and unpack remote template"""
@@ -315,17 +301,17 @@ class TemplateDownload(object):
             return []
         #Display checkbox list of templates 
         screen = SnackScreen()
-        form = GridForm(screen, "OpenNode Management Utility", 1, 4)
-        text = Textbox(50, 2, "Selected %s templates will not be deleted" % (hypervizor.upper()), 0, 0)
+        form = GridForm(screen, "OpenNode CLI", 1, 4)
+        text = Textbox(50, 2, "Select %s templates for local cache" % (hypervizor.upper()), 0, 0)
         checkbox_list = []
         checkbox_tree = CheckboxTree(10, 1, 50, 0, 0)
         for template in remote_template_list:
-            if (template in local_template_list):
+            if template in local_template_list:
                 checkbox_list.append(("(Remote) %s" % (template), 1))
             else:
                 checkbox_list.append(("(Remote) %s" % (template), 0))
         for template in local_template_list:
-            if (not(template in remote_template_list)):
+            if not template in remote_template_list:
                 checkbox_list.append(("(Local ) %s" % (template), 1))
         checkbox_list = sorted(checkbox_list)
         for checkbox in checkbox_list:
@@ -341,7 +327,6 @@ class TemplateDownload(object):
             if (len(selected) > 9):
                 selected_template_list2.append(selected[9:])
         return selected_template_list2
-
 
     def runList(self):
         """List OpenVZ and KVM local and remote templates"""
@@ -384,12 +369,10 @@ class TemplateDownload(object):
                 self.__printInformation("%s\t\t%s%s%s.tar" % (template, mirror, TEMPLATE_DIR_KVM , template))
             self.__printInformation("")
 
-
         except:
             print "OpenVZ and KVM templates updating and downloading failed"
             return 1
         return 0
-
 
     def runUpdate(self):
         """Update and download OpenVZ and KVM templates"""
@@ -423,19 +406,18 @@ class TemplateDownload(object):
             return 1
         return 0
 
-
     def runGUI(self, omsInstall=False):
         """Update and download OpenVZ and KVM templates GUI"""
         #Get template servers mirror list
         mirror = self.__getMirror()
         try:
-            if (not(omsInstall)):
+            if not omsInstall:
                 #Get OpenVZ local and remote template lists
                 self.__printInformation("Fetching OPENVZ local template list")
                 openvz_local_template_list = self.__getLocalTemplateList("openvz")
                 self.__printInformation("Fetching OPENVZ remote template list")
                 openvz_remote_template_list = self.__getRemoteTemplateList(mirror, "openvz")
-            
+
                 #Get KVM local and remote template lists
                 self.__printInformation("Fetching KVM local template list")
                 kvm_local_template_list = self.__getLocalTemplateList("kvm")
@@ -450,7 +432,7 @@ class TemplateDownload(object):
        	       	    openvz_local_template_list = []
                 openvz_remote_template_list = ["opennode-oms"]
 
-            if (not(omsInstall)):
+            if not omsInstall:
                 #Let user select OpenVZ and KVM templates to be downloaded
                 openvz_templates = self.__displayTemplates("openvz", openvz_remote_template_list, openvz_local_template_list)
                 kvm_templates = self.__displayTemplates("kvm", kvm_remote_template_list, kvm_local_template_list)
@@ -458,7 +440,7 @@ class TemplateDownload(object):
                 #Set OpenVZ OpenNode-OMS template to be downloaded
                 openvz_templates = ["opennode-oms"]
 
-            if (not(omsInstall)):
+            if not omsInstall:
                 #Remove local templates that were not selected in the lists
                 openvz_download_list = self.__compareLocalRemoteTemplateList("openvz", openvz_local_template_list, openvz_templates, openvz_remote_template_list)
                 kvm_download_list = self.__compareLocalRemoteTemplateList("kvm", kvm_local_template_list, kvm_templates, kvm_remote_template_list)
@@ -466,7 +448,7 @@ class TemplateDownload(object):
                 #Remove local templates that were not selected in the lists
                 openvz_download_list = self.__compareLocalRemoteTemplateList("openvz", openvz_local_template_list, openvz_templates, openvz_remote_template_list)
 
-            if (not(omsInstall)):
+            if not omsInstall:
                 #Update and download KVM and OpenVZ remote templates            
                 self.__downloadRemoteTemplates("openvz", mirror, openvz_download_list)
                 self.__downloadRemoteTemplates("kvm", mirror, kvm_download_list)
@@ -478,7 +460,6 @@ class TemplateDownload(object):
             logging.error(traceback.format_exc())
         return 0
 
-
     def __getMirror(self):
         """Return random mirror from mirrorlist"""
         #Get template servers mirror list
@@ -489,7 +470,6 @@ class TemplateDownload(object):
         #Choose random mirror from list
         mirror = mirror_list[random.randrange(0,len(mirror_list),1)]
         return mirror
-
 
     def __displayErrorScreen(self, error_text="An error occurred."):
         """Display error message on error screen"""

@@ -48,13 +48,12 @@ if __name__ == '__main__':
         _help()
         exit(2)
 
-    action = 0
+    action = 'cli'
 
     for o, a in options:
-        if o in ("-u", "--update-templates"): action = 1
-        elif o in ("-l", "--list-templates"): action = 2
+        if o in ("-u", "--update-templates"): action = 'lib_update'
+        elif o in ("-l", "--list-templates"): action = 'lib_list'
         elif o in ("-h", "--help"): _help()
-        else: assert False, "unhandled option"
 
     opennode_utility = on.OpenNodeUtility()
     opennode_utility.run(action)

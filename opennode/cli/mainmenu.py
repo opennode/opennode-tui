@@ -29,9 +29,10 @@ class OpenNodeUtility(object):
     def __displayMainScreen(self):
         """Start OpenNode utility main window"""        
         screen = SnackScreen()
-        #Ask user for a action to perform
-        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Welcome to the OpenNode Management Utility', [('Exit',4), ('Console',1), ('Register with OMS',2), ('Install OMS',3), ('Templates',0)],42,None,None,None)
-        #Close snack screen
+        result = ButtonChoiceWindow(screen, 'OpenNode CLI', 'Welcome to the OpenNode CLI', 
+                [('Exit', 'exit'), ('Console', 'console'), ('Network', 'net'), 
+                ('Storage', 'storage'), ('Templates', 'templates'), ('OMS', 'oms')],
+                42)
         screen.finish()
         return result
 
@@ -39,9 +40,8 @@ class OpenNodeUtility(object):
     def __displayTemplatesScreen(self):
         """Start OpenNode utility templates window"""
         screen = SnackScreen()
-        #Ask user for a action to perform
-        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', [('Update list',0),('Create',1),('Deploy',2),('Main menu',3)]) 
-        #Close snack screen
+        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', 
+                [('Update list', 'update'), ('Create', 'create'), ('Deploy', 'deploy'), ('Main menu',3)]) 
         screen.finish()
         return result
 
@@ -49,21 +49,20 @@ class OpenNodeUtility(object):
     def __displayVirshScreen(self):
         """Choose virsh driver"""
         screen = SnackScreen()
-        #Ask user for a action to perform
-        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select management console to use', [('KVM',0),('OpenVZ',1),('Main menu',2)])
+        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select management console to use', 
+                [('KVM', 'kvm'),('OpenVZ', 'ovz'), ('Main menu', 'back')])
         screen.finish()
-        if (result == 0):
+        if (result == 'kvm'):
             self.__startVirshConsole('qemu:///system')
-        elif (result == 1):
+        elif (result == 'ovz'):
             self.__startVirshConsole('openvz:///system')
 
 
     def __displayOmsScreen(self):
         """Install OMS VM"""
         screen = SnackScreen()
-        #Ask user for a action to perform
-        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', [('Download OMS',0),('Install OMS',1),('Main menu',2)])
-        #Close snack screen
+        result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', 
+                [('Register with OMS', 'register'), ('Download OMS','down'), ('Install OMS', 'install'),('Main menu', 'back')])
         screen.finish()
         return result
 
@@ -207,16 +206,15 @@ class OpenNodeUtility(object):
         return self.template_download_lib.getTemplateList(hypervizor)
 
 
-    def run(self, action = 0):
+    def run(self, action = 'cli'):
         """Run OpenNode utility"""
         os.system("clear")
         try:
-            action = int(action)
-            if (action == 0):
-                self.runGUI()
-            elif (action == 1):
+            if (action == 'cli'):
+                self.runCLI()
+            elif (action == 'lib_update'):
                 self.template_download_lib.runUpdate()
-            elif (action == 2):
+            elif (action == 'lib_list'):
                 self.template_download_lib.runList()
             else:
                 self.run()
@@ -225,28 +223,28 @@ class OpenNodeUtility(object):
             print "Unknown OpenNode utility action"
 
 
-    def runGUI(self):
+    def runCLI(self):
         """Run OpenNode GUI utility"""
-        result = 0
-        while (result < 4):
+        result = None
+        while result != 'exit':
             result = self.__displayMainScreen()
-            #Perform an action according to chosen button
-            if (result == 0):
-                result_1 = self.__displayTemplatesScreen()
-                if (result_1 == 0):
+
+            if result == 'templates':
+                template_selection = self.__displayTemplatesScreen()
+                if template_selection == 'update':
                     self.template_download_lib.runGUI()
-                elif (result_1 == 1):
+                elif template_selection == 'create':
                     self.template_make_lib.run()
-                elif (result_1 == 2):
+                elif template_selection == 'deploy':
                     self.template_deploy_lib.run()
-            elif (result == 1):
+
+            elif (result == 'console'):
                 self.__displayVirshScreen()
-            elif (result == 2):
-                self.__displayFuncScreen()
-	    elif (result == 3):
-                result_1 = self.__displayOmsScreen()
-                if (result_1 == 0):
+
+            elif (result == 'oms'):
+                oms_selection = self.__displayOmsScreen()
+                if (oms_selection == 0):
                     self.template_download_lib.runGUI(True)
-                elif (result_1 == 1):
+                elif (oms_selection == 1):
                     self.template_deploy_lib.run(True)
 
