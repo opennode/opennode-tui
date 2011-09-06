@@ -1,2 +1,14 @@
 OpenNode CLI utilities
 ----------------------
+
+Installation
+============
+
+1) pip install -r requirements.txt
+
+2) yum install newt-python
+
+Running
+=======
+
+''scripts/opennode''
