@@ -6,11 +6,8 @@ import time
 import commands
 import socket
 
-import opennode.cli.template_download
-import opennode.cli.template_make
-import opennode.cli.template_deploy
-from opennode.cli.constants import *
-
+from opennode.cli.constants import MINION_CONF
+from opennode.cli import tmpldownload, tmplmake, tmpldeploy
 
 #OpenNode Management Menu offers following options:
 #    - download/list/delete templates
@@ -21,12 +18,12 @@ from opennode.cli.constants import *
 
 
 class OpenNodeUtility(object):
-    """OpenNode Management Menu Utility"""
+    """OpenNode CLI Utility"""
 
     def __init__(self):
-        self.template_download_lib = opennode.cli.template_download.TemplateDownload()
-        self.template_make_lib = opennode.cli.template_make.TemplateCreate()
-        self.template_deploy_lib = opennode.cli.template_deploy.TemplateDeploy()
+        self.template_download_lib = tmpldownload.TemplateDownload()
+        self.template_make_lib = tmplmake.TemplateCreate()
+        self.template_deploy_lib = tmpldeploy.TemplateDeploy()
 
 
     def __displayMainScreen(self):

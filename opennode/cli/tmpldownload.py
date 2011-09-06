@@ -12,7 +12,13 @@ import traceback
 import logging
 import tarfile
 
-from opennode.cli.constants import *
+import opennode.cli.constants
+
+
+from opennode.cli.constants import LOG_FILENAME, TEMPLATE_KVM, TEMPLATE_OPENVZ, \
+     DEPLOY_TEMPLATE_OPENVZ, DEPLOY_TEMPLATE_KVM, ORIGINAL_TEMPLATE_OPENVZ, \
+     TEMPLATE_DIR_OPENVZ, TEMPLATE_DIR_KVM, MIRROR_LIST
+
 import opennode.cli.progress
 
 class TemplateDownload(object):
