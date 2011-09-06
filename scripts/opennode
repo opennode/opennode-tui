@@ -24,10 +24,8 @@
 from sys import exit
 from sys import argv
 from getopt import getopt, GetoptError
-from decimal import *
-import os, sys
 
-import opennode_lib.opennode
+from opennode.cli import opennode as on
 
 ACTIONS = { 
             0 : "GUI mode",
@@ -80,5 +78,5 @@ if __name__ == '__main__':
         elif o in ("-h", "--help"): _help()
         else: assert False, "unhandled option"
 
-    opennode_utility = opennode_lib.opennode.OpenNodeUtility()
+    opennode_utility = on.OpenNodeUtility()
     opennode_utility.run(action)
