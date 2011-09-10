@@ -36,12 +36,16 @@ class OpenNodeUtility(object):
         screen.finish()
         return result
 
+    def __displayRemoteReposScreen(self):
+        screen = SnackScreen()
+        pass
+
 
     def __displayTemplatesScreen(self):
         """Start OpenNode utility templates window"""
         screen = SnackScreen()
         result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', 
-                [('Update list', 'update'), ('Create', 'create'), ('Deploy', 'deploy'), ('Main menu',3)]) 
+                [('List', 'list'), ('Create', 'create'), ('Deploy', 'deploy'), ('Main menu',3)]) 
         screen.finish()
         return result
 
@@ -62,7 +66,7 @@ class OpenNodeUtility(object):
         """Install OMS VM"""
         screen = SnackScreen()
         result = ButtonChoiceWindow(screen, 'OpenNode Management Utility', 'Select a template action to perform', 
-                [('Register with OMS', 'register'), ('Download OMS','down'), ('Install OMS', 'install'),('Main menu', 'back')])
+                [('Register with OMS', 'register'), ('Download OMS','download'), ('Install OMS', 'install'),('Main menu', 'back')])
         screen.finish()
         return result
 
@@ -231,7 +235,7 @@ class OpenNodeUtility(object):
 
             if result == 'templates':
                 template_selection = self.__displayTemplatesScreen()
-                if template_selection == 'update':
+                if template_selection == 'list':
                     self.template_download_lib.runGUI()
                 elif template_selection == 'create':
                     self.template_make_lib.run()
@@ -243,8 +247,9 @@ class OpenNodeUtility(object):
 
             elif (result == 'oms'):
                 oms_selection = self.__displayOmsScreen()
-                if (oms_selection == 0):
+                
+                if oms_selection == 'download':
                     self.template_download_lib.runGUI(True)
-                elif (oms_selection == 1):
+                elif oms_selection == 'install':
                     self.template_deploy_lib.run(True)
 
