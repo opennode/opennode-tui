@@ -1,3 +1,5 @@
+import urllib2
+
 from opennode.cli.config import c
 
 def get_template_repos():
@@ -10,3 +12,12 @@ def get_template_repos():
         type = c(group, 'type')
         result.append(("%s (%s)" %(name, type), group))
     return result
+
+def get_template_list(remote_repo):
+    """Retrieves a list of templates from the specified repository"""
+    url = c(remote_repo, 'url')
+    list = urllib2.urlopen("%s/templatelist.txt" % url)
+    templates = [template.strip() for template in list]
+    list.close()
+    return templates
+
