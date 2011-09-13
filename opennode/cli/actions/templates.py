@@ -70,6 +70,10 @@ def unpack_template(templatefile, type):
         assert len(tmpl_file) == 1
         os.symlink("%s/unpacked/%s" % (unpacked_dir, tmpl_file[0]), "%s/%s" % (c('general', 'openvz-templates'), tmpl_file[0]))
 
+def get_local_templates(storage_pool, type):
+    """Returns a list of templates of a certain type from the storage pool"""
+    return [tmpl[:-4] for tmpl in os.listdir("%s/%s" % (storage_pool, type)) if tmpl.endswith('tar')]
+
 def is_fresh(localfile, remotefile):
     """Checks whether local copy matches remote file"""
     # get remote hash
