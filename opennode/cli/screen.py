@@ -49,7 +49,16 @@ class OpenNodeTUI(object):
         pass
 
     def display_storage(self):
-        pass
+        repos = actions.storage.list_pools()
+        if len(repos) > 0:
+            action, repo = ListboxChoiceWindow(self.screen, TITLE, 'Select the default storage pool', zip(repos, repos), ['Ok', 'Back'])
+            if action != 'back':
+                actions.storage.set_default_pool(repo)
+            self.display_main_screen()
+        else:
+            ButtonChoiceWindow(self.screen, TITLE, 'Sorry, there are no configured repositories.', ['Back'])
+            # no other option but to go back
+            self.display_main_screen()
 
     def display_oms(self):
         logic = { 'main': self.display_main_screen,
@@ -93,12 +102,12 @@ class OpenNodeTUI(object):
         logic = { 'main': self.display_main_screen,
                   'list': self.display_template_repo_list,
                   'create': self.display_template_create,
-                  'deploy': self.display_template_deploy,
+                  'createvm': self.display_template_deploy,
                 }
 
         result = ButtonChoiceWindow(self.screen, TITLE , 'Select a template action to perform',
                         [('List templates', 'list'), ('Create from running VM', 'create'), 
-                         ('Deploy new VM', 'deploy'), ('Main menu', 'main')])
+                         ('Create new VM', 'createvm'), ('Main menu', 'main')])
 
         logic[result]()
 
@@ -115,15 +124,14 @@ class OpenNodeTUI(object):
             # no other option but to go Back
             self.display_templates()
 
-
     def display_template_list(self, repo):
+        """Displays a list of templates from a specified repository"""
         templates = actions.templates.get_template_list(repo)
-
 
     def display_template_create(self):
         pass
 
-    def display_template_deploy(self):
+    def display_create_vm(self):
         pass
 
     def run(self):
