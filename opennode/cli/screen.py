@@ -18,6 +18,7 @@ class OpenNodeTUI(object):
     def display_main_screen(self):
         logic = {'exit': self.menu_exit,
                  'console': self.display_console_menu,
+                 'createvm': self.display_create_vm,
                  'net': self.display_network,
                  'storage': self.display_storage,
                  'oms': self.display_oms,
@@ -27,7 +28,8 @@ class OpenNodeTUI(object):
         result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to the OpenNode TUI', \
                 [('Exit', 'exit'),
                 ('Console', 'console'),
-                ('Network', 'net'),
+                ('Create VM', 'createvm'),
+                #('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
@@ -93,7 +95,14 @@ class OpenNodeTUI(object):
                 self.display_oms_register(error_msg = "Incorrect server data")
 
     def display_oms_download(self):
-        pass
+        logic = { 'main': self.display_main_screen,
+                  'download': actions.templates.sync_oms_template,
+                }
+
+        result = ButtonChoiceWindow(self.screen, TITLE , 'Would you like to download OMS template?',
+                        [('Yes', 'main'), ('No', 'main')])
+
+        logic[result]()
 
     def display_oms_install(self):
         pass
@@ -102,12 +111,11 @@ class OpenNodeTUI(object):
         logic = { 'main': self.display_main_screen,
                   'list': self.display_template_repo_list,
                   'create': self.display_template_create,
-                  'createvm': self.display_template_deploy,
                 }
 
         result = ButtonChoiceWindow(self.screen, TITLE , 'Select a template action to perform',
-                        [('List templates', 'list'), ('Create from running VM', 'create'), 
-                         ('Create new VM', 'createvm'), ('Main menu', 'main')])
+                        [('List templates', 'list'), ('Create a new template from a VM', 'create'), 
+                         ('Main menu', 'main')])
 
         logic[result]()
 
@@ -127,6 +135,7 @@ class OpenNodeTUI(object):
     def display_template_list(self, repo):
         """Displays a list of templates from a specified repository"""
         templates = actions.templates.get_template_list(repo)
+        #XXX add selectbox/sync
 
     def display_template_create(self):
         pass

@@ -74,6 +74,12 @@ def get_local_templates(storage_pool, type):
     """Returns a list of templates of a certain type from the storage pool"""
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s" % (storage_pool, type)) if tmpl.endswith('tar')]
 
+def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
+    """Synchronize OMS template"""
+    repo = c('opennode-oms-template', 'repo')
+    tmpl = c('opennode-oms-template', 'template_name')
+    sync_template(repo, tmpl, storage_pool)
+
 def is_fresh(localfile, remotefile):
     """Checks whether local copy matches remote file"""
     # get remote hash
