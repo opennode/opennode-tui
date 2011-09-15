@@ -27,10 +27,11 @@ def get_template_list(remote_repo):
     return templates
 
 def sync_template(remote_repo, template, storage_pool):
-    """Synchronizes local template (cache) with the remote one (master)"""
+    """Synchronizes local template (cache) with the remote one (master)"""    
     url = c(remote_repo, 'url')
     type = c(remote_repo, 'type')
-    localfile = "/".join([storage_pool, type, template])
+    storage_endpoint = c('generic', 'storage-endpoint')
+    localfile = "/".join([storage_endpoint, storage_pool, type, template])
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):        
