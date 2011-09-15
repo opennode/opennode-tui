@@ -181,9 +181,8 @@ class OpenNodeTUI(object):
         # first pick a storage pool
         storage_pool = self.display_select_storage_pool()
         type = self.display_vm_type_select()
-        template = self.display_select_template(storage_pool)
+        template = self.display_select_template_from_storage(storage_pool, type)
         print storage_pool, type, template
-
 
     def run(self):
         """Main loop of the TUI"""

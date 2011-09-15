@@ -95,6 +95,8 @@ def unpack_template(templatefile, type):
 def get_local_templates(storage_pool, type):
     """Returns a list of templates of a certain type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
+    for pool in os.listdir("%s" % storage_endpoint):
+        prepare_storage_pool(pool)
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint, storage_pool, type)) if tmpl.endswith('tar')]
 
 def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
