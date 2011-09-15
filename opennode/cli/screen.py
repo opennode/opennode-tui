@@ -100,7 +100,7 @@ class OpenNodeTUI(object):
                 }
 
         result = ButtonChoiceWindow(self.screen, TITLE , 'Would you like to download OMS template?',
-                        [('Yes', 'main'), ('No', 'main')])
+                        [('Yes', 'download'), ('No', 'main')])
 
         logic[result]()
 
@@ -114,7 +114,7 @@ class OpenNodeTUI(object):
                 }
 
         result = ButtonChoiceWindow(self.screen, TITLE , 'Select a template action to perform',
-                        [('List templates', 'list'), ('Create a new template from a VM', 'create'), 
+                        [('List templates', 'list'), ('Create a new template from VM', 'create'), 
                          ('Main menu', 'main')])
 
         logic[result]()
