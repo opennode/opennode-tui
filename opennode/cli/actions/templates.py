@@ -121,6 +121,7 @@ def is_fresh(localfile, remotefile):
 def prepare_storage_pool(storage_pool):
     """Assures that storage pool has the correct folder structure"""
     # create structure
+    storage_pool = "%s/%s" % (c('general', 'storage-endpoint'), storage_pool)
     mkdir_p("%s/iso/" % storage_pool)
     mkdir_p("%s/images/" % storage_pool)
     mkdir_p("%s/openvz/unpacked" % storage_pool)
