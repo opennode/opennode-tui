@@ -182,8 +182,20 @@ class OpenNodeTUI(object):
         storage_pool = self.display_select_storage_pool()
         type = self.display_vm_type_select()
         template = self.display_select_template_from_storage(storage_pool, type)
+        
+        # manage template settings
+        vm = actions.vm.get_instance(storage_pool, type, template)
+        template_settings = vm.read_template_settings()
+        self.display_template_settings(template_settings)
+        
         print storage_pool, type, template
 
+    def display_template_settings(self, template_settings):
+        # Stub implementation!
+        # TODO: implement me
+        from opennode.cli.tmpldeploy import TemplateDeploy
+        TemplateDeploy()._TemplateDeploy__displayVMDetails(template_settings["vm_name"], template_settings)
+    
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
