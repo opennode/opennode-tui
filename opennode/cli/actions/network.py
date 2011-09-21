@@ -1,4 +1,5 @@
 import os
+import re
 
 def list_bridges():
     """Returns a list of existing bridge interfaces"""
@@ -18,9 +19,27 @@ def configure_bridge(bridge, hello=None, fd=None, stp=None):
         os.command('brctl stp %s %s' % (bridge, stp))
 
 def add_nameserver(ns):
-    """Append a nameserver entry to the configuration"""
-    with open('/etc/resolv.conf', 'a') as dnsservers:
-        dnsservers.write('nameserver %s' % ns)
-        
+    """Append a nameserver entry to /etc/resolv.conf"""
+    with open('/etc/resolv.conf', 'r+') as dnsservers:
+        entries = dnsservers.readlines()
+        for entry in entries:
+            if re.match("\s*nameserver\s+%s\s*\n?$" %ns, entry) is not None:
+                return # already exists
+        entries.append('nameserver %s\n' % ns)
+        dnsservers.seek(0)
+        dnsservers.writelines(entries)
+
+
+def remove_nameserver(ns):
+    """Remove nameserver entry from /etc/resolv.conf"""
+    filtered_entries = []
+    with open('/etc/resolv.conf', 'r') as dnsservers:
+        entries = dnsservers.readlines()
+        for entry in entries:
+            if re.match("\s*nameserver\s+%s\s*\n?$" %ns, entry) is not None:
+                continue
+            filtered_entries.append(entry)
+    with open('/tmp/resolv.conf', 'w') as dnsservers:
+        dnsservers.writelines(filtered_entries)
 
 
