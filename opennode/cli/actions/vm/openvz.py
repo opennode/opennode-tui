@@ -1,6 +1,9 @@
+import os
+import socket
+import operator
 import string
 
-import os
+import cracklib
 import libvirt
 from ovf.OvfFile import OvfFile
 
@@ -9,11 +12,11 @@ from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 
 def get_ovf_template_settings(ovf_file):
-    settings = get_default_ovf_settings()
+    settings = read_default_ovf_settings()
     ovf_settings = read_ovf_settings(ovf_file)
     settings.update(ovf_settings)
     settings["vm_id"] = _get_available_ct_id()
-    return settings  
+    return settings
 
 def validate_template_settings(template_settings, input_settings):
     errors = []
@@ -70,40 +73,33 @@ def validate_template_settings(template_settings, input_settings):
         return False
     
     def validate_ip():
-        if not _check_ip_format(input_settings["ip_address"]):
+        try:
+            socket.inet_aton(input_settings["ip_address"])
+            return True
+        except socket.error:
             errors.append(("ip_address", "IP-address format not correct."))
             return False
-        else:
-            return True
       
-    def validate_nameserver(): 
-        if not _check_ip_format(input_settings["nameserver"]):
+    def validate_nameserver():
+        try:
+            socket.inet_aton(input_settings["nameserver"])
+            return True
+        except socket.error:
             errors.append(("nameserver", "Nameserver format not correct."))
             return False
-        else:
-            return True
-      
+         
     def validate_password():
-        password, password2 = input_settings["passwd"], input_settings["passwd2"] 
-        if len(password) < 6:
-            errors.append(("passwd", "Password must be at least 6 characters long."))
-        elif password != password2: 
-            errors.append(("passwd", "Passwords don't match."))
+        password, password2 = input_settings["passwd"], input_settings["passwd2"]
+        try:
+            cracklib.VeryFascistCheck(password)
+        except ValueError, err:
+            errors.append(("passwd", "Password: %s" % err))
         else:
-            return True
+            if password == password2:
+                return True
+            else:
+                errors.append(("passwd", "Passwords don't match."))
         return False
-    
-    def _check_ip_format(ip):
-        item_list = ip.split(".")
-        if len(item_list)!= 4:
-            return False
-        for item in item_list:
-            try:
-                if not (0 <= int(item) <= 255) or len(item) > 3:
-                    return False
-            except:
-                return False
-        return True
     
     validate_memory()
     validate_cpu()
@@ -115,13 +111,14 @@ def validate_template_settings(template_settings, input_settings):
     
     return errors
 
-def get_default_ovf_settings():
-    return dict(openvz_config.clist("general"))
+def read_default_ovf_settings():
+    """ Reads default ovf configuration from file, returns a dictionary of settings."""
+    return dict(openvz_config.clist("ovf"))
 
 def read_ovf_settings(ovf_file):
-    """ Reads ovf configuration file, returns a dictionary of settings. """
+    """ Reads given ovf template configuration file, returns a dictionary of settings."""
     settings = {}
-
+    
     settings["template_name"] = os.path.split(ovf_file.path)[1][:-4]  
     
     vm_type = ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
@@ -129,15 +126,19 @@ def read_ovf_settings(ovf_file):
         raise Exception, "Given template is not compatible with OpenVZ on OpenNode server"
     settings["vm_type"] = vm_type
     
-    memory = zip(["memory_min", "memory_normal", "memory_max"], 
-                 ovfutil.get_ovf_memory_gb(ovf_file))
-    memory = filter(lambda item: item[1] != None, memory)
-    settings.update(dict(memory))
+    memory_settings = [
+        ("memory_min", ovfutil.get_ovf_min_memory_gb(ovf_file)),
+        ("memory_normal", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
+        ("memory_max", ovfutil.get_ovf_max_memory_gb(ovf_file))]
+    # set only those settings that are explicitly specified in the ovf file (non-null)
+    settings.update(dict(filter(operator.itemgetter(1), memory_settings)))
     
-    vcpu = zip(["vcpu_min", "vcpu_normal", "vcpu_max"], 
-                ovfutil.get_ovf_vcpu(ovf_file))
-    vcpu = filter(lambda item: item[1] != None, vcpu)
-    settings.update(dict(vcpu))
+    vcpu_settings = [
+        ("vcpu_min", ovfutil.get_ovf_min_vcpu(ovf_file)),
+        ("vcpu_normal", ovfutil.get_ovf_normal_vcpu(ovf_file)),
+        ("vcpu_max", ovfutil.get_ovf_max_vcpu(ovf_file))]
+    # set only those settings that are explicitly specified in the ovf file (non-null)
+    settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
     # ??? TODO: apparently need to check disks also?
     return settings
@@ -156,10 +157,11 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     st["disk_max"] = str(min(sysres.get_disc_space_gb(), float(st["disk_max"])))
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
     st["disk_min"] = str(max(sysres.get_min_disc_space_gb(st["vm_id"]), float(st["disk_min"])))
+
     return _check_settings_min_max(st)
     
 def _check_settings_min_max(template_settings):
-    """ Check if minimum required resources exceed maximum available resources. """
+    """ Checks if minimum required resources exceed maximum available resources. """
     errors = []
     st = template_settings
     if float(st["memory_min"]) > float(st["memory_max"]):
@@ -175,6 +177,7 @@ def _check_settings_min_max(template_settings):
         errors.append("Minimum required disk space %sGB exceeds available %sGB." %\
                       (st["disk_min"], st["disk_max"]))
     return errors
+
 def _get_available_ct_id():
     """
     Get next available IF for new OpenVZ CT
