@@ -1,1 +1,2 @@
 -e git://gitorious.org/open-ovf/mainline.git#egg=open-ovf
+python-crack

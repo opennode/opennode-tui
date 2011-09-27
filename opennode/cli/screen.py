@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
 import types
+from ovf.OvfFile import OvfFile
+from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, \
+                    ListboxChoiceWindow, Textbox, Button, GridForm
 
-from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, ListboxChoiceWindow
 from opennode.cli.helpers import SelectCheckboxWindow
-
 from opennode.cli import actions
 from opennode.cli.config import c
+import os
+from mailbox import FormatError
+from opennode.cli.actions.vm import openvz
 
 VERSION = '2.0.0'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -180,21 +184,155 @@ class OpenNodeTUI(object):
     def display_create_vm(self):
         # first pick a storage pool
         storage_pool = self.display_select_storage_pool()
-        type = self.display_vm_type_select()
-        template = self.display_select_template_from_storage(storage_pool, type)
+        vm_type = self.display_vm_type_select()
+        template = self.display_select_template_from_storage(storage_pool, vm_type)
         
-        # manage template settings
-        vm = actions.vm.get_instance(storage_pool, type, template)
-        template_settings = vm.read_template_settings()
-        self.display_template_settings(template_settings)
+        # get ovf template settings
+        ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
+                                        storage_pool, vm_type, "unpacked", 
+                                        template + ".ovf"))
+        vm = actions.vm.get_module(vm_type)
+        template_settings = vm.get_ovf_template_settings(ovf_file)
+        errors = vm.adjust_setting_to_systems_resources(template_settings)
+        if errors:
+            self.__displayInfoScreen("\n".join(errors), width=70, height=len(errors))
         
-        print storage_pool, type, template
+        # get user input 
+        user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
+        print storage_pool, type, template, user_settings 
 
-    def display_template_settings(self, template_settings):
-        # Stub implementation!
-        # TODO: implement me
-        from opennode.cli.tmpldeploy import TemplateDeploy
-        TemplateDeploy()._TemplateDeploy__displayVMDetails(template_settings["vm_name"], template_settings)
+    def _display_template_settings(self, template_settings, validation_callback):
+        """ Display configuration details of new VM """
+        views = {
+            "openvz": self._display_template_settings_openvz,
+            "kvm": self._display_template_settings_kvm,
+        }
+        view = views[template_settings["vm_type"]]
+        return view(template_settings, validation_callback)
+    
+    def _display_template_settings_openvz(self, template_settings, validation_callback):
+        form_rows = []
+        
+        text_memory = Textbox(20, 1, "Memory size (GB):", 0, 0)
+        input_memory = Entry(20, template_settings["memory"])
+        form_rows.append((text_memory, input_memory))
+        
+        text_memory_bounds = Textbox(20, 1, "Memory min/max:", 0, 0)
+        text_memory_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], template_settings["memory_max"]), 0, 0)
+        form_rows.append((text_memory_bounds, text_memory_bounds_value))
+        
+        text_cpu = Textbox(20, 1, "Number of CPUs:", 0, 0)
+        input_cpu = Entry(20, template_settings["vcpu"])
+        form_rows.append((text_cpu, input_cpu))
+        
+        text_cpu_bounds = Textbox(20, 1, "CPU number min/max:", 0, 0)
+        text_cpu_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpu_min"], template_settings["vcpu_max"]), 0, 0)
+        form_rows.append((text_cpu_bounds, text_cpu_bounds_value))
+        
+        text_cpu_limit = Textbox(20, 1, "CPU usage limit (%):", 0, 0)
+        input_cpu_limit = Entry(20, template_settings["vcpulimit"])
+        form_rows.append((text_cpu_limit, input_cpu_limit))
+        
+        text_cpu_usage_bounds = Textbox(20, 1, "CPU usage min/max:", 0, 0)
+        text_cpu_usage_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpulimit_min"], template_settings["vcpulimit_max"]), 0, 0)
+        form_rows.append((text_cpu_usage_bounds, text_cpu_usage_bounds_value))
+        
+        text_disk_size = Textbox(20, 1, "Disk size (GB):", 0, 0)
+        input_disk_size = Entry(20, template_settings["disk"])
+        form_rows.append((text_disk_size, input_disk_size))
+        
+        text_disk_size_bounds = Textbox(20, 1, "Disk size min/max:", 0, 0)
+        text_disk_size_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["disk_min"], template_settings["disk_max"]), 0, 0)
+        form_rows.append((text_disk_size_bounds, text_disk_size_bounds_value))
+        
+        text_ip = Textbox(20, 1, "IP-address:", 0, 0)
+        input_ip = Entry(20, template_settings["ip_address"])
+        form_rows.append((text_ip, input_ip))
+        
+        text_nameserver = Textbox(20, 2, "Nameserver:", 0, 0)
+        input_nameserver = Entry(20, template_settings["nameserver"])
+        form_rows.append((text_nameserver, input_nameserver))
+        
+        #ToDo: VETH support
+        #text13 = Textbox(20, 2, "Use VETH:", 0, 0)
+        
+        text_password = Textbox(20, 1, "Root password:", 0, 0)
+        input_password = Entry(20, template_settings["passwd"], password = 1)
+        form_rows.append((text_password, input_password))
+        
+        text_password2 = Textbox(20, 2, "Root password x2:", 0, 0)
+        input_password2 = Entry(20, template_settings["passwd"], password = 1)
+        form_rows.append((text_password2, input_password2))
+        
+        button_save = Button("Save VM settings")
+        button_exit = Button("Main menu")
+        form_rows.append((button_save, button_exit))
+        
+        def _display_form():
+            screen = SnackScreen()
+            form = GridForm(screen, "OpenNode Management Utility", 2, 14)
+            for i, form_row in enumerate(form_rows): 
+                for j in (0, 1):
+                    form.add(form_row [j], j, i)
+            result = form.run()
+            screen.finish()
+            return result
+        
+        while 1:
+            # display form
+            form_result = _display_form()
+            
+            if form_result == button_exit:
+                return None
+            
+            # collect user input
+            input_settings = {
+                "memory": input_memory.value(),  
+                "vcpu": input_cpu.value(),
+                "vcpulimit": input_cpu_limit.value(),
+                "disk": input_disk_size.value(),
+                "ip_address": input_ip.value(),
+                "nameserver": input_nameserver.value(),
+                "passwd": input_password.value(),
+                "passwd2": input_password2.value(),
+            }
+            
+            # validate user input 
+            errors = validation_callback(template_settings, input_settings)
+            
+            if errors:
+                key, msg = errors[0] 
+                self.__displayInfoScreen(msg)
+                continue
+            else:
+                settings = template_settings
+                settings.update(input_settings)
+                return settings
+
+            #ToDo: VETH support
+            #if (entry9.selected()):
+            #    template_settings["veth"] = "1"
+            #else:
+            #    template_settings["veth"] = "0"
+            
+    
+    def _display_template_settings_kvm(self, template_settings, validator_callback):
+        raise Exception, "Not implemented"
+    
+    def display_template_min_max_errors(self, errors):
+        msg = "\n".join([ "* " + error for error in errors ])
+        self.__displayInfoScreen(msg, 70)
+            
+    
+    def __displayInfoScreen(self, info_text="Information.", width=50, height=2):
+        """Display information message on information screen"""
+        screen = SnackScreen()
+        form = GridForm(screen, "Information.", 1, 2)
+        text1 = Textbox(width, height, info_text, 0, 0)
+        form.add(text1, 0, 0)
+        form.add(Button("OK"), 0, 1)
+        form.runOnce()
+        screen.finish()
     
     def run(self):
         """Main loop of the TUI"""
