@@ -1,6 +1,11 @@
 import os
 import re
 
+
+__all__ = ['list_bridges', 'add_bridge', 'configure_bridge',
+           'add_nameserver', 'remove_nameserver']
+
+
 def list_bridges():
     """Returns a list of existing bridge interfaces"""
     return [x.strip() for x in os.popen('brctl show | awk \'NR>1{print $1}\'')]

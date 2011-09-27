@@ -3,6 +3,10 @@ import os
 
 from opennode.cli.config import c, cs
 
+
+__all__ = ['list_pools', 'set_default_pool']
+
+
 def list_pools():
     """List existing storage pools"""
     pools = []

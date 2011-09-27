@@ -8,6 +8,12 @@ from opennode.cli.config import c
 from opennode.cli.utils import mkdir_p
 
 
+__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
+           'sync_template', 'delete_template', 'unpack_template',
+           'get_local_templates', 'sync_oms_template', 'is_fresh',
+           'prepare_storage_pool']
+
+
 def _download_hook(count, blockSize, totalSize):
     """Simple download counter"""
     print "% 3.1f%% of %d bytes\r" % (min(100, float(blockSize * count) / totalSize * 100), totalSize),
