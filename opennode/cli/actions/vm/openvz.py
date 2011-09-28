@@ -1,7 +1,6 @@
 import os
 import socket
 import operator
-import string
 
 import cracklib
 import libvirt
@@ -9,7 +8,10 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli.config2 import openvz_config 
 from opennode.cli.actions import sysresources as sysres
-from opennode.cli.actions.vm import ovfutil
+from opennode.cli.actions.vm import ovfutil, vzcfg
+
+from opennode.cli import constants
+from opennode.cli.utils import SimpleConfigParser, execute
 
 def get_ovf_template_settings(ovf_file):
     settings = read_default_ovf_settings()
@@ -19,6 +21,18 @@ def get_ovf_template_settings(ovf_file):
     return settings
 
 def validate_template_settings(template_settings, input_settings):
+    """ 
+    Checks if settings provided by the user match ovf template settings.
+    
+    @param template_settings: ovf template settings settings.
+    @param input_settings: dict
+
+    @param input_settings: settings provided by the user via gui.
+    @param input_settings: dict
+    
+    @return: a dictionary of errors mapping incorrect parameters to the corresponding error message. 
+    @rtype: dict
+    """
     errors = []
     
     def validate_memory():
@@ -121,7 +135,7 @@ def read_ovf_settings(ovf_file):
     
     settings["template_name"] = os.path.split(ovf_file.path)[1][:-4]  
     
-    vm_type = ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
+    vm_type = ovfutil.get_vm_type(ovf_file)
     if vm_type != "openvz":
         raise Exception, "Given template is not compatible with OpenVZ on OpenNode server"
     settings["vm_type"] = vm_type
@@ -144,6 +158,10 @@ def read_ovf_settings(ovf_file):
     return settings
 
 def adjust_setting_to_systems_resources(ovf_template_settings):
+    """ 
+    Adjusts maximum required resources to match available system resources. 
+    NB! Minimum bound is not adjusted.
+    """
     st = ovf_template_settings
     st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st["vcpu_max"])))
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
@@ -196,3 +214,50 @@ def _get_openvz_ct_id_list():
     """
     conn = libvirt.open("openvz:///system")
     return map(int, conn.listDefinedDomains() + conn.listDomainsID())
+    
+def create_container(ovf_settings):
+    """ Creates OpenVZ CT """
+    # create OpenVZ CT
+    execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
+    execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
+    
+    # create non-ubc configuration
+    conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ,
+                                 "%s.conf" % ovf_settings["vm_id"]) 
+    parser = SimpleConfigParser()
+    parser.read(conf_filename)
+    non_ubc_conf = parser.items()
+    excludes = set(constants.OPENVZ_CONF_CREATOR_OPTIONS)
+    for key in non_ubc_conf.keys():
+        if key in excludes:
+            del non_ubc_conf[key]
+    
+    # create ubc configuration
+    ubc_conf = vzcfg.get_config(ovf_settings)
+    openvz_configuration = "%s%s\n\n" % (ubc_conf, non_ubc_conf)
+    
+    # save configuration
+    with open(conf_filename, 'w') as conf_file:
+        conf_file.write(openvz_configuration)
+    execute("chmod 644 %s" % conf_filename)
+
+def deploy(ovf_settings):
+    """ Deploys OpenVZ CT """
+    #Network configuration for VETH
+    #ToDo: implement support for VETH
+    #Network configuration for VENET
+    status, _ = execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
+    if not status:
+        raise Exception, "Unable to define OpenVZ CT (IP address adding failed)"
+    status, _ = execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
+    if not status:
+        raise Exception, "Unable to define OpenVZ CT (Nameserver address adding failed)"
+    status, _ = execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_name"]))
+    if not status:
+        raise Exception, "Unable to define OpenVZ CT (Hostname adding failed)"
+    status, _ = execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
+    if not status:
+        raise Exception, "Unable to define OpenVZ CT (Setting root password failed)"
+    status, _ = execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    if not status:
+        raise Exception, "Unable to define OpenVZ CT (CT starting failed)"

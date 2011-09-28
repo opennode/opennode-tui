@@ -2,6 +2,8 @@ import warnings
 
 from ovf import Ovf
 
+def get_vm_type(ovf_file):
+    return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
 
 def get_ovf_min_vcpu(ovf_file):
     return _get_ovf_vcpu(ovf_file, "min")

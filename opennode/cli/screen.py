@@ -197,9 +197,18 @@ class OpenNodeTUI(object):
         if errors:
             self.__displayInfoScreen("\n".join(errors), width=70, height=len(errors))
         
-        # get user input 
+        # get user input
         user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
-        print storage_pool, type, template, user_settings 
+        
+        # create openvz container
+        self.__printInformation("Creating OpenVZ container...")
+        vm.create_container(user_settings)
+        
+        # deploy 
+        self.__printInformation("Deploying...")
+        vm.deploy(user_settings)
+        
+        self.__displayInfoScreen("OpenVZ template deployed successfully")
 
     def _display_template_settings(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
