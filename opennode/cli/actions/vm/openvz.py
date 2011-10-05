@@ -203,46 +203,101 @@ def _get_available_ct_id():
     @return: Next available ID for new OpenVZ CT
     @rtype: Integer
     """
-    return max(_get_openvz_ct_id_list()) + 1
+    return max (100, max(_get_openvz_ct_id_list())) + 1
 
 def _get_openvz_ct_id_list():
     """
     Return a list of current OpenVZ CTs (both running and stopped)
 
-    @return: List of OpenVZ CTs on current machine
+    @return: List of OpenVZ containers on current machine
     @rtype: List
     """
     conn = libvirt.open("openvz:///system")
     return map(int, conn.listDefinedDomains() + conn.listDomainsID())
     
 def create_container(ovf_settings):
-    """ Creates OpenVZ CT """
+    """ Creates OpenVZ container """
+    
     # create OpenVZ CT
     execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
     
-    # create non-ubc configuration
-    conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ,
-                                 "%s.conf" % ovf_settings["vm_id"]) 
+    # create UBC configuration
+    ubc_params = {
+        "physpages_barrier": ovf_settings["memory"],
+        "physpages_limit": ovf_settings["memory"],
+        "swappages_barrier": ovf_settings["memory"],
+        "swappages_limit": ovf_settings["memory"],
+        
+        "diskspace_soft": ovf_settings["disk"],
+        "diskspace_hard": float(ovf_settings["disk"]) + 1,
+        "diskinodes_soft": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
+        "diskinodes_hard": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES ")) * 1.10),
+        "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
+        
+        "cpus": ovf_settings["vcpu"],
+        "cpulimit": float(ovf_settings["vcpulimit"]) * int(ovf_settings["vcpu"]),
+        'cpuunits': openvz_config.c("ubc-defaults", "DEF_CPUUNITS"),
+    }
+    ubc_conf_str = ubc_template % ubc_params
+    
+    ct_conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"])
+
+    # read non-ubc configuration
     parser = SimpleConfigParser()
-    parser.read(conf_filename)
-    non_ubc_conf = parser.items()
-    excludes = set(constants.OPENVZ_CONF_CREATOR_OPTIONS)
-    for key in non_ubc_conf.keys():
-        if key in excludes:
-            del non_ubc_conf[key]
+    parser.read(ct_conf_filename)
+    non_ubc_conf_dict = parser.items()
+    # parameters to read. Others will be generated using ovf settings
+    include_params = set(["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE",
+                        "IP_ADDRESS", "NAMESERVER","HOSTNAME"])
+    non_ubc_conf_dict = dict((k, v) for k, v in non_ubc_conf_dict.iteritems() if k in include_params)
+    non_ubc_conf_str = "\n".join("%s=%s" % (k, v) for k, v in non_ubc_conf_dict.iteritems()) 
     
-    # create ubc configuration
-    ubc_conf = vzcfg.get_config(ovf_settings)
-    openvz_configuration = "%s%s\n\n" % (ubc_conf, non_ubc_conf)
+    # final configuration is ubc + non_ubc config
+    openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str)
     
-    # save configuration
-    with open(conf_filename, 'w') as conf_file:
-        conf_file.write(openvz_configuration)
-    execute("chmod 644 %s" % conf_filename)
+    # overwrite configuration
+    with open(ct_conf_filename, 'w') as conf_file:
+        conf_file.write(openvz_ct_conf)
+    execute("chmod 644 %s" % ct_conf_filename)
+
+ubc_template = """\
+# UBC parameters (in form of barrier:limit)
+PHYSPAGES="%(physpages_barrier)sG:%(physpages_limit)sG"
+SWAPPAGES="%(swappages_barrier)sG:%(swappages_limit)sG"
+KMEMSIZE="unlimited"
+LOCKEDPAGES="unlimited"
+PRIVVMPAGES="unlimited"
+SHMPAGES="unlimited"
+NUMPROC="unlimited"
+VMGUARPAGES="unlimited"
+OOMGUARPAGES="unlimited"
+NUMTCPSOCK="unlimited"
+NUMFLOCK="unlimited"
+NUMPTY="unlimited"
+NUMSIGINFO="unlimited"
+TCPSNDBUF="unlimited"
+TCPRCVBUF="unlimited"
+OTHERSOCKBUF="unlimited"
+DGRAMRCVBUF="unlimited"
+NUMOTHERSOCK="unlimited"
+DCACHESIZE="unlimited"
+NUMFILE="unlimited"
+NUMIPTENT="unlimited"
+
+# Disk quota parameters (in form of softlimit:hardlimit)
+DISKSPACE="%(diskspace_soft)sG:%(diskspace_hard)sG"
+DISKINODES="%(diskinodes_soft)s:%(diskinodes_hard)s"
+QUOTATIME="%(quotatime)s"
+
+# CPU fair scheduler parameter
+CPUUNITS="%(cpuunits)s"
+CPULIMIT="%(cpulimit)s"
+CPUS="%(cpus)s"
+"""
 
 def deploy(ovf_settings):
-    """ Deploys OpenVZ CT """
+    """ Deploys OpenVZ container """
     #Network configuration for VETH
     #ToDo: implement support for VETH
     #Network configuration for VENET
