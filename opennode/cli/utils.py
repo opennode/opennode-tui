@@ -11,10 +11,15 @@ def mkdir_p(path):
             pass
         else: raise
 
+class CommandException(Exception):
+    pass
+
 def execute(cmd):
-    """ """
     status, output = commands.getstatusoutput(cmd)
-    return status, output 
+    if status != 0:
+        raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'" 
+                               % (cmd, status, output))  
+    return output 
 
 class SimpleConfigParser(ConfigParser.ConfigParser):
     """ Parses configuration file without sections. """
@@ -22,7 +27,7 @@ class SimpleConfigParser(ConfigParser.ConfigParser):
     OPTION_CHAR =  '='
     
     def __init__(self):
-        super(SimpleConfigParser, self).__init__()
+        ConfigParser.ConfigParser.__init__(self)
         self.options = {}
     
     def get(self, key):

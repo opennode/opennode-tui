@@ -127,7 +127,7 @@ def validate_template_settings(template_settings, input_settings):
 
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
-    return dict(openvz_config.clist("ovf"))
+    return dict(openvz_config.clist("ovf-defaults"))
 
 def read_ovf_settings(ovf_file):
     """ Reads given ovf template configuration file, returns a dictionary of settings."""
@@ -174,7 +174,6 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     
     st["disk_max"] = str(min(sysres.get_disc_space_gb(), float(st["disk_max"])))
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
-    st["disk_min"] = str(max(sysres.get_min_disc_space_gb(st["vm_id"]), float(st["disk_min"])))
 
     return _check_settings_min_max(st)
     
@@ -232,12 +231,12 @@ def create_container(ovf_settings):
         "diskspace_soft": ovf_settings["disk"],
         "diskspace_hard": float(ovf_settings["disk"]) + 1,
         "diskinodes_soft": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
-        "diskinodes_hard": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES ")) * 1.10),
+        "diskinodes_hard": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")) * 1.10),
         "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
         
         "cpus": ovf_settings["vcpu"],
-        "cpulimit": float(ovf_settings["vcpulimit"]) * int(ovf_settings["vcpu"]),
-        'cpuunits': openvz_config.c("ubc-defaults", "DEF_CPUUNITS"),
+        "cpulimit": int(ovf_settings["vcpulimit"]) * int(ovf_settings["vcpu"]),
+        'cpuunits': openvz_config.c("ubc-defaults", "DEFAULT_CPUUNITS"),
     }
     ubc_conf_str = ubc_template % ubc_params
     
@@ -301,18 +300,8 @@ def deploy(ovf_settings):
     #Network configuration for VETH
     #ToDo: implement support for VETH
     #Network configuration for VENET
-    status, _ = execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
-    if not status:
-        raise Exception, "Unable to define OpenVZ CT (IP address adding failed)"
-    status, _ = execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
-    if not status:
-        raise Exception, "Unable to define OpenVZ CT (Nameserver address adding failed)"
-    status, _ = execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_name"]))
-    if not status:
-        raise Exception, "Unable to define OpenVZ CT (Hostname adding failed)"
-    status, _ = execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
-    if not status:
-        raise Exception, "Unable to define OpenVZ CT (Setting root password failed)"
-    status, _ = execute("vzctl start %s" % (ovf_settings["vm_id"]))
-    if not status:
-        raise Exception, "Unable to define OpenVZ CT (CT starting failed)"
+    execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
+    execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
+    execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_type"]))
+    execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
+    execute("vzctl start %s" % (ovf_settings["vm_id"]))

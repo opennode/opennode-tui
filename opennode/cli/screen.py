@@ -201,11 +201,11 @@ class OpenNodeTUI(object):
         user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
         
         # create openvz container
-        self.__printInformation("Creating OpenVZ container...")
+        print "Creating OpenVZ container..."
         vm.create_container(user_settings)
         
         # deploy 
-        self.__printInformation("Deploying...")
+        print "Deploying..."
         vm.deploy(user_settings)
         
         self.__displayInfoScreen("OpenVZ template deployed successfully")

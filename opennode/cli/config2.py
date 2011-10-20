@@ -1,8 +1,8 @@
 import ConfigParser
 
 GLOBAL_CONF_LOCATION = 'opennode-tui.conf' #'/etc/opennode/opennode-tui.conf'
-OPENVZ_CONF_LOCATION = 'openvz-defaults.conf'
-KVM_CONF_LOCATION    = 'kvm-defaults.conf'
+OPENVZ_CONF_LOCATION = 'openvz.conf'
+KVM_CONF_LOCATION    = 'kvm.conf'
 
 class Config:
     
