@@ -65,7 +65,8 @@ class VM(func_module.FuncModule):
             print >>f, '<?xml version="1.0"?>\n<node>'
             vms = self._list_vms(conn)
             for vm in vms:
-                node = ElementTree.fromstring(conn.lookupByName(vm['name']).XMLDesc(0))
+                xml = conn.lookupByName(vm['name']).XMLDesc(0)
+                node = ElementTree.fromstring(xml)
                 node.attrib['state'] = vm['state']
 
                 print >>f, ElementTree.tostring(node)
@@ -195,16 +196,20 @@ class VM(func_module.FuncModule):
         dom.resume()
 
     def _vm_console_vnc(self, conn, uuid):
-        port = self.dom_dom(conn, uuid).find('.//graphics[@type="vnc"]').attrib.get('port', None)
-        if port and port != '-1':
-            return dict(type='vnc', port=port)
+        element = self.dom_dom(conn, uuid).find('.//graphics[@type="vnc"]')
+        if element:
+            port = element.attrib.get('port', None)
+            if port and port != '-1':
+                return dict(type='vnc', port=port)
 
     vm_console_vnc = vm_method(_vm_console_vnc)
 
     def _vm_console_pty(self, conn, uuid):
-        pty = self.dom_dom(conn, uuid).find('.//console[@type="pty"]').attrib.get('tty', None)
-        if pty:
-            return dict(type='pty', pty=pty)
+        element = self.dom_dom(conn, uuid).find('.//console[@type="pty"]')
+        if element:
+            pty = element.attrib.get('tty', None)
+            if pty:
+                return dict(type='pty', pty=pty)
 
     vm_console_pty = vm_method(_vm_console_pty)
 
