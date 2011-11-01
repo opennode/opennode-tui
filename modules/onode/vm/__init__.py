@@ -197,7 +197,8 @@ class VM(func_module.FuncModule):
 
     def _vm_console_vnc(self, conn, uuid):
         element = self.dom_dom(conn, uuid).find('.//graphics[@type="vnc"]')
-        if element:
+        # elementtree element without children is treated as false
+        if element != None:
             port = element.attrib.get('port', None)
             if port and port != '-1':
                 return dict(type='vnc', port=port)
@@ -206,7 +207,7 @@ class VM(func_module.FuncModule):
 
     def _vm_console_pty(self, conn, uuid):
         element = self.dom_dom(conn, uuid).find('.//console[@type="pty"]')
-        if element:
+        if element != None:
             pty = element.attrib.get('tty', None)
             if pty:
                 return dict(type='pty', pty=pty)
