@@ -8,7 +8,7 @@ DEF_QUOTATIME   = 1800        # Default quota burst time
 def get_config(user_settings):
     """Output OpenVZ configuration file"""
     
-    params = {
+    return template % {
         "physpages_barrier": user_settings["memory"],
         "physpages_limit": user_settings["memory"],
         "swappages_barrier": user_settings["memory"],
@@ -24,8 +24,6 @@ def get_config(user_settings):
         "cpulimit": float(user_settings["vcpulimit"]) * int(user_settings["vcpu"]),
         'cpuunits': DEF_CPUUNITS
     }
- 
-    return template % params
 
 template = """\
 # UBC parameters (in form of barrier:limit)

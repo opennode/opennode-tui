@@ -1,6 +1,5 @@
 """ System hardware resources """
 
-import commands
 from opennode.cli.utils import execute
 
 def get_cpu_count():
@@ -22,7 +21,7 @@ def get_ram_size_gb():
             memory += int(output.split()[1])
         except ValueError, IndexError:
             raise Exception, "Unable to calculate OpenNode server memory size"
-    return round(float(memory) / 1024 ** 2, 3)
+    return round(memory / 1024.0 ** 2, 3)
 
 def get_disc_space_gb():
     output = execute("df /vz")

@@ -25,15 +25,14 @@ def validate_template_settings(template_settings, input_settings):
     Checks if settings provided by the user match ovf template settings.
     
     @param template_settings: ovf template settings settings.
-    @param input_settings: dict
+    @type template_settings: dict
 
-    @param input_settings: settings provided by the user via gui.
-    @param input_settings: dict
+    @param input_settings: settings provided by the user via ui form.
+    @type input_settings: dict
     
     @return: a dictionary of errors mapping incorrect parameters to the corresponding error message. 
-    @rtype: dict
+    @type: dict
     """
-    errors = []
     
     def validate_memory():
         try:
@@ -115,6 +114,8 @@ def validate_template_settings(template_settings, input_settings):
                 errors.append(("passwd", "Passwords don't match."))
         return False
     
+    errors = []
+    
     validate_memory()
     validate_cpu()
     validate_cpu_limit()
@@ -163,16 +164,16 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     NB! Minimum bound is not adjusted.
     """
     st = ovf_template_settings
-    st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st["vcpu_max"])))
+    st["vcpu_max"] = str(sysres.get_cpu_count())
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
     
-    st["vcpulimit_max"] = str(min(sysres.get_cpu_usage_limit(), int(st["vcpulimit_max"])))
+    st["vcpulimit_max"] = str(sysres.get_cpu_usage_limit())
     st["vcpulimit"] = str(min(int(st["vcpulimit"]), int(st["vcpulimit_max"])))
     
-    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st["memory_max"])) )
+    st["memory_max"] = str(sysres.get_ram_size_gb())
     st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
     
-    st["disk_max"] = str(min(sysres.get_disc_space_gb(), float(st["disk_max"])))
+    st["disk_max"] = str(sysres.get_disc_space_gb())
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
 
     return _check_settings_min_max(st)
@@ -182,16 +183,16 @@ def _check_settings_min_max(template_settings):
     errors = []
     st = template_settings
     if float(st["memory_min"]) > float(st["memory_max"]):
-        errors.append("Minimum required memory %sGB exceeds total available memory %sGB" %\
+        errors.append("Minimum required memory %sGB exceeds total available memory %sGB" %
                       (st["memory_min"], st["memory_max"]))
     if int(st["vcpu_min"]) > int(st["vcpu_max"]):
-        errors.append("Minimum required number of vcpus %s exceeds available number %s." %\
+        errors.append("Minimum required number of vcpus %s exceeds available number %s." %
                       (st["vcpu_min"], st["vcpu_max"]))
     if int(st["vcpulimit_min"]) > int(st["vcpulimit_max"]):
-        errors.append("Minimum required vcpu usage limit %s%% exceeds available %s%%." %\
+        errors.append("Minimum required vcpu usage limit %s%% exceeds available %s%%." %
                       (st["vcpulimit_min"], st["vcpulimit_max"]))
     if float(st["disk_min"]) > float(st["disk_max"]):
-        errors.append("Minimum required disk space %sGB exceeds available %sGB." %\
+        errors.append("Minimum required disk space %sGB exceeds available %sGB." %
                       (st["disk_min"], st["disk_max"]))
     return errors
 

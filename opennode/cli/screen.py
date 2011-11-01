@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
+
+import os
 import types
+
 from ovf.OvfFile import OvfFile
-from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, \
-                    ListboxChoiceWindow, Textbox, Button, GridForm
+from mailbox import FormatError
+from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
+                   ListboxChoiceWindow, Textbox, Button, GridForm)
 
 from opennode.cli.helpers import SelectCheckboxWindow
 from opennode.cli import actions
 from opennode.cli.config import c
-import os
-from mailbox import FormatError
 from opennode.cli.actions.vm import openvz
 
 VERSION = '2.0.0'
@@ -280,9 +282,9 @@ class OpenNodeTUI(object):
         def _display_form():
             screen = SnackScreen()
             form = GridForm(screen, "OpenNode Management Utility", 2, 14)
-            for i, form_row in enumerate(form_rows): 
-                for j in (0, 1):
-                    form.add(form_row [j], j, i)
+            for i, row in enumerate(form_rows): 
+                for j, cell in enumerate(row):
+                    form.add(cell, j, i)
             result = form.run()
             screen.finish()
             return result
@@ -314,7 +316,7 @@ class OpenNodeTUI(object):
                 self.__displayInfoScreen(msg)
                 continue
             else:
-                settings = template_settings
+                settings = template_settings.copy()
                 settings.update(input_settings)
                 return settings
 
@@ -326,10 +328,10 @@ class OpenNodeTUI(object):
             
     
     def _display_template_settings_kvm(self, template_settings, validator_callback):
-        raise Exception, "Not implemented"
+        raise NotImplementedError
     
     def display_template_min_max_errors(self, errors):
-        msg = "\n".join([ "* " + error for error in errors ])
+        msg = "\n".join("* " + error for error in errors)
         self.__displayInfoScreen(msg, 70)
             
     
@@ -337,8 +339,7 @@ class OpenNodeTUI(object):
         """Display information message on information screen"""
         screen = SnackScreen()
         form = GridForm(screen, "Information.", 1, 2)
-        text1 = Textbox(width, height, info_text, 0, 0)
-        form.add(text1, 0, 0)
+        form.add(Textbox(width, height, info_text, 0, 0), 0, 0)
         form.add(Button("OK"), 0, 1)
         form.runOnce()
         screen.finish()

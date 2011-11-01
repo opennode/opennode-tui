@@ -23,14 +23,9 @@ def _get_ovf_vcpu(ovf_file, bound):
     virtual_hardware_node = ovf_file.document.getElementsByTagName("VirtualHardwareSection")[0] 
     rasd = Ovf.getDict(virtual_hardware_node)['children']
     for resource in rasd:
-        if resource.has_key('rasd:ResourceType') and \
-            resource['rasd:ResourceType'] == '3':
-            
-            if "attr" in resource and "bound" in resource["attr"]:
-                _bound = resource["attr"]["bound"]
-            else:
-                _bound = "normal"
-            
+        if (resource.has_key('rasd:ResourceType') and
+                resource['rasd:ResourceType'] == '3'):
+            _bound = resource.get('attr', {}).get('bound', 'normal')
             if _bound == bound:
                 vcpu = resource['rasd:VirtualQuantity']
                 break
@@ -73,35 +68,27 @@ def _get_ovf_memory_gb(ovf_file, bound):
     rasd = Ovf.getDict(virtual_hardware_node)['children']
     for resource in rasd:
         if(resource.has_key('rasd:ResourceType') and
-           resource['rasd:ResourceType'] == '4'):
+                resource['rasd:ResourceType'] == '4'):
             memoryQuantity = resource['rasd:VirtualQuantity']
             memoryUnits = resource['rasd:AllocationUnits']
-            
-            if "attr" in resource and "bound" in resource["attr"]:
-                _bound = resource["attr"]["bound"]
-            else:
-                _bound = "normal"
-                
+            _bound = resource.get('attr', {}).get('bound', 'normal')
             if _bound == bound:
                 if (memoryUnits.startswith('byte') or
-                     memoryUnits.startswith('bit')):
+                        memoryUnits.startswith('bit')):
                     # Calculate PUnit numerical factor
                     memoryUnits = memoryUnits.replace('^','**')
-    
+                    
                     # Determine PUnit Quantifier DMTF DSP0004, {byte, bit}
                     # Convert to kilobytes
                     memoryUnits = memoryUnits.split(' ', 1)
                     quantifier = memoryUnits[0]
-                    if quantifier == 'byte':
-                        memoryUnits[0] = '2**-10'
-                    elif quantifier == 'bit':
-                        memoryUnits[0] = '2**-13'
-                    else:
+                    if quantifier not in ['bit', 'byte']:
                         raise ValueError("Incompatible PUnit quantifier for memory.")
-    
+                    else:
+                        memoryUnits[0] = '2**-10' if quantifier is 'byte' else '2**-13'
+                    
                     memoryUnits = ' '.join(memoryUnits)
-                    memoryFactor = int(eval(memoryUnits))
-    
+                    memoryFactor = int(eval(memoryUnits, {}, {}))
                 else:
                     if memoryUnits.startswith('Kilo'):
                         memoryFactor = 1024**0
@@ -115,7 +102,7 @@ def _get_ovf_memory_gb(ovf_file, bound):
                     if memoryUnits.endswith('Bytes'):
                         memoryFactor *= 1
                     elif memoryUnits.endswith('Bits'):
-                        memoryFactor *= 0.125
+                        memoryFactor /= 8.0
                     else:
                         raise ValueError("Incompatible PUnit quantifier for memory.")
                     warnings.warn("DSP0004 v2.5.0: use PUnit Qualifiers",
