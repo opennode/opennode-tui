@@ -13,4 +13,4 @@ def get_module(vm_type):
     try:
         return vm_types[vm_type]
     except KeyError: 
-        raise Exception, "Vm type '%s' not (yet) supported" % vm_type
+        raise NotImplementedError, "Vm type '%s' not (yet) supported" % vm_type

@@ -1,8 +1,8 @@
 import ConfigParser
 
 GLOBAL_CONF_LOCATION = 'opennode-tui.conf' #'/etc/opennode/opennode-tui.conf'
-OPENVZ_CONF_LOCATION = 'openvz-defaults.conf'
-KVM_CONF_LOCATION    = 'kvm-defaults.conf'
+OPENVZ_CONF_LOCATION = 'openvz.conf'
+KVM_CONF_LOCATION    = 'kvm.conf'
 
 class Config:
     
@@ -23,7 +23,7 @@ class Config:
         """Shorthand for setting configuration values"""
         self.config.set(group, field, value)
         with open(self.conf_location, 'wb') as configfile:
-            config.write(configfile)
+            self.config.write(configfile)
 
 global_config = Config(GLOBAL_CONF_LOCATION)
 openvz_config = Config(OPENVZ_CONF_LOCATION)
