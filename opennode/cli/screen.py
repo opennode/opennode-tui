@@ -210,7 +210,7 @@ class OpenNodeTUI(object):
         print "Deploying..."
         vm.deploy(user_settings)
         
-        self.__displayInfoScreen("OpenVZ template deployed successfully")
+        self.__displayInfoScreen("OpenVZ container %s deployed successfully" % user_settings["vm_id"])
 
     def _display_template_settings(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
