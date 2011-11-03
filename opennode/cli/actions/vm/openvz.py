@@ -231,19 +231,24 @@ def create_container(ovf_settings):
         
         "diskspace_soft": ovf_settings["disk"],
         "diskspace_hard": float(ovf_settings["disk"]) + 1,
-        "diskinodes_soft": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
-        "diskinodes_hard": round(float(ovf_settings["disk"]) * int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")) * 1.10),
+        "diskinodes_soft": float(ovf_settings["disk"]) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
+        "diskinodes_hard": float(ovf_settings["disk"]) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")) * 
+                           1.10,
         "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
         
         "cpus": ovf_settings["vcpu"],
         "cpulimit": int(ovf_settings["vcpulimit"]) * int(ovf_settings["vcpu"]),
         'cpuunits': openvz_config.c("ubc-defaults", "DEFAULT_CPUUNITS"),
     }
+    # Get rid of zeros where necessary (eg 5.0 - > 5 )
+    ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val) 
+                       for key, val in ubc_params.items()])
     ubc_conf_str = ubc_template % ubc_params
     
-    ct_conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"])
-
     # read non-ubc configuration
+    ct_conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"])
     parser = SimpleConfigParser()
     parser.read(ct_conf_filename)
     non_ubc_conf_dict = parser.items()
