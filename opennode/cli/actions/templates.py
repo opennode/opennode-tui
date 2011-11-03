@@ -60,7 +60,7 @@ def sync_template(remote_repo, template, storage_pool, download_hook = _download
     localfile = "/".join([storage_endpoint, storage_pool, type, template])
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
-    if not is_fresh(localfile, remotefile):        
+    if not is_fresh(localfile, remotefile):      
        prepare_storage_pool(storage_pool)
        urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
        urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
@@ -96,7 +96,10 @@ def unpack_template(templatefile, type):
     if type == 'openvz':
         tmpl_file = [fnm for fnm in tmpl.getnames() if fnm.endswith('tar.gz')]
         assert len(tmpl_file) == 1
-        os.symlink("%s/unpacked/%s" % (unpacked_dir, tmpl_file[0]), "%s/%s" % (c('general', 'openvz-templates'), tmpl_file[0]))
+        source_file = os.path.join(unpacked_dir, 'unpacked', tmpl_file[0])
+        dest_file = os.path.join(c('general', 'openvz-templates'), tmpl_file[0])
+        if not os.path.isfile(dest_file):
+            os.symlink(source_file, dest_file)
 
 def get_local_templates(storage_pool, type):
     """Returns a list of templates of a certain type from the storage pool"""
