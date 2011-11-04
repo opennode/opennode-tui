@@ -9,7 +9,6 @@ from ovf.OvfFile import OvfFile
 from opennode.cli.config2 import openvz_config 
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil, vzcfg
-
 from opennode.cli import constants
 from opennode.cli.utils import SimpleConfigParser, execute
 
@@ -231,7 +230,10 @@ def _get_openvz_ct_id_list():
     """
     conn = libvirt.open("openvz:///system")
     return map(int, conn.listDefinedDomains() + conn.listDomainsID())
-    
+
+def _compute_diskspace_hard_limit(soft_limit):
+    return soft_limit * 1.1 if soft_limit <= 10 else soft_limit + 1
+
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
     
@@ -248,13 +250,13 @@ def create_container(ovf_settings):
         "swappages_limit": ovf_settings["swap"],
         
         "diskspace_soft": ovf_settings["disk"],
-        "diskspace_hard": float(ovf_settings["disk"]) + 1,
+        "diskspace_hard": _compute_diskspace_hard_limit(float(ovf_settings["disk"])),
         
         "diskinodes_soft": float(ovf_settings["disk"]) *
                            int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
-        "diskinodes_hard": float(ovf_settings["disk"]) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")) * 
-                           1.10,
+        "diskinodes_hard": round(_compute_diskspace_hard_limit(float(ovf_settings["disk"])) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
+                           
         "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
         
         "cpus": ovf_settings["vcpu"],
