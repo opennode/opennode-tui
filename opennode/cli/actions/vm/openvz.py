@@ -46,7 +46,20 @@ def validate_template_settings(template_settings, input_settings):
             else:
                 errors.append(("memory", "Memory size out of template limits."))
         return False
-      
+    
+    def validate_swap():
+        try:
+            swap = float(input_settings["swap"])
+        except ValueError:
+            errors.append(("swap", "Wswap size must be integer or decimal."))
+        else:
+            if float(template_settings["swap_min"]) <= swap <= \
+                float(template_settings["swap_max"]):
+                return True
+            else:
+                errors.append(("swap", "Swap size out of template limits."))
+        return False
+    
     def validate_cpu():
         try:
             vcpu = int(input_settings["vcpu"])
@@ -117,6 +130,7 @@ def validate_template_settings(template_settings, input_settings):
     errors = []
     
     validate_memory()
+    validate_swap()
     validate_cpu()
     validate_cpu_limit()
     validate_disk()
@@ -164,14 +178,17 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     NB! Minimum bound is not adjusted.
     """
     st = ovf_template_settings
+    st["memory_max"] = str(sysres.get_ram_size_gb())
+    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
+
+    st["swap_max"] = str(sysres.get_swap_size_gb())
+    st["swap"] = str(min(float(st["swap"]), float(st["swap_max"])))
+
     st["vcpu_max"] = str(sysres.get_cpu_count())
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
     
     st["vcpulimit_max"] = str(sysres.get_cpu_usage_limit())
     st["vcpulimit"] = str(min(int(st["vcpulimit"]), int(st["vcpulimit_max"])))
-    
-    st["memory_max"] = str(sysres.get_ram_size_gb())
-    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
     
     st["disk_max"] = str(sysres.get_disc_space_gb())
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
@@ -226,11 +243,13 @@ def create_container(ovf_settings):
     ubc_params = {
         "physpages_barrier": ovf_settings["memory"],
         "physpages_limit": ovf_settings["memory"],
-        "swappages_barrier": ovf_settings["memory"],
-        "swappages_limit": ovf_settings["memory"],
+        
+        "swappages_barrier": ovf_settings["swap"],
+        "swappages_limit": ovf_settings["swap"],
         
         "diskspace_soft": ovf_settings["disk"],
         "diskspace_hard": float(ovf_settings["disk"]) + 1,
+        
         "diskinodes_soft": float(ovf_settings["disk"]) *
                            int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
         "diskinodes_hard": float(ovf_settings["disk"]) *
