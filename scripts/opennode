@@ -59,6 +59,9 @@ if __name__ == '__main__':
         from opennode.cli import screen 
         tui = screen.OpenNodeTUI()
         tui.run()
+    elif action == 'lib_list':
+        from opennode.cli.actions import templates
+        templates.list_templates()
     else:
         opennode_utility = on.OpenNodeUtility()
         opennode_utility.run(action)
