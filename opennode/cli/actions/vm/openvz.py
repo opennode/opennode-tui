@@ -1,6 +1,7 @@
 import os
 import socket
 import operator
+import datetime
 
 import cracklib
 import libvirt
@@ -9,9 +10,9 @@ from ovf.OvfFile import OvfFile
 from opennode.cli.config2 import openvz_config 
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil, vzcfg
-
 from opennode.cli import constants
 from opennode.cli.utils import SimpleConfigParser, execute
+from opennode.cli.actions.vm.config_template import openvz_template
 
 def get_ovf_template_settings(ovf_file):
     settings = read_default_ovf_settings()
@@ -46,7 +47,20 @@ def validate_template_settings(template_settings, input_settings):
             else:
                 errors.append(("memory", "Memory size out of template limits."))
         return False
-      
+    
+    def validate_swap():
+        try:
+            swap = float(input_settings["swap"])
+        except ValueError:
+            errors.append(("swap", "Wswap size must be integer or decimal."))
+        else:
+            if float(template_settings["swap_min"]) <= swap <= \
+                float(template_settings["swap_max"]):
+                return True
+            else:
+                errors.append(("swap", "Swap size out of template limits."))
+        return False
+    
     def validate_cpu():
         try:
             vcpu = int(input_settings["vcpu"])
@@ -117,6 +131,7 @@ def validate_template_settings(template_settings, input_settings):
     errors = []
     
     validate_memory()
+    validate_swap()
     validate_cpu()
     validate_cpu_limit()
     validate_disk()
@@ -164,14 +179,17 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     NB! Minimum bound is not adjusted.
     """
     st = ovf_template_settings
+    st["memory_max"] = str(sysres.get_ram_size_gb())
+    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
+
+    st["swap_max"] = str(sysres.get_swap_size_gb())
+    st["swap"] = str(min(float(st["swap"]), float(st["swap_max"])))
+
     st["vcpu_max"] = str(sysres.get_cpu_count())
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
     
     st["vcpulimit_max"] = str(sysres.get_cpu_usage_limit())
     st["vcpulimit"] = str(min(int(st["vcpulimit"]), int(st["vcpulimit_max"])))
-    
-    st["memory_max"] = str(sysres.get_ram_size_gb())
-    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
     
     st["disk_max"] = str(sysres.get_disc_space_gb())
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
@@ -214,7 +232,10 @@ def _get_openvz_ct_id_list():
     """
     conn = libvirt.open("openvz:///system")
     return map(int, conn.listDefinedDomains() + conn.listDomainsID())
-    
+
+def _compute_diskspace_hard_limit(soft_limit):
+    return soft_limit * 1.1 if soft_limit <= 10 else soft_limit + 1
+
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
     
@@ -226,16 +247,18 @@ def create_container(ovf_settings):
     ubc_params = {
         "physpages_barrier": ovf_settings["memory"],
         "physpages_limit": ovf_settings["memory"],
-        "swappages_barrier": ovf_settings["memory"],
-        "swappages_limit": ovf_settings["memory"],
+        
+        "swappages_barrier": ovf_settings["swap"],
+        "swappages_limit": ovf_settings["swap"],
         
         "diskspace_soft": ovf_settings["disk"],
-        "diskspace_hard": float(ovf_settings["disk"]) + 1,
+        "diskspace_hard": _compute_diskspace_hard_limit(float(ovf_settings["disk"])),
+        
         "diskinodes_soft": float(ovf_settings["disk"]) *
                            int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
-        "diskinodes_hard": float(ovf_settings["disk"]) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")) * 
-                           1.10,
+        "diskinodes_hard": round(_compute_diskspace_hard_limit(float(ovf_settings["disk"])) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
+                           
         "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
         
         "cpus": ovf_settings["vcpu"],
@@ -245,7 +268,8 @@ def create_container(ovf_settings):
     # Get rid of zeros where necessary (eg 5.0 - > 5 )
     ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val) 
                        for key, val in ubc_params.items()])
-    ubc_conf_str = ubc_template % ubc_params
+    ubc_params['time'] = datetime.datetime.today().ctime() 
+    ubc_conf_str = openvz_template % ubc_params
     
     # read non-ubc configuration
     ct_conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"])
@@ -265,41 +289,6 @@ def create_container(ovf_settings):
     with open(ct_conf_filename, 'w') as conf_file:
         conf_file.write(openvz_ct_conf)
     execute("chmod 644 %s" % ct_conf_filename)
-
-ubc_template = """\
-# UBC parameters (in form of barrier:limit)
-PHYSPAGES="%(physpages_barrier)sG:%(physpages_limit)sG"
-SWAPPAGES="%(swappages_barrier)sG:%(swappages_limit)sG"
-KMEMSIZE="unlimited"
-LOCKEDPAGES="unlimited"
-PRIVVMPAGES="unlimited"
-SHMPAGES="unlimited"
-NUMPROC="unlimited"
-VMGUARPAGES="unlimited"
-OOMGUARPAGES="unlimited"
-NUMTCPSOCK="unlimited"
-NUMFLOCK="unlimited"
-NUMPTY="unlimited"
-NUMSIGINFO="unlimited"
-TCPSNDBUF="unlimited"
-TCPRCVBUF="unlimited"
-OTHERSOCKBUF="unlimited"
-DGRAMRCVBUF="unlimited"
-NUMOTHERSOCK="unlimited"
-DCACHESIZE="unlimited"
-NUMFILE="unlimited"
-NUMIPTENT="unlimited"
-
-# Disk quota parameters (in form of softlimit:hardlimit)
-DISKSPACE="%(diskspace_soft)sG:%(diskspace_hard)sG"
-DISKINODES="%(diskinodes_soft)s:%(diskinodes_hard)s"
-QUOTATIME="%(quotatime)s"
-
-# CPU fair scheduler parameter
-CPUUNITS="%(cpuunits)s"
-CPULIMIT="%(cpulimit)s"
-CPUS="%(cpus)s"
-"""
 
 def deploy(ovf_settings):
     """ Deploys OpenVZ container """

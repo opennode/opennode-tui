@@ -224,56 +224,54 @@ class OpenNodeTUI(object):
     def _display_template_settings_openvz(self, template_settings, validation_callback):
         form_rows = []
         
-        text_memory = Textbox(20, 1, "Memory size (GB):", 0, 0)
         input_memory = Entry(20, template_settings["memory"])
-        form_rows.append((text_memory, input_memory))
+        form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
         
-        text_memory_bounds = Textbox(20, 1, "Memory min/max:", 0, 0)
-        text_memory_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], template_settings["memory_max"]), 0, 0)
-        form_rows.append((text_memory_bounds, text_memory_bounds_value))
+        form_rows.append((Textbox(20, 1, "Memory min/max:", 0, 0), 
+                          Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
+                                                      template_settings["memory_max"]), 0, 0)))
         
-        text_cpu = Textbox(20, 1, "Number of CPUs:", 0, 0)
+        input_swap = Entry(20, template_settings["swap"])
+        form_rows.append((Textbox(20, 1, "VSwap size (GB):", 0, 0), input_swap))
+        
+        form_rows.append((Textbox(20, 1, "VSwap min/max:", 0, 0), 
+                          Textbox(20, 1, "%s / %s" % (template_settings["swap_min"], 
+                                                      template_settings["swap_max"]), 0, 0)))
+        
         input_cpu = Entry(20, template_settings["vcpu"])
-        form_rows.append((text_cpu, input_cpu))
+        form_rows.append((Textbox(20, 1, "Number of CPUs:", 0, 0), input_cpu))
         
-        text_cpu_bounds = Textbox(20, 1, "CPU number min/max:", 0, 0)
-        text_cpu_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpu_min"], template_settings["vcpu_max"]), 0, 0)
-        form_rows.append((text_cpu_bounds, text_cpu_bounds_value))
+        text_cpu_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpu_min"], 
+                                                            template_settings["vcpu_max"]), 0, 0)
+        form_rows.append((Textbox(20, 1, "CPU number min/max:", 0, 0), text_cpu_bounds_value))
         
-        text_cpu_limit = Textbox(20, 1, "CPU usage limit (%):", 0, 0)
         input_cpu_limit = Entry(20, template_settings["vcpulimit"])
-        form_rows.append((text_cpu_limit, input_cpu_limit))
+        form_rows.append((Textbox(20, 1, "CPU usage limit (%):", 0, 0), input_cpu_limit))
         
-        text_cpu_usage_bounds = Textbox(20, 1, "CPU usage min/max:", 0, 0)
-        text_cpu_usage_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpulimit_min"], template_settings["vcpulimit_max"]), 0, 0)
-        form_rows.append((text_cpu_usage_bounds, text_cpu_usage_bounds_value))
+        form_rows.append((Textbox(20, 1, "CPU usage min/max:", 0, 0), 
+                          Textbox(20, 1, "%s / %s" % (template_settings["vcpulimit_min"], 
+                                                      template_settings["vcpulimit_max"]), 0, 0)))
         
-        text_disk_size = Textbox(20, 1, "Disk size (GB):", 0, 0)
         input_disk_size = Entry(20, template_settings["disk"])
-        form_rows.append((text_disk_size, input_disk_size))
+        form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
         
-        text_disk_size_bounds = Textbox(20, 1, "Disk size min/max:", 0, 0)
-        text_disk_size_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["disk_min"], template_settings["disk_max"]), 0, 0)
-        form_rows.append((text_disk_size_bounds, text_disk_size_bounds_value))
+        form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
+                          Textbox(20, 1, "Disk size min/max:", 0, 0)))
         
-        text_ip = Textbox(20, 1, "IP-address:", 0, 0)
         input_ip = Entry(20, template_settings["ip_address"])
-        form_rows.append((text_ip, input_ip))
+        form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
         
-        text_nameserver = Textbox(20, 2, "Nameserver:", 0, 0)
         input_nameserver = Entry(20, template_settings["nameserver"])
-        form_rows.append((text_nameserver, input_nameserver))
+        form_rows.append((Textbox(20, 2, "Nameserver:", 0, 0), input_nameserver))
         
         #ToDo: VETH support
         #text13 = Textbox(20, 2, "Use VETH:", 0, 0)
         
-        text_password = Textbox(20, 1, "Root password:", 0, 0)
         input_password = Entry(20, template_settings["passwd"], password = 1)
-        form_rows.append((text_password, input_password))
+        form_rows.append((Textbox(20, 1, "Root password:", 0, 0), input_password))
         
-        text_password2 = Textbox(20, 2, "Root password x2:", 0, 0)
         input_password2 = Entry(20, template_settings["passwd"], password = 1)
-        form_rows.append((text_password2, input_password2))
+        form_rows.append((Textbox(20, 2, "Root password x2:", 0, 0), input_password2))
         
         button_save = Button("Save VM settings")
         button_exit = Button("Main menu")
@@ -281,7 +279,7 @@ class OpenNodeTUI(object):
         
         def _display_form():
             screen = SnackScreen()
-            form = GridForm(screen, "OpenNode Management Utility", 2, 14)
+            form = GridForm(screen, "OpenNode Management Utility", 2, 16)
             for i, row in enumerate(form_rows): 
                 for j, cell in enumerate(row):
                     form.add(cell, j, i)
@@ -299,6 +297,7 @@ class OpenNodeTUI(object):
             # collect user input
             input_settings = {
                 "memory": input_memory.value(),  
+                "swap": input_swap.value(), 
                 "vcpu": input_cpu.value(),
                 "vcpulimit": input_cpu_limit.value(),
                 "disk": input_disk_size.value(),
