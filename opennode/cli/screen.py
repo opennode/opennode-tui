@@ -58,12 +58,12 @@ class OpenNodeTUI(object):
                  'templates': self.display_templates
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to the OpenNode TUI', \
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI', \
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
                 #('Network', 'net'),
-                ('Storage', 'storage'),
+                #('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
                 42)
@@ -186,7 +186,9 @@ class OpenNodeTUI(object):
     def display_create_vm(self):
         # first pick a storage pool
         storage_pool = self.display_select_storage_pool()
+        if storage_pool is None: return self.display_main_screen()
         vm_type = self.display_vm_type_select()
+        if vm_type is None: return self.display_create_vm()
         template = self.display_select_template_from_storage(storage_pool, vm_type)
         
         # get ovf template settings
