@@ -188,12 +188,15 @@ class OpenNodeTUI(object):
         pass
 
     def display_create_vm(self):
-        # first pick a storage pool
+        
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None: return self.display_main_screen()
+        
         vm_type = self.display_vm_type_select()
         if vm_type is None: return self.display_create_vm()
+        
         template = self.display_select_template_from_storage(storage_pool, vm_type)
+        if template is None: return self.display_main_screen()
         
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
