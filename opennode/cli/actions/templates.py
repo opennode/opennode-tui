@@ -43,6 +43,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates):
     type = c(remote_repo, 'type')
     existing_templates = get_local_templates(storage_pool, type)
     # synchronize selected templates
+    if templates is None: templates = []
     for tmpl in templates:
         sync_template(remote_repo, tmpl, storage_pool)
         if tmpl in existing_templates:
@@ -61,10 +62,10 @@ def sync_template(remote_repo, template, storage_pool, download_hook = _download
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):      
-       prepare_storage_pool(storage_pool)
-       urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
-       urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
-       unpack_template("%s.tar" % localfile, type)
+        prepare_storage_pool(storage_pool)
+        urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
+        urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
+        unpack_template("%s.tar" % localfile, type)
 
 def delete_template(storage_pool, type, template):
     """Deletes template, unpacked folder and a hash"""
