@@ -3,7 +3,6 @@ import socket
 import operator
 import datetime
 
-import cracklib
 import libvirt
 from ovf.OvfFile import OvfFile
 
@@ -117,15 +116,10 @@ def validate_template_settings(template_settings, input_settings):
          
     def validate_password():
         password, password2 = input_settings["passwd"], input_settings["passwd2"]
-        try:
-            cracklib.VeryFascistCheck(password)
-        except ValueError, err:
-            errors.append(("passwd", "Password: %s" % err))
+        if password == password2:
+            return True
         else:
-            if password == password2:
-                return True
-            else:
-                errors.append(("passwd", "Passwords don't match."))
+    	    errors.append(("passwd", "Passwords don't match."))
         return False
     
     errors = []
