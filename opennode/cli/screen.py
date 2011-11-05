@@ -346,8 +346,10 @@ class OpenNodeTUI(object):
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
-        self.display_main_screen()
-        self.screen.finish()
+        try:
+            self.display_main_screen()
+        finally:
+            self.screen.finish()
 
 if __name__ == "__main__":
     tui = OpenNodeTUI()
