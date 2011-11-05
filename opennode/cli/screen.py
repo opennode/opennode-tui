@@ -63,7 +63,7 @@ class OpenNodeTUI(object):
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
                 #('Network', 'net'),
-                #('Storage', 'storage'),
+                ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
                 42)
@@ -71,14 +71,18 @@ class OpenNodeTUI(object):
         logic[result]()
 
     def display_console_menu(self):
-        logic = {'main': self.display_main_screen,
+        logic = {
                'kvm': actions.console.run_kvm,
                'ovz': actions.console.run_openvz,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select management console to use',
                   [('KVM', 'kvm'),('OpenVZ', 'ovz'), ('Main menu', 'main')])
-
-        logic[result]()
+        if result != 'main':
+            self.screen.finish()
+            logic[result]()
+            self.screen = SnackScreen()
+        else:
+            self.display_main_screen()
 
     def display_network(self):
         pass
