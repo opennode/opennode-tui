@@ -27,13 +27,9 @@ OPTIONS
     -h, --help
         Display usage help
 
-AUTHOR:
-    Danel Ahman (danel@active.ee) 2010
-    Active Systems LLC
-
 SEE ALSO:
     OpenNode web page:
-    http://opennode.activesys.org
+    http://www.opennodecloud.com
     """
     exit(2)
 
