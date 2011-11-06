@@ -174,22 +174,19 @@ class OpenNodeTUI(object):
                                         vm.get_template_name(res[1]) + ".ovf"))
         
         template_settings = vm.get_ovf_template_settings(ovf_file)
-             
         # get user input
-        user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
-        print user_settings
+        def template_sanity_check(tmpl_settings, input_settings):
+            checks = vm.validate_template_settings(tmpl_settings, input_settings)
+            # TODO: implement sanity checks (available disk space on target device)
+            sanity_checks = {}
+            checks.update(sanity_checks)
+            return checks
         
+        user_settings = self.display_template_settings(template_settings, template_sanity_check)
+        # TODO
+        #actions.vm.ovfutil.save_as_ovf(vm_type, user_settings, res[1])
+        return self.display_templates()
         
-        
-        # choose where you want to storage a new template
-        #storage_pool = self.display_select_storage_pool()
-        
-        # check if we can store there
-        #validate(template_name, storage_pool)
-        
-        # modify parameters
-        #...
-
     def display_create_vm(self):
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None: return self.display_main_screen()
@@ -212,7 +209,7 @@ class OpenNodeTUI(object):
             return self.display_main_screen()
         
         # get user input
-        user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
+        user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
         
         # create openvz container
         print "Creating OpenVZ container..."
@@ -225,7 +222,7 @@ class OpenNodeTUI(object):
         display_info("OpenVZ container %s deployed successfully" % user_settings["vm_id"])
         return self.display_main_screen()
 
-    def _display_template_settings(self, template_settings, validation_callback):
+    def display_template_settings(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
         views = {
             "openvz": self._display_template_settings_openvz,
