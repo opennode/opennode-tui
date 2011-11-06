@@ -54,6 +54,11 @@ if __name__ == '__main__':
         if o in ("-u", "--update-templates"): action = 'lib_update'
         elif o in ("-l", "--list-templates"): action = 'lib_list'
         elif o in ("-h", "--help"): _help()
-
-    opennode_utility = on.OpenNodeUtility()
-    opennode_utility.run(action)
+    
+    if action == 'cli':
+        from opennode.cli import screen 
+        tui = screen.OpenNodeTUI()
+        tui.run()
+    else:
+        opennode_utility = on.OpenNodeUtility()
+        opennode_utility.run(action)
