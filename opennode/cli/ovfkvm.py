@@ -44,6 +44,8 @@ class OVF2KVM:
         self.ovf_template_settings["on_crash"] = "restart"
         self.ovf_template_settings["clock_offset"] = "utc"
         self.ovf_template_settings["emulator"] = "/usr/libexec/qemu-kvm"
+        if not os.path.exists(self.ovf_template_settings["emulator"]):
+            self.ovf_template_settings["emulator"] = "/usr/bin/kvm"
         self.ovf_template_settings["interface"] = {"type" : "bridge", "source_bridge" : "vmbr0"}
         self.ovf_template_settings["serial"] = {"type" : "pty", "target_port" : 0}
         self.ovf_template_settings["console"] = {"type" : "pty", "target_port" : 0}
