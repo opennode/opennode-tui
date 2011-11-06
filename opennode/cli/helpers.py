@@ -84,7 +84,11 @@ def display_create_template(screen, title, vm_type, templates, help = None):
 
 def display_selection(screen, title, list_of_items, subtitle, default = None):
     """Display a list of items, return selected one or None, if nothing was selected"""
-    if len(list_of_items) > 0:
+    if len(list_of_items) == 1:
+        # shortcut if there's only one item for choosing
+        return list_of_items[0]
+    
+    if len(list_of_items) > 1:
         if not isinstance(list_of_items[0], types.TupleType):
             # if we have a list of strings, we'd prefer to get these strings as the selection result
             list_of_items = zip(list_of_items, list_of_items)
@@ -99,7 +103,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None):
     return None
 
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
-    if len(list_of_items) > 0:            
+    if len(list_of_items) > 0:        
         action, selection = create_select_checkbox(screen, title, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
         if action != 'back':
             return selection
@@ -113,7 +117,7 @@ def display_vm_type_select(screen, title):
     return display_selection(screen, title, types, 'Select a VM type to use:')
 
     
-def display_info(screen, title, info_text="Close me, please.", width=50, height=2, help=None):
+def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
     """Display information message on information screen"""
     g = GridFormHelp(screen, title, help, 1, 2)
     g.add(Textbox(width, height, info_text, 0, 0), 0, 0, padding = (0, 1, 0, 1))

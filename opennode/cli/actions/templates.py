@@ -28,23 +28,23 @@ def get_template_repos():
     for r in repo_groups:
         group = "%s-repo" % r.strip()
         name = c(group, 'name')
-        type = c(group, 'type')
-        result.append(("%s (%s)" %(name, type), group))
+        vm_type = c(group, 'type')
+        result.append(("%s (%s)" %(name, vm_type), group))
     return result
 
 def get_template_list(remote_repo):
-    """Retrieves a list of templates from the specified repository"""
+    """Retrieves a tmpl_list of templates from the specified repository"""
     url = c(remote_repo, 'url')
-    list = urllib2.urlopen("%s/templatelist.txt" % url)
-    templates = [template.strip() for template in list]
-    list.close()
+    tmpl_list = urllib2.urlopen("%s/templatelist.txt" % url)
+    templates = [template.strip() for template in tmpl_list]
+    tmpl_list.close()
     return templates
 
 def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = None):
     """Synchronize selected storage pool with the remote repo. Only selected templates 
     will be persisted, all of the other templates shall be purged"""
-    type = c(remote_repo, 'type')
-    existing_templates = get_local_templates(storage_pool, type)
+    vm_type = c(remote_repo, 'type')
+    existing_templates = get_local_templates(storage_pool, vm_type)
     # synchronize selected templates
     if templates is None: templates = []
     for tmpl in templates:
@@ -53,15 +53,15 @@ def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = N
             existing_templates.remove(tmpl)
     # delete existing, but not selected templates
     for tmpl in existing_templates:
-        delete_template(storage_pool, type, tmpl)
+        delete_template(storage_pool, vm_type, tmpl)
 
 
 def sync_template(remote_repo, template, storage_pool, download_monitor = None):
     """Synchronizes local template (cache) with the remote one (master)"""    
     url = c(remote_repo, 'url')
-    type = c(remote_repo, 'type')
+    vm_type = c(remote_repo, 'type')
     storage_endpoint = c('general', 'storage-endpoint')
-    localfile = "/".join([storage_endpoint, storage_pool, type, template])
+    localfile = "/".join([storage_endpoint, storage_pool, vm_type, template])
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):
@@ -73,7 +73,7 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
             download_hook = download_monitor.download_hook
         urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
         urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
-        unpack_template("%s.tar" % localfile, type)
+        unpack_template("%s.tar" % localfile, vm_type)
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
