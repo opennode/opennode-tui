@@ -302,3 +302,13 @@ def deploy(ovf_settings):
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_type"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    
+def get_available_instances():
+    """Return deployed and stopped OpenVZ instances"""
+    vzcontainers = execute("vzlist -H -S -o ctid,hostname").split('\n')
+    candidates = {}
+    for cont in vzcontainers:
+        if len(cont.strip()) == 0: break
+        cid, hn = cont.strip().split(' ')
+        candidates[int(cid)] = hn
+    return candidates
