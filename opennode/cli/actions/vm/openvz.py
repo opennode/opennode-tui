@@ -34,6 +34,17 @@ def validate_template_settings(template_settings, input_settings):
     @type: dict
     """
     
+    def _range_check(setting_name):
+        val = input_settings.get(setting_name, None)
+        min_val = input_settings.get("%s_min" % setting_name, None)
+        max_val = input_settings.get("%s_max" % setting_name, None)
+        if val is None:
+            return
+        if min_val is not None and val < min_val:
+            errors.append((setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val)))
+        if max_val is not None and val > max_val:
+            errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))        
+    
     def validate_memory():
         try:
             memory = float(input_settings["memory"])
@@ -312,3 +323,11 @@ def get_available_instances():
         cid, hn = cont.strip().split(' ')
         candidates[int(cid)] = hn
     return candidates
+
+def get_template_name(ctid):
+    """Return a name of the template used for creating specific container"""
+    try:
+        int(ctid)
+    except ValueError:
+        raise RuntimeError, "Incorrect format for a container id."
+    return execute("vzlist %s -H -o ostemplate" % ctid)
