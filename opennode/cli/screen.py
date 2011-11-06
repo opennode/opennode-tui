@@ -9,7 +9,7 @@ from mailbox import FormatError
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
                    ListboxChoiceWindow, Textbox, Button, GridForm)
 
-from opennode.cli.helpers import SelectCheckboxWindow
+from opennode.cli.helpers import SelectCheckboxWindow, CreateTemplateWindow
 from opennode.cli import actions
 from opennode.cli.config import c
 from opennode.cli.actions.vm import openvz
@@ -185,15 +185,40 @@ class OpenNodeTUI(object):
         return self._display_selection(types, 'Select the VM type')
 
     def display_template_create(self):
+        storage_pool = self.display_select_storage_pool()
+        if storage_pool is None: return self.display_main_screen()
+        
         vm_type = self.display_vm_type_select()
-        if vm_type is None: return self.display_main_screen()
+        if vm_type is None: return self.display_template_create()
         
         # list all available images of the selected type
+        vm = actions.vm.get_module(vm_type)
+        instances = vm.get_available_instances()
         
+        res = CreateTemplateWindow(self.screen, TITLE, vm_type, instances)
+        ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
+                                        storage_pool, vm_type, "unpacked", 
+                                        res[1] + ".ovf"))
         
+        template_settings = vm.get_ovf_template_settings(ovf_file)
+        errors = vm.adjust_setting_to_systems_resources(template_settings)
+        if errors:
+            self.__displayInfoScreen("\n".join(errors), width=70, height=len(errors))
+        
+        # get user input
+        user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
+        print user_settings
+        
+        # choose where you want to storage a new template
+        #storage_pool = self.display_select_storage_pool()
+        
+        # check if we can store there
+        #validate(template_name, storage_pool)
+        
+        # modify parameters
+        #...
 
     def display_create_vm(self):
-        
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None: return self.display_main_screen()
         
