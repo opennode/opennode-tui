@@ -138,7 +138,7 @@ class OpenNodeTUI(object):
             return self.display_templates()
         
         from opennode.cli.helpers import DownloadMonitor
-        dm = DownloadMonitor(self.screen, TITLE)  
+        dm = DownloadMonitor(self.screen, TITLE, len(selected_list))  
         actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, dm)
         self.screen.popWindow()
         self.display_templates()
@@ -164,20 +164,22 @@ class OpenNodeTUI(object):
         # list all available images of the selected type
         vm = actions.vm.get_module(vm_type)
         instances = vm.get_available_instances()
+        if len(instances) == 0:
+            display_info(self.screen, TITLE, "No suitable VMs found.")
+            return self.display_templates()
         
         res = display_create_template(self.screen, TITLE, vm_type, instances)
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
-                                        res[1] + ".ovf"))
+                                        vm.get_template_name(res[1]) + ".ovf"))
         
         template_settings = vm.get_ovf_template_settings(ovf_file)
-        errors = vm.adjust_setting_to_systems_resources(template_settings)
-        if errors:
-            display_info(self.screen, TITLE, "\n".join(errors), width=70, height=len(errors))
-        
+             
         # get user input
         user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
         print user_settings
+        
+        
         
         # choose where you want to storage a new template
         #storage_pool = self.display_select_storage_pool()
@@ -289,16 +291,13 @@ class OpenNodeTUI(object):
         form_rows.append((button_save, button_exit))
         
         def _display_form():
-            screen = SnackScreen()
-            form = GridForm(screen, TITLE, 2, 16)
+            form = GridForm(self.screen, TITLE, 2, 16)
             for i, row in enumerate(form_rows): 
                 for j, cell in enumerate(row):
                     form.add(cell, j, i)
-            result = form.run()
-            screen.finish()
-            return result
+            return form.runOnce()
         
-        while 1:
+        while True:
             # display form
             form_result = _display_form()
             
@@ -323,7 +322,7 @@ class OpenNodeTUI(object):
             
             if errors:
                 key, msg = errors[0] 
-                self.__displayInfoScreen(msg)
+                display_info(self.screen, TITLE, msg)
                 continue
             else:
                 settings = template_settings.copy()

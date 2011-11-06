@@ -6,9 +6,11 @@ from snack import ButtonChoiceWindow, ListboxChoiceWindow
 
 class DownloadMonitor():
     
-    def __init__(self, screen, title):
+    def __init__(self, screen, title, item_count = 0):
         self.screen = screen
         self.title = title
+        self.current_item = 0
+        self.item_count = item_count
         
         g = Grid(1, 2)
         self.fnm_label = Textbox(40, 2, 'Downloading...', 0, 0)
@@ -22,7 +24,8 @@ class DownloadMonitor():
         self.f.add(self.fnm_label)
                 
     def update_url(self, fnm):
-        self.fnm_label.setText(fnm)
+        self.current_item = self.current_item + 1
+        self.fnm_label.setText("(%s/%s): %s" (self.current_item, self.item_count, fnm))
     
     def download_hook(self, count, blockSize, totalSize):
         donep = int(min(100, float(blockSize * count) / totalSize * 100))
@@ -80,7 +83,7 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     form.add(spacer2, 0, 5)
     form.add(bb, 0, 6)
     form_result = form.runOnce()
-    return (bb.buttonPressed(form_result), templates[base_tmpl.current()], entry_newname.value())
+    return (bb.buttonPressed(form_result), base_tmpl.current(), entry_newname.value())
 
 def display_selection(screen, title, list_of_items, subtitle, default = None):
     """Display a list of items, return selected one or None, if nothing was selected"""

@@ -16,3 +16,7 @@ def get_available_instances():
     for name in name_list:
         vm_dict[name] = name
     return vm_dict
+
+def get_template_name(uid):
+    """Return a name of the template used for creating specified VM."""
+    raise NotImplementedError
