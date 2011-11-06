@@ -105,8 +105,8 @@ def _get_ovf_memory_gb(ovf_file, bound):
                         memoryFactor /= 8.0
                     else:
                         raise ValueError("Incompatible PUnit quantifier for memory.")
-                    warnings.warn("DSP0004 v2.5.0: use PUnit Qualifiers",
-                                  DeprecationWarning)
+                    # XXX: throwing warning in a CLI is not the best idea
+                    #warnings.warn("DSP0004 v2.5.0: use PUnit Qualifiers", DeprecationWarning)
 
                 memory = str(float(memoryQuantity) * memoryFactor / 1024 ** 2)
                 break

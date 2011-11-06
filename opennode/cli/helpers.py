@@ -31,7 +31,7 @@ class DownloadMonitor():
         self.screen.refresh() 
             
 
-def SelectCheckboxWindow(screen, title, text, items, buttons = ('Ok', 'Cancel'),
+def create_select_checkbox(screen, title, text, items, buttons = ('Ok', 'Cancel'),
             width = 40, scroll = 0, height = -1, help = None):
     """Helper class for displaying a windows with a checkbox list. 
     On exit, list of selected items is returned"""
@@ -58,7 +58,7 @@ def SelectCheckboxWindow(screen, title, text, items, buttons = ('Ok', 'Cancel'),
     rc = g.runOnce()
     return (bb.buttonPressed(rc), cb.getSelection())
 
-def CreateTemplateWindow(screen, title, vm_type, templates, help = None):
+def display_create_template(screen, title, vm_type, templates, help = None):
     """Helper class for displaying a form for creating a new VM template"""
     label_base = Textbox(40, 2, 'Select %s VM to be used as a template' %vm_type, 0, 0)
     
@@ -100,7 +100,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None):
 
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
     if len(list_of_items) > 0:            
-        action, selection = SelectCheckboxWindow(screen, title, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
+        action, selection = create_select_checkbox(screen, title, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
         if action != 'back':
             return selection
     else:
@@ -111,3 +111,11 @@ def display_vm_type_select(screen, title):
     """Display selection menu for the template type"""
     types = ['kvm', 'openvz']
     return display_selection(screen, title, types, 'Select a VM type to use:')
+
+    
+def display_info(screen, title, info_text="Close me, please.", width=50, height=2, help=None):
+    """Display information message on information screen"""
+    g = GridFormHelp(screen, title, help, 1, 2)
+    g.add(Textbox(width, height, info_text, 0, 0), 0, 0, padding = (0, 1, 0, 1))
+    g.add(Button("OK"), 0, 1)
+    g.runOnce()

@@ -7,8 +7,8 @@ from ovf.OvfFile import OvfFile
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
                    ListboxChoiceWindow, Textbox, Button, GridForm, Grid, Scale, Form)
 
-from opennode.cli.helpers import (CreateTemplateWindow, display_checkbox_selection, 
-                                  display_selection, display_vm_type_select)
+from opennode.cli.helpers import (display_create_template, display_checkbox_selection, 
+                                  display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
 
@@ -158,14 +158,14 @@ class OpenNodeTUI(object):
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None: return self.display_main_screen()
         
-        vm_type = self.display_vm_type_select()
+        vm_type = display_vm_type_select(self.screen, TITLE)
         if vm_type is None: return self.display_template_create()
         
         # list all available images of the selected type
         vm = actions.vm.get_module(vm_type)
         instances = vm.get_available_instances()
         
-        res = CreateTemplateWindow(self.screen, TITLE, vm_type, instances)
+        res = display_create_template(self.screen, TITLE, vm_type, instances)
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         res[1] + ".ovf"))
@@ -173,7 +173,7 @@ class OpenNodeTUI(object):
         template_settings = vm.get_ovf_template_settings(ovf_file)
         errors = vm.adjust_setting_to_systems_resources(template_settings)
         if errors:
-            self.__displayInfoScreen("\n".join(errors), width=70, height=len(errors))
+            display_info(self.screen, TITLE, "\n".join(errors), width=70, height=len(errors))
         
         # get user input
         user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
@@ -192,7 +192,7 @@ class OpenNodeTUI(object):
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None: return self.display_main_screen()
         
-        vm_type = self.display_vm_type_select()
+        vm_type = display_vm_type_select(self.screen, TITLE)
         if vm_type is None: return self.display_create_vm()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
@@ -206,7 +206,8 @@ class OpenNodeTUI(object):
         template_settings = vm.get_ovf_template_settings(ovf_file)
         errors = vm.adjust_setting_to_systems_resources(template_settings)
         if errors:
-            self.__displayInfoScreen("\n".join(errors), width=70, height=len(errors))
+            display_info(self.screen, TITLE, "\n".join(errors), width=70, height=len(errors))
+            return self.display_main_screen()
         
         # get user input
         user_settings = self._display_template_settings(template_settings, vm.validate_template_settings)
@@ -219,7 +220,8 @@ class OpenNodeTUI(object):
         print "Deploying..."
         vm.deploy(user_settings)
         
-        self.__displayInfoScreen("OpenVZ container %s deployed successfully" % user_settings["vm_id"])
+        display_info("OpenVZ container %s deployed successfully" % user_settings["vm_id"])
+        return self.display_main_screen()
 
     def _display_template_settings(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
@@ -334,23 +336,13 @@ class OpenNodeTUI(object):
             #else:
             #    template_settings["veth"] = "0"
             
-    
     def _display_template_settings_kvm(self, template_settings, validator_callback):
         raise NotImplementedError
     
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
         self.__displayInfoScreen(msg, 70)
-            
-    
-    def __displayInfoScreen(self, info_text="Information.", width=50, height=2):
-        """Display information message on information screen"""
-        screen = SnackScreen()
-        form = GridForm(screen, "Information.", 1, 2)
-        form.add(Textbox(width, height, info_text, 0, 0), 0, 0)
-        form.add(Button("OK"), 0, 1)
-        form.runOnce()
-        screen.finish()
+        
     
     def run(self):
         """Main loop of the TUI"""

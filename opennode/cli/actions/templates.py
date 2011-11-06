@@ -75,14 +75,14 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
         urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
         unpack_template("%s.tar" % localfile, type)
 
-def delete_template(storage_pool, type, template):
+def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
     # get a list of files in the template
     storage_endpoint = c('general', 'storage-endpoint')
-    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, type, template)
+    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type, template)
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
-        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, type, packed_file)
+        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type, packed_file)
         if not os.path.isdir(fnm):
             delete(fnm)
         else:
@@ -90,8 +90,8 @@ def delete_template(storage_pool, type, template):
     # remove master copy
     delete(templatefile)
     delete("%s.pfff" % templatefile)
-    # also remove symlink for openvz type
-    if type == 'openvz':
+    # also remove symlink for openvz vm_type
+    if vm_type == 'openvz':
         delete("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
 
 def unpack_template(templatefile, vm_type):
