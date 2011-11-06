@@ -2,6 +2,8 @@ import types
 
 from snack import Textbox, Entry, Button, Listbox
 from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp, SnackScreen
+from snack import ButtonChoiceWindow, ListboxChoiceWindow
+
 
 def SelectCheckboxWindow(screen, title, text, items, buttons = ('Ok', 'Cancel'),
             width = 40, scroll = 0, height = -1, help = None):
@@ -53,3 +55,28 @@ def CreateTemplateWindow(screen, title, vm_type, templates, help = None):
     form.add(bb, 0, 6)
     form_result = form.runOnce()
     return (bb.buttonPressed(form_result), templates[base_tmpl.current()], entry_newname.value())
+
+def display_selection(screen, title, list_of_items, subtitle, default = None):
+    """Display a list of items, return selected one or None, if nothing was selected"""
+    if len(list_of_items) > 0:
+        if not isinstance(list_of_items[0], types.TupleType):
+            # if we have a list of strings, we'd prefer to get these strings as the selection result
+            list_of_items = zip(list_of_items, list_of_items)
+        height = 10
+        scroll = 1 if len(list_of_items) > height else 0
+        action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items, 
+                            ['Ok', 'Back'], scroll = scroll, height = height, default = default)
+        if action != 'back':
+            return selection
+    else:
+        ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from', ['Back'])
+    return None
+
+def display_checkbox_selection(screen, title, list_of_items, subtitle):
+    if len(list_of_items) > 0:            
+        action, selection = SelectCheckboxWindow(screen, title, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
+        if action != 'back':
+            return selection
+    else:
+        ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from', ['Back'])
+    return None

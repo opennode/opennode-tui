@@ -2,17 +2,15 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
-import types
 
 from ovf.OvfFile import OvfFile
-from mailbox import FormatError
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
                    ListboxChoiceWindow, Textbox, Button, GridForm)
 
-from opennode.cli.helpers import SelectCheckboxWindow, CreateTemplateWindow
+from opennode.cli.helpers import (CreateTemplateWindow, display_checkbox_selection, 
+                                  display_selection)
 from opennode.cli import actions
 from opennode.cli.config import c
-from opennode.cli.actions.vm import openvz
 
 VERSION = '2.0.0'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -22,31 +20,6 @@ class OpenNodeTUI(object):
 
     def menu_exit(self):
         pass
-
-    def _display_selection(self, list_of_items, subtitle, default = None):
-        """Display a list of items, return selected one or None, if nothing was selected"""
-        if len(list_of_items) > 0:
-            if not isinstance(list_of_items[0], types.TupleType):
-                # if we have a list of strings, we'd prefer to get these strings as the selection result
-                list_of_items = zip(list_of_items, list_of_items)
-            height = 10
-            scroll = 1 if len(list_of_items) > height else 0
-            action, selection = ListboxChoiceWindow(self.screen, TITLE, subtitle, list_of_items, 
-                                ['Ok', 'Back'], scroll = scroll, height = height, default = default)
-            if action != 'back':
-                return selection
-        else:
-            ButtonChoiceWindow(self.screen, TITLE, 'Sorry, there are no items to choose from', ['Back'])
-        return None
-
-    def _display_checkbox_selection(self, list_of_items, subtitle):
-        if len(list_of_items) > 0:            
-            action, selection = SelectCheckboxWindow(self.screen, TITLE, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
-            if action != 'back':
-                return selection
-        else:
-            ButtonChoiceWindow(self.screen, TITLE, 'Sorry, there are no items to choose from', ['Back'])
-        return None
 
     def display_main_screen(self):
         logic = {'exit': self.menu_exit,
@@ -95,7 +68,7 @@ class OpenNodeTUI(object):
 
     def display_select_storage_pool(self):
         storage_pools = actions.storage.list_pools()
-        return self._display_selection(storage_pools, 'Select the storage pool to use:', default = c('general', 'default-storage-pool'))
+        return display_selection(self.screen, TITLE, storage_pools, 'Select the storage pool to use:', default = c('general', 'default-storage-pool'))
 
     def display_oms(self):
         logic = { 'main': self.display_main_screen,
@@ -153,16 +126,16 @@ class OpenNodeTUI(object):
         # XXX Ugly structure, needs refactoring
         storage_pool = self.display_select_storage_pool()
         if storage_pool is None:
-            self.display_templates()
+            return self.display_templates()
         repos = actions.templates.get_template_repos()
         if repos is None:
-            self.display_templates()
-        chosen_repo = self._display_selection(repos, 'Please, select template repository from the list')
+            return self.display_templates()
+        chosen_repo = display_selection(self.screen, TITLE, repos, 'Please, select template repository from the list')
         if chosen_repo is None:
-            self.display_templates()
+            return self.display_templates()
         selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
         if selected_list is None:
-            self.display_templates()
+            return self.display_templates()
         self.screen.finish()
         actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list)
         self.screen = SnackScreen()
@@ -172,17 +145,17 @@ class OpenNodeTUI(object):
         remote_templates = actions.templates.get_template_list(repo)
         local_templates = actions.templates.get_local_templates(storage_pool, c(repo, 'type'))
         list_items = [(tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
-        return self._display_checkbox_selection(list_items, 'Please, select templates for synchronisation')
+        return display_checkbox_selection(self.screen, TITLE, list_items, 'Please, select templates for synchronisation')
 
-    def display_select_template_from_storage(self, storage_pool, type):
+    def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""
-        templates = actions.templates.get_local_templates(storage_pool, type)
-        return self._display_selection(templates, "Select a %s template from %s" % (type, storage_pool))
+        templates = actions.templates.get_local_templates(storage_pool, vm_type)
+        return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_vm_type_select(self):
         """Display selection menu for the template type"""
         types = ['kvm', 'openvz']
-        return self._display_selection(types, 'Select the VM type')
+        return display_selection(self.screen, TITLE, types, 'Select the VM type')
 
     def display_template_create(self):
         storage_pool = self.display_select_storage_pool()
