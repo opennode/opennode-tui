@@ -6,7 +6,7 @@ import shutil
 import re
 
 from opennode.cli.config import c
-from opennode.cli.utils import mkdir_p
+from opennode.cli.utils import mkdir_p, delete
 from opennode.cli.actions import storage
 from opennode.cli import config 
 
@@ -17,7 +17,7 @@ __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'prepare_storage_pool']
 
 
-def _download_hook(count, blockSize, totalSize):
+def _simple_download_hook(count, blockSize, totalSize):
     """Simple download counter"""
     print "% 3.1f%% of %d bytes\r" % (min(100, float(blockSize * count) / totalSize * 100), totalSize),
 
@@ -40,7 +40,7 @@ def get_template_list(remote_repo):
     list.close()
     return templates
 
-def sync_storage_pool(storage_pool, remote_repo, templates):
+def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = None):
     """Synchronize selected storage pool with the remote repo. Only selected templates 
     will be persisted, all of the other templates shall be purged"""
     type = c(remote_repo, 'type')
@@ -48,7 +48,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates):
     # synchronize selected templates
     if templates is None: templates = []
     for tmpl in templates:
-        sync_template(remote_repo, tmpl, storage_pool)
+        sync_template(remote_repo, tmpl, storage_pool, download_monitor)
         if tmpl in existing_templates:
             existing_templates.remove(tmpl)
     # delete existing, but not selected templates
@@ -56,7 +56,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates):
         delete_template(storage_pool, type, tmpl)
 
 
-def sync_template(remote_repo, template, storage_pool, download_hook = _download_hook):
+def sync_template(remote_repo, template, storage_pool, download_monitor = None):
     """Synchronizes local template (cache) with the remote one (master)"""    
     url = c(remote_repo, 'url')
     type = c(remote_repo, 'type')
@@ -64,8 +64,13 @@ def sync_template(remote_repo, template, storage_pool, download_hook = _download
     localfile = "/".join([storage_endpoint, storage_pool, type, template])
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
-    if not is_fresh(localfile, remotefile):      
+    if not is_fresh(localfile, remotefile):
         prepare_storage_pool(storage_pool)
+        if download_monitor is None:
+            download_hook = _simple_download_hook
+        else:
+            download_monitor.update_url(template)
+            download_hook = download_monitor.download_hook
         urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
         urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
         unpack_template("%s.tar" % localfile, type)
@@ -78,26 +83,26 @@ def delete_template(storage_pool, type, template):
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
         fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, type, packed_file)
-        if not os.path.isdir(fnm): 
-            os.unlink(fnm)
+        if not os.path.isdir(fnm):
+            delete(fnm)
         else:
             shutil.rmtree(fnm)
     # remove master copy
-    os.unlink(templatefile)
-    os.unlink("%s.pfff" % templatefile)
+    delete(templatefile)
+    delete("%s.pfff" % templatefile)
     # also remove symlink for openvz type
     if type == 'openvz':
-        os.unlink("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
+        delete("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
 
-def unpack_template(templatefile, type):
+def unpack_template(templatefile, vm_type):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
-       Adds symlinks as needed by the VM template type."""
+       Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
     tmpl = tarfile.open(templatefile)
     unpacked_dir = os.path.dirname(templatefile)
     tmpl.extractall("%s/unpacked" % unpacked_dir)
-    # special case for openvz type
-    if type == 'openvz':
+    # special case for openvz vm_type
+    if vm_type == 'openvz':
         tmpl_file = [fnm for fnm in tmpl.getnames() if fnm.endswith('tar.gz')]
         assert len(tmpl_file) == 1
         source_file = os.path.join(unpacked_dir, 'unpacked', tmpl_file[0])
@@ -105,12 +110,12 @@ def unpack_template(templatefile, type):
         if not os.path.isfile(dest_file):
             os.symlink(source_file, dest_file)
 
-def get_local_templates(storage_pool, type):
-    """Returns a list of templates of a certain type from the storage pool"""
+def get_local_templates(storage_pool, vm_type):
+    """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
     for pool in os.listdir("%s" % storage_endpoint):
         prepare_storage_pool(pool)
-    return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint, storage_pool, type)) if tmpl.endswith('tar')]
+    return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint, storage_pool, vm_type)) if tmpl.endswith('tar')]
 
 def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
     """Synchronize OMS template"""

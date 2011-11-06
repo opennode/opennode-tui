@@ -9,6 +9,13 @@ def mkdir_p(path):
     except OSError as exc: 
         if exc.errno != errno.EEXIST:
             raise
+        
+def delete(fnm):
+    """Delete a filename, suppress exception on a missing file."""
+    try:
+        os.unlink(fnm)
+    except OSError:
+        pass
 
 class CommandException(Exception):
     pass

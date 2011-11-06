@@ -5,14 +5,14 @@ import os
 
 from ovf.OvfFile import OvfFile
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
-                   ListboxChoiceWindow, Textbox, Button, GridForm)
+                   ListboxChoiceWindow, Textbox, Button, GridForm, Grid, Scale, Form)
 
 from opennode.cli.helpers import (CreateTemplateWindow, display_checkbox_selection, 
-                                  display_selection)
+                                  display_selection, display_vm_type_select)
 from opennode.cli import actions
 from opennode.cli.config import c
 
-VERSION = '2.0.0'
+VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
 
 
@@ -48,7 +48,7 @@ class OpenNodeTUI(object):
                'kvm': actions.console.run_kvm,
                'ovz': actions.console.run_openvz,
                }
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Select management console to use',
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select a management console to use:',
                   [('KVM', 'kvm'),('OpenVZ', 'ovz'), ('Main menu', 'main')])
         if result != 'main':
             self.screen.finish()
@@ -68,7 +68,7 @@ class OpenNodeTUI(object):
 
     def display_select_storage_pool(self):
         storage_pools = actions.storage.list_pools()
-        return display_selection(self.screen, TITLE, storage_pools, 'Select the storage pool to use:', default = c('general', 'default-storage-pool'))
+        return display_selection(self.screen, TITLE, storage_pools, 'Select a storage pool to use:', default = c('general', 'default-storage-pool'))
 
     def display_oms(self):
         logic = { 'main': self.display_main_screen,
@@ -136,9 +136,11 @@ class OpenNodeTUI(object):
         selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
         if selected_list is None:
             return self.display_templates()
-        self.screen.finish()
-        actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list)
-        self.screen = SnackScreen()
+        
+        from opennode.cli.helpers import DownloadMonitor
+        dm = DownloadMonitor(self.screen, TITLE)  
+        actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, dm)
+        self.screen.popWindow()
         self.display_templates()
 
     def display_select_template_from_repo(self, repo, storage_pool = c('general', 'default-storage-pool')): 
@@ -151,11 +153,6 @@ class OpenNodeTUI(object):
         """Displays a list of templates from a specified storage pool"""
         templates = actions.templates.get_local_templates(storage_pool, vm_type)
         return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
-
-    def display_vm_type_select(self):
-        """Display selection menu for the template type"""
-        types = ['kvm', 'openvz']
-        return display_selection(self.screen, TITLE, types, 'Select the VM type')
 
     def display_template_create(self):
         storage_pool = self.display_select_storage_pool()
@@ -291,7 +288,7 @@ class OpenNodeTUI(object):
         
         def _display_form():
             screen = SnackScreen()
-            form = GridForm(screen, "OpenNode Management Utility", 2, 16)
+            form = GridForm(screen, TITLE, 2, 16)
             for i, row in enumerate(form_rows): 
                 for j, cell in enumerate(row):
                     form.add(cell, j, i)

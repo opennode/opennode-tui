@@ -1,9 +1,35 @@
 import types
 
-from snack import Textbox, Entry, Button, Listbox
+from snack import Textbox, Entry, Button, Listbox, Grid, Scale, Form, GridForm
 from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp, SnackScreen
 from snack import ButtonChoiceWindow, ListboxChoiceWindow
 
+class DownloadMonitor():
+    
+    def __init__(self, screen, title):
+        self.screen = screen
+        self.title = title
+        
+        g = Grid(1, 2)
+        self.fnm_label = Textbox(40, 2, 'Downloading...', 0, 0)
+        self.scale = Scale(40, 100) 
+        self.scale.set(0) 
+        g.setField(self.fnm_label, 0, 1)
+        g.setField(self.scale, 0, 0) 
+        self.screen.gridWrappedWindow(g, title) 
+        self.f = Form() 
+        self.f.add(self.scale)
+        self.f.add(self.fnm_label)
+                
+    def update_url(self, fnm):
+        self.fnm_label.setText(fnm)
+    
+    def download_hook(self, count, blockSize, totalSize):
+        donep = int(min(100, float(blockSize * count) / totalSize * 100))
+        self.scale.set(donep) 
+        self.f.draw() 
+        self.screen.refresh() 
+            
 
 def SelectCheckboxWindow(screen, title, text, items, buttons = ('Ok', 'Cancel'),
             width = 40, scroll = 0, height = -1, help = None):
@@ -80,3 +106,8 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
     else:
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from', ['Back'])
     return None
+
+def display_vm_type_select(screen, title):
+    """Display selection menu for the template type"""
+    types = ['kvm', 'openvz']
+    return display_selection(screen, title, types, 'Select a VM type to use:')
