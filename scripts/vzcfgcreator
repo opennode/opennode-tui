@@ -21,12 +21,14 @@
 #
 ###########################################################################
 
-from sys import exit
-from sys import argv
+import os
+import sys
+from sys import exit, argv
 from getopt import getopt
 from decimal import *
-import os, sys
-import opennode_lib.vzcfgproducer
+
+from opennode.cli.actions.vm import openvz
+from opennode.cli.config2 import openvz_config
 
 def _help():
     print """
@@ -38,19 +40,22 @@ SYNOPSIS
 
 OPTIONS:
     -m, --memory=X
-        Guaranteed memory (in MB) for container
-        Default: 256MB 
-    -d, --disk=X 
+        Guaranteed memory (in GB) for container
+        Default: 0.25GB
+    -s, --swap=X
+        Swap space (in GB) for container
+        Default: 0.25GB
+    -d, --disk=X
         Disk space allocation limit for container (in GB)
         Default: 10GB
     -c, --cpus=X
-	Number of CPUs enabled for container
-	Default: 1
+        Number of CPUs enabled for container
+        Default: 1
     -l, --limitcpu=X
-	CPU usage limit (in %)
-	Default: 50%
+        CPU usage limit (in %)
+        Default: 50%
     -h, --help
-	Display usage help.
+        Display usage help.
 
 AUTHOR:
     Andres Toomsalu (andres@active.ee)
@@ -65,27 +70,33 @@ SEE ALSO:
 if __name__ == '__main__':
     #sys.stdout.write(os.popen('clear').read())
     try:
-	options, args = getopt(argv[1:], 'm:d:c:l:h', ['memory=','disk=','cpus=','limitcpu=','help'])
+        options, args = getopt(argv[1:], 'm:s:d:c:l:h', 
+                               ['memory=', 'swap=', 'disk=', 'cpus=', 
+                               'limitcpu=', 'help'])
     except getopt.GetoptError, err:
         # print help information and exit:
         _help()
         print str(err) # will print something like "option -a not recognized"
         exit(2)
     
-    mem = disk = cpus = cpulimit = ''    
+    memory = swap = disk = cpus = cpulimit = ''
     
     for o, a in options:
-	if o in ("-m", "--memory"): mem = a
+        if o in ("-m", "--memory"): memory = a
+        elif o in ("-s", "--swap"): swap = a
         elif o in ("-d", "--disk"): disk = a
         elif o in ("-c", "--cpus"): cpus = a
         elif o in ("-l", "--limitcpu"): cpulimit = a
         elif o in ("-h", "--help"): _help()
         else: assert False, "unhandled option"
     
-    inputvars = [mem, disk, cpus, cpulimit]
     #print inputvars
-    cfgObj = opennode_lib.vzcfgproducer.VzCfgProducer(inputvars)
-    vzconf = cfgObj.get_vzcfg_base()
+    inputvars = {
+        "memory": memory or openvz_config.c("ovf-defaults", "memory"),
+        "swap": swap or openvz_config.c("ovf-defaults", "swap"),
+        "disk": disk or openvz_config.c("ovf-defaults", "disk"),
+        "vcpu": cpus or openvz_config.c("ovf-defaults", "vcpu"),
+        "vcpulimit": cpulimit or openvz_config.c("ovf-defaults", "vcpulimit")
+    }
+    vzconf = openvz.generate_ubc_config(inputvars)
     print vzconf
-    
-    

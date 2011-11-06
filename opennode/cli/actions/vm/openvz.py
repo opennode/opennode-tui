@@ -230,6 +230,48 @@ def _get_openvz_ct_id_list():
 def _compute_diskspace_hard_limit(soft_limit):
     return soft_limit * 1.1 if soft_limit <= 10 else soft_limit + 1
 
+def generate_ubc_config(settings):
+    """ Generates UBC part of  configuration file for VZ container """
+    st = settings
+    ubc_params = {
+        "physpages_barrier": st["memory"],
+        "physpages_limit": st["memory"],
+        
+        "swappages_barrier": st["swap"],
+        "swappages_limit": st["swap"],
+        
+        "diskspace_soft": st["disk"],
+        "diskspace_hard": _compute_diskspace_hard_limit(float(st["disk"])),
+        
+        "diskinodes_soft": float(st["disk"]) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
+        "diskinodes_hard": round(_compute_diskspace_hard_limit(float(st["disk"])) *
+                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
+                           
+        "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
+        
+        "cpus": st["vcpu"],
+        "cpulimit": int(st["vcpulimit"]) * int(st["vcpu"]),
+        'cpuunits': openvz_config.c("ubc-defaults", "DEFAULT_CPUUNITS"),
+    }
+    # Get rid of zeros where necessary (eg 5.0 - > 5 )
+    ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val) 
+                       for key, val in ubc_params.items()])
+    ubc_params['time'] = datetime.datetime.today().ctime() 
+    return  openvz_template % ubc_params
+
+def generate_nonubc_config(conf_filename, settings):
+    """ Generates Non-UBC part of  configuration file for VZ container """
+    parser = SimpleConfigParser()
+    parser.read(conf_filename)
+    config_dict = parser.items()
+    # Parameters to read. Others will be generated using ovf settings.
+    include_params = set(["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE",
+                        "IP_ADDRESS", "NAMESERVER","HOSTNAME"])
+    config_dict = dict((k, v) for k, v in config_dict.iteritems() if k in include_params)
+    config_str = "\n".join("%s=%s" % (k, v) for k, v in config_dict.iteritems()) 
+    return config_str
+
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
     
@@ -237,52 +279,18 @@ def create_container(ovf_settings):
     execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
     
-    # create UBC configuration
-    ubc_params = {
-        "physpages_barrier": ovf_settings["memory"],
-        "physpages_limit": ovf_settings["memory"],
-        
-        "swappages_barrier": ovf_settings["swap"],
-        "swappages_limit": ovf_settings["swap"],
-        
-        "diskspace_soft": ovf_settings["disk"],
-        "diskspace_hard": _compute_diskspace_hard_limit(float(ovf_settings["disk"])),
-        
-        "diskinodes_soft": float(ovf_settings["disk"]) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
-        "diskinodes_hard": round(_compute_diskspace_hard_limit(float(ovf_settings["disk"])) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
-                           
-        "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
-        
-        "cpus": ovf_settings["vcpu"],
-        "cpulimit": int(ovf_settings["vcpulimit"]) * int(ovf_settings["vcpu"]),
-        'cpuunits': openvz_config.c("ubc-defaults", "DEFAULT_CPUUNITS"),
-    }
-    # Get rid of zeros where necessary (eg 5.0 - > 5 )
-    ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val) 
-                       for key, val in ubc_params.items()])
-    ubc_params['time'] = datetime.datetime.today().ctime() 
-    ubc_conf_str = openvz_template % ubc_params
+    # generate ubc and non-ubc configuration
+    conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"]) 
+    ubc_conf_str = generate_ubc_config(ovf_settings)
+    non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
     
-    # read non-ubc configuration
-    ct_conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"])
-    parser = SimpleConfigParser()
-    parser.read(ct_conf_filename)
-    non_ubc_conf_dict = parser.items()
-    # parameters to read. Others will be generated using ovf settings
-    include_params = set(["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE",
-                        "IP_ADDRESS", "NAMESERVER","HOSTNAME"])
-    non_ubc_conf_dict = dict((k, v) for k, v in non_ubc_conf_dict.iteritems() if k in include_params)
-    non_ubc_conf_str = "\n".join("%s=%s" % (k, v) for k, v in non_ubc_conf_dict.iteritems()) 
-    
-    # final configuration is ubc + non_ubc config
+    # final configuration is ubc + non-ubc
     openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str)
     
     # overwrite configuration
-    with open(ct_conf_filename, 'w') as conf_file:
+    with open(conf_filename, 'w') as conf_file:
         conf_file.write(openvz_ct_conf)
-    execute("chmod 644 %s" % ct_conf_filename)
+    execute("chmod 644 %s" % conf_filename)
 
 def deploy(ovf_settings):
     """ Deploys OpenVZ container """
