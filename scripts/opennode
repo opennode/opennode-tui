@@ -21,15 +21,15 @@ SYNOPSIS
 
 OPTIONS
     -u, --update-templates
-        Update locally stored remote templates of given virtualization type
+        Update locally stored remote templates
     -l, --list-templates
-        List local and remote templates of given virtualization type
+        List local and remote templates in all storage pools
     -h, --help
         Display usage help
 
 SEE ALSO:
     OpenNode web page:
-    http://www.opennodecloud.com
+    http://opennodecloud.com
     """
     exit(2)
 

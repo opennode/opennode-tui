@@ -6,7 +6,7 @@ import datetime
 import libvirt
 from ovf.OvfFile import OvfFile
 
-from opennode.cli.config2 import openvz_config 
+from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil, vzcfg
 from opennode.cli import constants
@@ -137,7 +137,7 @@ def validate_template_settings(template_settings, input_settings):
 
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
-    return dict(openvz_config.clist("ovf-defaults"))
+    return dict(config.clist('ovf-default', 'openvz'))
 
 def read_ovf_settings(ovf_file):
     """ Reads given ovf template configuration file, returns a dictionary of settings."""
@@ -244,15 +244,15 @@ def generate_ubc_config(settings):
         "diskspace_hard": _compute_diskspace_hard_limit(float(st["disk"])),
         
         "diskinodes_soft": float(st["disk"]) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES")),
+                           int(config.c("ubc-defaults", "DEFAULT_INODES", "openvz")),
         "diskinodes_hard": round(_compute_diskspace_hard_limit(float(st["disk"])) *
-                           int(openvz_config.c("ubc-defaults", "DEFAULT_INODES"))),
+                           int(config.c("ubc-defaults", "DEFAULT_INODES", "openvz"))),
                            
-        "quotatime": openvz_config.c("ubc-defaults", "DEFAULT_QUOTATIME"),
+        "quotatime": config.c("ubc-defaults", "DEFAULT_QUOTATIME", "openvz"),
         
         "cpus": st["vcpu"],
         "cpulimit": int(st["vcpulimit"]) * int(st["vcpu"]),
-        'cpuunits': openvz_config.c("ubc-defaults", "DEFAULT_CPUUNITS"),
+        'cpuunits': config.c("ubc-defaults", "DEFAULT_CPUUNITS", "openvz"),
     }
     # Get rid of zeros where necessary (eg 5.0 - > 5 )
     ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val) 

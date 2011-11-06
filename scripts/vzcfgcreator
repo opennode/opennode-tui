@@ -1,34 +1,10 @@
 #!/usr/bin/python
-###########################################################################
-#
-#    Copyright (C) 2009-2011 Active Systems LLC,
-#    url: http://www.active.ee, email: info@active.ee
-#
-#    This file is part of OpenNode.
-#
-#    OpenNode is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    OpenNode is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with OpenNode.  If not, see <http://www.gnu.org/licenses/>.
-#
-###########################################################################
 
-import os
-import sys
 from sys import exit, argv
 from getopt import getopt
-from decimal import *
 
 from opennode.cli.actions.vm import openvz
-from opennode.cli.config2 import openvz_config
+from opennode.cli import config
 
 def _help():
     print """
@@ -57,13 +33,9 @@ OPTIONS:
     -h, --help
         Display usage help.
 
-AUTHOR:
-    Andres Toomsalu (andres@active.ee)
-    Active Systems LLC 
-
 SEE ALSO:
     OpenNode web page:
-    http://opennode.activesys.org
+    http://opennodecloud.com
     """
     exit()
 
@@ -90,13 +62,12 @@ if __name__ == '__main__':
         elif o in ("-h", "--help"): _help()
         else: assert False, "unhandled option"
     
-    #print inputvars
     inputvars = {
-        "memory": memory or openvz_config.c("ovf-defaults", "memory"),
-        "swap": swap or openvz_config.c("ovf-defaults", "swap"),
-        "disk": disk or openvz_config.c("ovf-defaults", "disk"),
-        "vcpu": cpus or openvz_config.c("ovf-defaults", "vcpu"),
-        "vcpulimit": cpulimit or openvz_config.c("ovf-defaults", "vcpulimit")
+        "memory": memory or config.c("ovf-defaults", "memory", "openvz"),
+        "swap": swap or config.c("ovf-defaults", "swap", "openvz"),
+        "disk": disk or config.c("ovf-defaults", "disk", "openvz"),
+        "vcpu": cpus or config.c("ovf-defaults", "vcpu", "openvz"),
+        "vcpulimit": cpulimit or config.c("ovf-defaults", "vcpulimit", "openvz")
     }
     vzconf = openvz.generate_ubc_config(inputvars)
     print vzconf

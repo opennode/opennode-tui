@@ -8,7 +8,7 @@ import re
 from opennode.cli.config import c
 from opennode.cli.utils import mkdir_p
 from opennode.cli.actions import storage
-from opennode.cli.config2 import global_config 
+from opennode.cli import config 
 
 
 __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
@@ -148,16 +148,16 @@ def list_templates():
     for type in ["openvz", "kvm"]:
         print "%s local templates:" % type.upper() 
         for storage_pool in storage.list_pools():
-            print "\t", "Storage:", os.path.join(global_config.c("general", "storage-endpoint"), 
+            print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"), 
                                                  storage_pool, type)  
             for tmpl in get_local_templates(storage_pool, type):
                 print "\t\t", tmpl
             print
     # remote templates
-    repo_groups = re.split(",\s*", global_config.c("general", "repo-groups"))
+    repo_groups = re.split(",\s*", config.c("general", "repo-groups"))
     repo_groups = [repo_group + "-repo" for repo_group in repo_groups]
     for repo_group in repo_groups:
-        url, type = global_config.c(repo_group, "url"), global_config.c(repo_group, "type")
+        url, type = config.c(repo_group, "url"), config.c(repo_group, "type")
         print "%s remote templates:" % type.upper()
         print "\t", "Repository:", url
         for tmpl in get_template_list(repo_group):

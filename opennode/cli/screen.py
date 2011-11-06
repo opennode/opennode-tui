@@ -185,7 +185,12 @@ class OpenNodeTUI(object):
         return self._display_selection(types, 'Select the VM type')
 
     def display_template_create(self):
-        pass
+        vm_type = self.display_vm_type_select()
+        if vm_type is None: return self.display_main_screen()
+        
+        # list all available images of the selected type
+        
+        
 
     def display_create_vm(self):
         
