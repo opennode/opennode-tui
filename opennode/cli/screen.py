@@ -124,9 +124,7 @@ class OpenNodeTUI(object):
 
     def display_template_manage(self):
         # XXX Ugly structure, needs refactoring
-        storage_pool = self.display_select_storage_pool()
-        if storage_pool is None:
-            return self.display_templates()
+        storage_pool = c('general', 'default-storage-pool')
         repos = actions.templates.get_template_repos()
         if repos is None:
             return self.display_templates()
@@ -155,11 +153,10 @@ class OpenNodeTUI(object):
         return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_template_create(self):
-        storage_pool = self.display_select_storage_pool()
-        if storage_pool is None: return self.display_main_screen()
+        storage_pool = c('general', 'default-storage-pool')
         
         vm_type = display_vm_type_select(self.screen, TITLE)
-        if vm_type is None: return self.display_template_create()
+        if vm_type is None: return self.display_main_screen()
         
         # list all available images of the selected type
         vm = actions.vm.get_module(vm_type)
@@ -187,14 +184,13 @@ class OpenNodeTUI(object):
         return self.display_templates()
         
     def display_create_vm(self):
-        storage_pool = self.display_select_storage_pool()
-        if storage_pool is None: return self.display_main_screen()
+        storage_pool = c('general', 'default-storage-pool')
         
         vm_type = display_vm_type_select(self.screen, TITLE)
-        if vm_type is None: return self.display_create_vm()
+        if vm_type is None: return self.display_main_screen()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None: return self.display_main_screen()
+        if template is None: return self.display_create_vm()
         
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
