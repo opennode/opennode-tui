@@ -35,7 +35,7 @@ class OpenNodeTUI(object):
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
-                #('Network', 'net'),
+                ('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
@@ -57,9 +57,6 @@ class OpenNodeTUI(object):
         else:
             return self.display_main_screen()
 
-    def display_network(self):
-        pass
-    
     def display_storage(self):
         logic = {'main': self.display_main_screen,
                 'default': self.display_storage_default,
@@ -101,6 +98,51 @@ class OpenNodeTUI(object):
                 # sorry, pool, time to go
                 actions.storage.delete_pool(pool)
         return self.display_storage()
+    
+    def display_network(self):
+        logic = {'main': self.display_main_screen,
+                'bridge': self.display_network_bridge,
+               }
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select network operation',
+                  [('Bridge management', 'bridge'),
+                   #('Nameserver configuration', 'nameserver'), 
+                   #('Hostname modification', 'hostname'), 
+                    ('Main menu', 'main')])
+        logic[result]()
+
+    def display_network_bridge(self):
+        logic = {'main': self.display_network,
+                'add': self.display_network_bridge_add_update,
+                'del': self.display_network_bridge_delete,
+               }
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select bridge operation',
+                  [('Add new bridge', 'add'),
+                   ('Delete bridge', 'del'), 
+                   ('Main menu', 'main')])
+        logic[result]()
+
+    def display_network_bridge_add_update(self, bridge = None):
+        action, bridge = EntryWindow(self.screen, TITLE, 'Add new bridge', 
+                ['Name', 'Hello', 'FD', 'STP'],
+                buttons = ['Create', 'Back'])
+        if action == 'create':
+            actions.network.add_bridge(bridge[0])
+            actions.network.configure_bridge(bridge[0], bridge[1], bridge[2], bridge[3])
+        return self.display_network_bridge()
+
+    def display_network_bridge_delete(self):
+        bridges = actions.network.list_bridges()
+        if bridges is None:
+            display_info(self.screen, "Error", "No network bridges found.")
+            return self.display_network_bridge()
+        chosen_bridge = display_selection(self.screen, TITLE, bridges, 'Please select the network bridge for modification:')
+        if chosen_bridge is not None:
+            result = ButtonChoiceWindow(self.screen, TITLE , 'Are you sure you want to delete "%s"?' %chosen_bridge,
+                        [('Yes, delete the bridge.', 'yes'), ('No, not today.', 'no')])
+            if result == 'yes':
+                # sorry, pool, time to go
+                actions.network.delete_bridge(chosen_bridge)
+        return self.display_network_bridge()
 
     def display_select_storage_pool(self, default = c('general', 'default-storage-pool')):
         storage_pools = [("%s (%s)"  %(p[0], p[1]), p[0]) for p in actions.storage.list_pools()]

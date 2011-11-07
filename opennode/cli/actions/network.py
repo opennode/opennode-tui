@@ -1,19 +1,24 @@
 import re
 
+
 from opennode.cli.utils import execute
 
-__all__ = ['list_bridges', 'add_bridge', 'configure_bridge',
-           'add_nameserver', 'remove_nameserver']
-
+__all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',
+           'add_nameserver', 'remove_nameserver', 'add_bridge_interface',
+           'remove_bridge_interface', 'list-bridge_interface']
 
 def list_bridges():
-    """Returns a list of existing bridge interfaces"""
-    return [x.strip() for x in execute('brctl show | awk \'NR>1{print $1}\'').split('\n')]
+    """Returns a list of existing bridge interfaces or None if none defined"""
+    bridges = [x.strip() for x in execute('brctl show | awk \'NR>1{print $1}\'').splitlines()]
+    return None if len(bridges) == 0 else bridges
 
 def add_bridge(bridge):
     """Create a new bridge with default parameters"""
     execute('brctl addbr %s' % bridge)
-    # TODO register bridge with libvirt
+    
+def delete_bridge(bridge):
+    """Delete network bridge and unregister from libvirt"""
+    execute('brctl delbr %s' %bridge)
     
 def configure_bridge(bridge, hello=None, fd=None, stp=None):
     """Set bridge parameters."""
@@ -23,6 +28,17 @@ def configure_bridge(bridge, hello=None, fd=None, stp=None):
         execute('brctl setfd %s %d' % (bridge, fd))
     if stp is not None:
         execute('brctl stp %s %s' % (bridge, stp))
+        
+def add_bridge_interface(bridge, interface):
+    """Add network interface to a bridge"""
+    execute('brctl addif %s %s' %(bridge, interface))
+    
+def remove_bridge_interface(bridge, interface):
+    """Remove network interface from a bridge"""
+    execute('brctl delif %s %s' %(bridge, interface))
+
+def list_bridge_interface(bridge):
+    execute("brctl show | tail -n+2 | awk '{print $4}'")
 
 def add_nameserver(ns):
     """Append a nameserver entry to /etc/resolv.conf"""
