@@ -26,7 +26,7 @@ class OpenNodeTUI(object):
                  'console': self.display_console_menu,
                  'createvm': self.display_create_vm,
                  'net': self.display_network,
-                 'storage': self.display_default_storage,
+                 'storage': self.display_storage,
                  'oms': self.display_oms,
                  'templates': self.display_templates
                  }
@@ -55,22 +55,62 @@ class OpenNodeTUI(object):
             logic[result]()
             self.screen = SnackScreen()
         else:
-            self.display_main_screen()
+            return self.display_main_screen()
 
     def display_network(self):
         pass
+    
+    def display_storage(self):
+        logic = {'main': self.display_main_screen,
+                'default': self.display_storage_default,
+                'add': self.display_storage_add,
+                'delete': self.display_storage_delete,
+               }
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage operation',
+                  [('Select default storage pool', 'default'),('Add a storage pool', 'add'),
+                    ('Delete a storage pool', 'delete'), ('Main menu', 'main')])
+        logic[result]()
 
-    def display_default_storage(self):
-        pool = self.display_select_storage_pool()
+    def display_storage_default(self):
+        pool = self.display_select_storage_pool(None)
         if pool is not None:
             actions.storage.set_default_pool(pool)
-        self.display_main_screen()
+        return self.display_storage()
+    
+    def display_storage_add(self):
+        storage_entry = Entry(30, 'new')
+        command, _ = EntryWindow(self.screen, TITLE, 'Please, enter a new storage pool name', 
+                [('Storage pool', storage_entry),], 
+                buttons = [('Add', 'add'), ('Back', 'storage')])
+        if command == 'storage': 
+            return self.display_storage()
+        elif command == 'add':
+            storage_pool = storage_entry.value().strip()
+            if len(storage_pool) == 0:
+                # XXX better validation
+                return self.display_storage()
+            actions.storage.add_pool(storage_pool)
+            return self.display_storage()
+        
+    def display_storage_delete(self):
+        pool = self.display_select_storage_pool(default=None)
+        if pool is not None:
+            result = ButtonChoiceWindow(self.screen, TITLE , 'Are you sure you want to delete "%s"?' %pool,
+                        [('Yes, delete the pool and all of its contents', 'yes'), ('No, not today.', 'no')])
+            if result == 'yes':
+                # sorry, pool, time to go
+                actions.storage.delete_pool(pool)
+        return self.display_storage()
 
-    def display_select_storage_pool(self):
-        storage_pools = actions.storage.list_pools()
-        return display_selection(self.screen, TITLE, storage_pools, 'Select a storage pool to use:', default = c('general', 'default-storage-pool'))
+    def display_select_storage_pool(self, default = c('general', 'default-storage-pool')):
+        storage_pools = [("%s (%s)"  %(p[0], p[1]), p[0]) for p in actions.storage.list_pools()]
+        return display_selection(self.screen, TITLE, storage_pools, 'Select a storage pool to use:', default = default)
 
     def display_oms(self):
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            display_info(self.screen, "Error", "Default storage pool is not defined!")
+            return self.display_main_screen()
         logic = { 'main': self.display_main_screen,
                   'register': self.display_oms_register,
                   'download': self.display_oms_download,
@@ -110,9 +150,15 @@ class OpenNodeTUI(object):
         logic[result]()
 
     def display_oms_install(self):
-        pass
+        display_info(self.screen, "Error", "Not yet implemented....")
+        return self.display_oms()
 
     def display_templates(self):
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            display_info(self.screen, "Error", "Default storage pool is not defined!")
+            return self.display_main_screen()
+        
         logic = { 'main': self.display_main_screen,
                   'manage': self.display_template_manage,
                   'create': self.display_template_create,
@@ -124,7 +170,9 @@ class OpenNodeTUI(object):
 
     def display_template_manage(self):
         # XXX Ugly structure, needs refactoring
-        storage_pool = c('general', 'default-storage-pool')
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            return display_info(self.screen, "Error", "Default storage pool is not defined!")
         repos = actions.templates.get_template_repos()
         if repos is None:
             return self.display_templates()
@@ -153,7 +201,9 @@ class OpenNodeTUI(object):
         return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_template_create(self):
-        storage_pool = c('general', 'default-storage-pool')
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            return display_info(self.screen, "Error", "Default storage pool is not defined!")
         
         vm_type = display_vm_type_select(self.screen, TITLE)
         if vm_type is None: return self.display_main_screen()
@@ -184,7 +234,10 @@ class OpenNodeTUI(object):
         return self.display_templates()
         
     def display_create_vm(self):
-        storage_pool = c('general', 'default-storage-pool')
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            display_info(self.screen, "Error", "Default storage pool is not defined!")
+            return self.display_main_screen()
         
         vm_type = display_vm_type_select(self.screen, TITLE)
         if vm_type is None: return self.display_main_screen()

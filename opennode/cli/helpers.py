@@ -87,11 +87,11 @@ def display_create_template(screen, title, vm_type, templates, help = None):
 
 def display_selection(screen, title, list_of_items, subtitle, default = None):
     """Display a list of items, return selected one or None, if nothing was selected"""
-    if len(list_of_items) == 1:
+    #if len(list_of_items) == 1:
         # shortcut if there's only one item for choosing
-        return list_of_items[0]
+    #    return list_of_items[0]
     
-    if len(list_of_items) > 1:
+    if len(list_of_items) > 0:
         if not isinstance(list_of_items[0], types.TupleType):
             # if we have a list of strings, we'd prefer to get these strings as the selection result
             list_of_items = zip(list_of_items, list_of_items)
@@ -102,7 +102,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None):
         if action != 'back':
             return selection
     else:
-        ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from', ['Back'])
+        ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
     return None
 
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
