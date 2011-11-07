@@ -105,7 +105,8 @@ class VM(func_module.FuncModule):
 
         info = vm.info()
         return {"uuid": get_uuid(vm), "name": vm.name(), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
-                'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i]}
+                'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i],
+                'interfaces': self._vm_interfaces(conn, get_uuid(vm))}
 
     def _list_vms(self, conn):
         online =  [self._render_vm(conn, vm) for vm in (conn.lookupByID(i) for i in conn.listDomainsID())]
@@ -214,6 +215,26 @@ class VM(func_module.FuncModule):
 
     vm_console_pty = vm_method(_vm_console_pty)
 
+    def _vm_interfaces(self, conn, uuid):
+        elements = self.dom_dom(conn, uuid).findall('.//interface')
+        def interface(idx, i):
+            type =  i.attrib.get('type')
+            if type == 'network' and (i.find('forward') == None or i.find('forward').attrib.get('mode', None) == 'nat'):
+                type = 'nat'
+
+            mac = i.find('mac').attrib.get('address', None)
+
+            alias = i.find('alias')
+            if alias == None:
+                alias = 'eth%s' % idx
+            else:
+                alias = alias.attrib.get('name', None)
+
+            return dict(mac=mac, name=alias, type=type)
+
+        return [interface(idx, i) for idx, i in enumerate(elements)]
+
+    vm_interfaces = vm_method(_vm_interfaces)
 
 
 #delegate_methods(VM, mod)
