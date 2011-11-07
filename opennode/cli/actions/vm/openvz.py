@@ -137,7 +137,7 @@ def validate_template_settings(template_settings, input_settings):
 
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
-    return dict(config.clist('ovf-default', 'openvz'))
+    return dict(config.clist('ovf-defaults', 'openvz'))
 
 def read_ovf_settings(ovf_file):
     """ Reads given ovf template configuration file, returns a dictionary of settings."""
