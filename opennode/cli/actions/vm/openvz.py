@@ -8,7 +8,7 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
-from opennode.cli.actions.vm import ovfutil, vzcfg
+from opennode.cli.actions.vm import ovfutil
 from opennode.cli import constants
 from opennode.cli.utils import SimpleConfigParser, execute
 from opennode.cli.actions.vm.config_template import openvz_template
@@ -34,55 +34,22 @@ def validate_template_settings(template_settings, input_settings):
     @type: dict
     """
     
-    def _range_check(setting_name):
+    def _range_check(setting_name, typecheck=float):
         val = input_settings.get(setting_name, None)
         min_val = input_settings.get("%s_min" % setting_name, None)
         max_val = input_settings.get("%s_max" % setting_name, None)
         if val is None:
             return
+        else:
+            try:
+                typecheck(val)
+            except ValueError:
+                errors.append((setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))) 
         if min_val is not None and val < min_val:
             errors.append((setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val)))
         if max_val is not None and val > max_val:
-            errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))        
-    
-    def validate_memory():
-        try:
-            memory = float(input_settings["memory"])
-        except ValueError:
-            errors.append(("memory", "Memory size must be integer or decimal."))
-        else:
-            if float(template_settings["memory_min"]) <= memory <= \
-                float(template_settings["memory_max"]):
-                return True
-            else:
-                errors.append(("memory", "Memory size out of template limits."))
-        return False
-    
-    def validate_swap():
-        try:
-            swap = float(input_settings["swap"])
-        except ValueError:
-            errors.append(("swap", "Wswap size must be integer or decimal."))
-        else:
-            if float(template_settings["swap_min"]) <= swap <= \
-                float(template_settings["swap_max"]):
-                return True
-            else:
-                errors.append(("swap", "Swap size out of template limits."))
-        return False
-    
-    def validate_cpu():
-        try:
-            vcpu = int(input_settings["vcpu"])
-        except ValueError:
-            errors.append(("vcpu", "CPU count must be integer."))
-        else:
-            if int(template_settings["vcpu_min"]) <= vcpu <= \
-                int(template_settings["vcpu_max"]):
-                return True
-            else:
-                errors.append(("vcpu", "CPU count out of template limits."))
-        return False
+            errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))          
+
       
     def validate_cpu_limit():
         try:
@@ -95,21 +62,11 @@ def validate_template_settings(template_settings, input_settings):
             else:
                 errors.append(("vcpulimit", "CPU usage limit must be between 0 and 100."))
         return False
-    
-    def validate_disk():
-        try:
-            disk = float(input_settings["disk"])
-        except ValueError:
-            errors.append(("disk", "Disk size must be integer."))
-        else:
-            if float(template_settings["disk_min"]) <= disk <= \
-                float(template_settings["disk_max"]):
-                return True
-            else: 
-                errors.append(("disk", "Disk size out of template limits."))
-        return False
+
     
     def validate_ip():
+        if input_settings.get("ip_address") is None:
+            return True
         try:
             socket.inet_aton(input_settings["ip_address"])
             return True
@@ -118,6 +75,8 @@ def validate_template_settings(template_settings, input_settings):
             return False
       
     def validate_nameserver():
+        if input_settings.get("nameserver") is None:
+            return True
         try:
             socket.inet_aton(input_settings["nameserver"])
             return True
@@ -130,16 +89,16 @@ def validate_template_settings(template_settings, input_settings):
         if password == password2:
             return True
         else:
-    	    errors.append(("passwd", "Passwords don't match."))
+            errors.append(("passwd", "Passwords don't match."))
         return False
     
     errors = []
     
-    validate_memory()
-    validate_swap()
-    validate_cpu()
+    _range_check("memory")
+    _range_check("swap")
+    _range_check("vcpu", int)
     validate_cpu_limit()
-    validate_disk()
+    _range_check("disk", int)
     validate_ip()
     validate_nameserver()
     validate_password()
