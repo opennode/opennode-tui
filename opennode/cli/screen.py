@@ -257,14 +257,14 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        _ , ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        _, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         vm.get_template_name(ctid) + ".ovf"))
         template_settings = vm.get_ovf_template_settings(ovf_file)
         # get user input
         def template_sanity_check(tmpl_settings, input_settings):
-            checks = vm.validate_template_settings(tmpl_settings, input_settings)
+            checks = dict(vm.validate_template_settings(tmpl_settings, input_settings))
             # TODO: implement sanity checks (available disk space on target device)
             sanity_checks = {}
             checks.update(sanity_checks)
@@ -272,7 +272,7 @@ class OpenNodeTUI(object):
         
         vm_settings = self.display_template_settings(template_settings, template_sanity_check)
         # TODO: implement me
-        #actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
+        actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
         return self.display_templates()
         
     def display_create_vm(self):
@@ -323,6 +323,13 @@ class OpenNodeTUI(object):
     
     def _display_template_settings_openvz(self, template_settings, validation_callback):
         form_rows = []
+            
+        # TODO: remove me
+        template_settings['memory_min'] = template_settings['memory_max'] = template_settings['memory']
+        template_settings['swap_min'] = template_settings['swap_max'] = template_settings['swap'] = template_settings['memory']
+        template_settings["vcpu_min"] = template_settings["vcpu_max"] = template_settings["vcpu"]
+        template_settings["disc_min"] = template_settings["disc_max"] = template_settings["disk"]
+        template_settings["vcpulimit_min"] = template_settings["vcpulimit_max"] = template_settings["vcpulimit"]
         
         input_memory = Entry(20, template_settings["memory"])
         form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
