@@ -168,11 +168,10 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        res = display_create_template(self.screen, TITLE, vm_type, instances)
+        _ , ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
-                                        vm.get_template_name(res[1]) + ".ovf"))
-        
+                                        vm.get_template_name(ctid) + ".ovf"))
         template_settings = vm.get_ovf_template_settings(ovf_file)
         # get user input
         def template_sanity_check(tmpl_settings, input_settings):
@@ -182,9 +181,9 @@ class OpenNodeTUI(object):
             checks.update(sanity_checks)
             return checks
         
-        user_settings = self.display_template_settings(template_settings, template_sanity_check)
-        # TODO
-        #actions.vm.ovfutil.save_as_ovf(vm_type, user_settings, res[1])
+        vm_settings = self.display_template_settings(template_settings, template_sanity_check)
+        # TODO: implement me
+        #actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
         return self.display_templates()
         
     def display_create_vm(self):

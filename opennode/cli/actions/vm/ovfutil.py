@@ -1,6 +1,15 @@
+import os
 import warnings
+import tarfile
+from hashlib import sha1
+from datetime import datetime
+from os import path
 
 from ovf import Ovf
+from ovf.OvfReferencedFile import OvfReferencedFile
+from ovf.OvfFile import OvfFile
+
+from opennode.cli import config
 
 def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
@@ -110,5 +119,94 @@ def _get_ovf_memory_gb(ovf_file, bound):
 
                 memory = str(float(memoryQuantity) * memoryFactor / 1024 ** 2)
                 break
-
     return memory
+
+def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
+    # WORK IN PROGRESS :)
+    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type, "deploy")
+    ct_source_dir = path.join("vz/private", ctid)
+    ct_archive_fnm = path.join(dest_dir, "%s.tar.gz" % ctid)
+    
+    # Pack vm container catalog
+    with tarfile.open(ct_archive_fnm, "w:gz") as tar:
+        for file in os.listdir(ct_source_dir):
+            tar.add(path.join(ct_source_dir, file))
+            
+    # generate and save ovf configuration file
+    ovf = generate_ovf_file(vm_type, vm_settings, new_tmpl_name, ct_archive_fnm)
+    ovf_fnm = path.join(dest_dir, "%s.ovf" % new_tmpl_name)
+    ovf.writeFile(ovf_fnm, pretty=True, encoding='utf8')
+    
+    # pack container archive and ovf file
+    ovf_archive_fnm = path.join(dest_dir, "%s.tar.gz" % new_tmpl_name)
+    with tarfile.open(ovf_archive_fnm, "w:gz") as tar:
+        tar.add(ct_archive_fnm)
+        tar.add(ovf_fnm)
+    
+    os.remove(ct_archive_fnm)
+    os.remove(ovf_fnm)
+     
+def generate_ovf_file(vm_type, vm_settings, template_name, ct_archive_fnm):
+    ovf = OvfFile()
+    ovf.createEnvelope()
+    ovf.createVirtualSystem(ident=template_name, 
+                            info="%s OpenNode template" % vm_type.title())
+    hardwareSection = ovf.createVirtualHardwareSection(ident="virtual_hadrware", 
+                            info="Virtual hardware requirements for a virtual machine")
+    # TODO: ID = 0 or current  container id? 
+    ovf.createSystem(hardwareSection, "Virtual Hardware Family", "0", 
+                     {"VirtualSystemType": vm_type.lower()})
+    
+    # add cpu section
+    ovf.addResourceItem(hardwareSection, {
+        "Caption": "%s virtual CPU" % vm_settings["cpu"],
+        "Description": "Number of virtual CPUs",
+        "ElementName": "%s virtual CPU" % vm_settings["cpu"],
+        "InstanceID": "1",
+        "ResourceType": "3",
+        "VirtualQuantity": vm_settings["cpu"]
+        }, bound="normal")
+    
+    # add memory section
+    ovf.addResourceItem(hardwareSection, {
+        "AllocationUnits": "MegaBytes",
+        "Caption": "%s MB of memory" % int(round(float(vm_settings["memory"]) * 1024)),
+        "Description": "Memory Size",
+        "ElementName": "%s MB of memory" % int(round(float(vm_settings["memory"]) * 1024)),
+        "InstanceID": "3",
+        "ResourceType": "4",
+        "VirtualQuantity": vm_settings["memory"]}, 
+        bound="normal")
+    
+    # add reference a file (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
+    ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
+                                 path.basename(ct_archive_fnm), 
+                                 file_id="diskfile1", 
+                                 size=path.getsize(ct_archive_fnm), 
+                                 compression=True, 
+                                 checksum=get_checksum(ct_archive_fnm), 
+                                 checksumStamp=datetime.today())
+    ovf.addReferencedFile(ref_file)
+    
+    # add disk section
+    ovf.createDiskSection([{
+        "diskId": "vmdisk1", 
+        "capacity": vm_settings["disk"], 
+        "capacityAllocUnits": "GigaBytes",
+        "fileRef": "diskfile1",
+        "format": "tar.gz"}],
+        "%s CT template disks" % vm_type.title())
+    return ovf 
+    
+    def get_checksum(fnm):
+        # calculate checksum for the file 
+        chunk_size = 1024 ** 2 # 1Mb 
+        sha = sha1()
+        with open(fnm) as file:
+            while 1:
+                data = file.read(chunk_size)
+                if not data:
+                    break
+                sha.update(data) 
+        return sha.hexdigest()
+        
