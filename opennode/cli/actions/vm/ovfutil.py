@@ -135,11 +135,10 @@ def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
         - generate ovf configuration file
         - pack ovf and container arhive into tar.gz file  
     """
-    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type, "deploy")
-    if not path.exists(dest_dir):
-        os.makedirs(dest_dir)
-    ct_archive_fnm = path.join(dest_dir, "%s.tar.gz" % ctid)
-    ct_source_dir = path.join("/vz/private", str(ctid))
+    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type)
+    unpacked_dir = path.join(dest_dir, "unpacked")
+    ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % new_tmpl_name)
+    ct_source_dir = path.join("/vz/private", str(ctid)) # TODO: for test
     
     # Pack vm container catalog
     print "Archiving vm container catalog %s. This may take a while..." % ct_source_dir
@@ -150,19 +149,17 @@ def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
     # generate and save ovf configuration file
     print "Generating ovf file..."
     ovf = generate_ovf_file(vm_type, ctid, vm_settings, new_tmpl_name, ct_archive_fnm)
-    ovf_fnm = path.join(dest_dir, "%s.ovf" % new_tmpl_name)
+    ovf_fnm = path.join(unpacked_dir, "%s.ovf" % new_tmpl_name)
     with open(ovf_fnm, 'w') as f:
-        ovf.writeFile(f, pretty=True, encoding='utf8')
+        ovf.writeFile(f, pretty=True, encoding='UTF-8')
     
     # pack container archive and ovf file
     print "Archiving..."
-    ovf_archive_fnm = path.join(dest_dir, "%s.tar.gz" % new_tmpl_name)
-    with closing(tarfile.open(ovf_archive_fnm, "w:gz")) as tar:
-        tar.add(ct_archive_fnm, arcname="%s.tar.gz" % new_tmpl_name)
+    ovf_archive_fnm = path.join(dest_dir, "%s.tar" % new_tmpl_name)
+    with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
+        tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
-    
-    os.remove(ct_archive_fnm)
-    os.remove(ovf_fnm)
+        
     print "Done! Saved template to %s" % ovf_archive_fnm
     
 def generate_ovf_file(vm_type, ctid, vm_settings, template_name, ct_archive_fnm):
