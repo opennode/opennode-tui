@@ -75,13 +75,13 @@ def validate_template_settings(template_settings, input_settings):
             return False
     
     def validate_hostname():
-	if input_settings.get("hostname") is None:
-	   errors.append("hostname", "Hostname cannot be missing")
-	   return False
-	if len(input_settings.get("hostname")) < 1:
-	   errors.append("hostname", "Hostname cannot be 0-length")
-	   return False
-	return True
+        if input_settings.get("hostname") is None:
+            errors.append("hostname", "Hostname cannot be missing")
+            return False
+        if len(input_settings.get("hostname")) < 1:
+            errors.append("hostname", "Hostname cannot be 0-length")
+            return False
+        return True
  
     def validate_nameserver():
         if input_settings.get("nameserver") is None:
