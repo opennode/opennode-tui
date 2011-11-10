@@ -150,20 +150,20 @@ def prepare_storage_pool(storage_pool):
 def list_templates():
     """ Prints all local and remote templates """
     # local templates
-    for type in ["openvz", "kvm"]:
-        print "%s local templates:" % type.upper() 
+    for vm_type in ["openvz", "kvm"]:
+        print "%s local templates:" % vm_type.upper() 
         for storage_pool in storage.list_pools():
             print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"), 
-                                                 storage_pool, type)  
-            for tmpl in get_local_templates(storage_pool, type):
+                                                 storage_pool, vm_type)  
+            for tmpl in get_local_templates(storage_pool, vm_type):
                 print "\t\t", tmpl
             print
     # remote templates
     repo_groups = re.split(",\s*", config.c("general", "repo-groups"))
     repo_groups = [repo_group + "-repo" for repo_group in repo_groups]
     for repo_group in repo_groups:
-        url, type = config.c(repo_group, "url"), config.c(repo_group, "type")
-        print "%s remote templates:" % type.upper()
+        url, vm_type = config.c(repo_group, "url"), config.c(repo_group, "type")
+        print "%s remote templates:" % vm_type.upper()
         print "\t", "Repository:", url
         for tmpl in get_template_list(repo_group):
             print "\t\t",  tmpl

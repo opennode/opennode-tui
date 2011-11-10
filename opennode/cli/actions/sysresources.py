@@ -21,7 +21,7 @@ def get_ram_size_gb():
         output = execute(cmd)
         try:
             memory += int(output.split()[1])
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             raise Exception, "Unable to calculate OpenNode server memory size"
     return round(memory / 1024.0 ** 2, 3)
 
