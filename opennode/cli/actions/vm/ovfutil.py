@@ -1,3 +1,7 @@
+""" 
+@note: open-ovf api: http://gitorious.org/open-ovf/
+"""
+
 import os
 import warnings
 import tarfile
@@ -10,6 +14,8 @@ from ovf.OvfReferencedFile import OvfReferencedFile
 from ovf.OvfFile import OvfFile
 
 from opennode.cli import config
+from contextlib import closing
+from opennode.cli.utils import execute
 
 def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
@@ -122,81 +128,85 @@ def _get_ovf_memory_gb(ovf_file, bound):
     return memory
 
 def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
-    # WORK IN PROGRESS :)
+    """ 
+    Creates ovf template archive for the specified container. 
+    Steps:
+        - archive container directory
+        - generate ovf configuration file
+        - pack ovf and container arhive into tar.gz file  
+    """
     dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type, "deploy")
-    ct_source_dir = path.join("vz/private", ctid)
+    if not path.exists(dest_dir):
+        os.makedirs(dest_dir)
     ct_archive_fnm = path.join(dest_dir, "%s.tar.gz" % ctid)
+    ct_source_dir = path.join("/vz/private", str(ctid))
     
     # Pack vm container catalog
-    with tarfile.open(ct_archive_fnm, "w:gz") as tar:
+    print "Archiving vm container catalog %s. This may take a while..." % ct_source_dir
+    with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
         for file in os.listdir(ct_source_dir):
-            tar.add(path.join(ct_source_dir, file))
-            
+            tar.add(path.join(ct_source_dir, file), arcname=file)
+    
     # generate and save ovf configuration file
-    ovf = generate_ovf_file(vm_type, vm_settings, new_tmpl_name, ct_archive_fnm)
+    print "Generating ovf file..."
+    ovf = generate_ovf_file(vm_type, ctid, vm_settings, new_tmpl_name, ct_archive_fnm)
     ovf_fnm = path.join(dest_dir, "%s.ovf" % new_tmpl_name)
-    ovf.writeFile(ovf_fnm, pretty=True, encoding='utf8')
+    with open(ovf_fnm, 'w') as f:
+        ovf.writeFile(f, pretty=True, encoding='utf8')
     
     # pack container archive and ovf file
+    print "Archiving..."
     ovf_archive_fnm = path.join(dest_dir, "%s.tar.gz" % new_tmpl_name)
-    with tarfile.open(ovf_archive_fnm, "w:gz") as tar:
-        tar.add(ct_archive_fnm)
-        tar.add(ovf_fnm)
+    with closing(tarfile.open(ovf_archive_fnm, "w:gz")) as tar:
+        tar.add(ct_archive_fnm, arcname="%s.tar.gz" % new_tmpl_name)
+        tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
     
     os.remove(ct_archive_fnm)
     os.remove(ovf_fnm)
-     
-def generate_ovf_file(vm_type, vm_settings, template_name, ct_archive_fnm):
+    print "Done! Saved template to %s" % ovf_archive_fnm
+    
+def generate_ovf_file(vm_type, ctid, vm_settings, template_name, ct_archive_fnm):
     ovf = OvfFile()
     ovf.createEnvelope()
-    ovf.createVirtualSystem(ident=template_name, 
-                            info="%s OpenNode template" % vm_type.title())
-    hardwareSection = ovf.createVirtualHardwareSection(ident="virtual_hadrware", 
-                            info="Virtual hardware requirements for a virtual machine")
-    # TODO: ID = 0 or current  container id? 
-    ovf.createSystem(hardwareSection, "Virtual Hardware Family", "0", 
+    instanceId = 0
+    virtualSystem = ovf.createVirtualSystem(ident=template_name, 
+                                            info="%s OpenNode template" % vm_type.title())
+    hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem, 
+                                ident="virtual_hadrware", 
+                                info="Virtual hardware requirements for a virtual machine")
+    ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId), 
                      {"VirtualSystemType": vm_type.lower()})
+    instanceId += 1
     
     # add cpu section
-    ovf.addResourceItem(hardwareSection, {
-        "Caption": "%s virtual CPU" % vm_settings["cpu"],
-        "Description": "Number of virtual CPUs",
-        "ElementName": "%s virtual CPU" % vm_settings["cpu"],
-        "InstanceID": "1",
-        "ResourceType": "3",
-        "VirtualQuantity": vm_settings["cpu"]
-        }, bound="normal")
+    for bound, cpu in zip(["normal", "min", "max"],
+                          [vm_settings.get("vcpu%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if cpu:
+            ovf.addResourceItem(hardwareSection, {
+                "Caption": "%s virtual CPU" % cpu,
+                "Description": "Number of virtual CPUs",
+                "ElementName": "%s virtual CPU" % cpu,
+                "InstanceID": str(instanceId),
+                "ResourceType": "3",
+                "VirtualQuantity": cpu
+                }, bound=bound)
+            instanceId += 1
     
     # add memory section
-    ovf.addResourceItem(hardwareSection, {
-        "AllocationUnits": "MegaBytes",
-        "Caption": "%s MB of memory" % int(round(float(vm_settings["memory"]) * 1024)),
-        "Description": "Memory Size",
-        "ElementName": "%s MB of memory" % int(round(float(vm_settings["memory"]) * 1024)),
-        "InstanceID": "3",
-        "ResourceType": "4",
-        "VirtualQuantity": vm_settings["memory"]}, 
-        bound="normal")
-    
-    # add reference a file (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
-    ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
-                                 path.basename(ct_archive_fnm), 
-                                 file_id="diskfile1", 
-                                 size=path.getsize(ct_archive_fnm), 
-                                 compression=True, 
-                                 checksum=get_checksum(ct_archive_fnm), 
-                                 checksumStamp=datetime.today())
-    ovf.addReferencedFile(ref_file)
-    
-    # add disk section
-    ovf.createDiskSection([{
-        "diskId": "vmdisk1", 
-        "capacity": vm_settings["disk"], 
-        "capacityAllocUnits": "GigaBytes",
-        "fileRef": "diskfile1",
-        "format": "tar.gz"}],
-        "%s CT template disks" % vm_type.title())
-    return ovf 
+    for bound, memory in zip(["normal", "min", "max"],
+                             [vm_settings.get("memory%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if memory:
+            memory_mb = str(int(round(float(memory) * 1024)))
+            ovf.addResourceItem(hardwareSection, {
+                "AllocationUnits": "MegaBytes",
+                "Caption": "%s MB of memory" % memory_mb,
+                "Description": "Memory Size",
+                "ElementName": "%s MB of memory" % memory_mb ,
+                "InstanceID": str(instanceId),
+                "ResourceType": "4",
+                "VirtualQuantity": memory_mb
+                }, bound=bound)
+            instanceId += 1
     
     def get_checksum(fnm):
         # calculate checksum for the file 
@@ -207,6 +217,31 @@ def generate_ovf_file(vm_type, vm_settings, template_name, ct_archive_fnm):
                 data = file.read(chunk_size)
                 if not data:
                     break
-                sha.update(data) 
+                sha.update(data)
         return sha.hexdigest()
-        
+    
+    # add reference a file (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
+    ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
+                                 path.basename("%s.tar.gz" % template_name), 
+                                 file_id="diskfile1",
+                                 size=str(path.getsize(ct_archive_fnm)),
+                                 compression="gz",
+                                 checksum=get_checksum(ct_archive_fnm))
+    ovf.addReferencedFile(ref_file)
+    ovf.createReferences()
+    
+    def get_ct_disk_usage(ctid):
+        return str(round(float(execute("du -s /vz/private/%s/" % ctid).split()[0]) / 1024 ** 2, 3)) # in GB
+    
+    # add disk section
+    ovf.createDiskSection([{
+        "diskId": "vmdisk1", 
+        "capacity": vm_settings["disk"],
+        "populatedSize": get_ct_disk_usage(ctid),
+        "capacityAllocUnits": "GigaBytes",
+        "fileRef": "diskfile1",
+        "parentRef": None,
+        "format": "tar.gz"}],
+        "%s CT template disks" % vm_type.title())
+    
+    return ovf 
