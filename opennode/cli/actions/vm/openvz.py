@@ -98,7 +98,7 @@ def validate_template_settings(template_settings, input_settings):
     _range_check("swap")
     _range_check("vcpu", int)
     validate_cpu_limit()
-    _range_check("disk", int)
+    _range_check("disk", float)
     validate_ip()
     validate_nameserver()
     validate_password()
