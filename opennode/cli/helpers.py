@@ -73,7 +73,7 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     spacer1 = Textbox(1, 1, "", 0, 0)
     spacer2 = Textbox(1, 1, "", 0, 0)
     entry_newname = Entry(30, 'template_name')
-    bb = ButtonBar(screen, ('Create new template', 'Main menu'))
+    bb = ButtonBar(screen, ('Create new template', ('Back to menu', 'back')))
     form = GridFormHelp(screen, title, help, 1, 7)
     form.add(label_base, 0, 0)
     form.add(base_tmpl, 0, 1)

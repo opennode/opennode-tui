@@ -257,7 +257,9 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        _, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        action, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        if action == 'back':
+            return self.display_templates()
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         vm.get_template_name(ctid) + ".ovf"))
