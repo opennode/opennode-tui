@@ -290,3 +290,11 @@ def get_template_name(ctid):
     except ValueError:
         raise RuntimeError, "Incorrect format for a container id."
     return execute("vzlist %s -H -o ostemplate" % ctid)
+
+def get_hostname(ctid):
+    """Return a hostname of the container"""
+    try:
+        int(ctid)
+    except ValueError:
+        raise RuntimeError, "Incorrect format for a container id."
+    return execute("vzlist %s -H -o hostname" % ctid)
