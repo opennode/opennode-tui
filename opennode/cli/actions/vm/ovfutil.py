@@ -128,7 +128,7 @@ def _get_ovf_memory_gb(ovf_file, bound):
     return memory
 
 def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
-    """ 
+    """
     Creates ovf template archive for the specified container. 
     Steps:
         - archive container directory
@@ -138,7 +138,7 @@ def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
     dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type)
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % new_tmpl_name)
-    ct_source_dir = path.join("/vz/private", str(ctid)) # TODO: for test
+    ct_source_dir = path.join("/vz/private", str(ctid))
     
     # Pack vm container catalog
     print "Archiving vm container catalog %s. This may take a while..." % ct_source_dir

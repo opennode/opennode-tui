@@ -261,18 +261,41 @@ class OpenNodeTUI(object):
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         vm.get_template_name(ctid) + ".ovf"))
-        template_settings = vm.get_ovf_template_settings(ovf_file)
-        # get user input
-        def template_sanity_check(tmpl_settings, input_settings):
-            checks = dict(vm.validate_template_settings(tmpl_settings, input_settings))
-            # TODO: implement sanity checks (available disk space on target device)
-            sanity_checks = {}
-            checks.update(sanity_checks)
-            return checks
         
-        vm_settings = self.display_template_settings(template_settings, template_sanity_check)
-        # TODO: implement me
+        def template_sanity_check(input_settings):
+            def _range_check(setting_name, typecheck=float, required=True):
+                val = input_settings.get(setting_name, None)
+                min_val = input_settings.get("%s_min" % setting_name, None)
+                max_val = input_settings.get("%s_max" % setting_name, None)
+                if not val:
+                    if required:
+                        errors.append((setting_name, "%s is required!" % setting_name))
+                    return
+                else:
+                    try:
+                        typecheck(val)
+                    except ValueError:
+                        errors.append((setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))) 
+                if min_val and val < min_val:
+                    errors.append((setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val)))
+                if max_val and val > max_val:
+                    errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))          
+            errors = []
+            _range_check("memory")
+            _range_check("cpu", int)
+            if not input_settings.get("disk"):
+                errors.append(("disk", "Disk size is required."))
+            else:
+                try:
+                    float(input_settings["disk"])
+                except ValueError:
+                    errors.append(("disk", "Disk size must be numeric."))
+            return errors
+        
+        template_settings = vm.get_ovf_template_settings(ovf_file)
+        vm_settings = self._display_template_create_settings_openvz(template_settings, template_sanity_check)
         actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
+        display_info(self.screen, TITLE, "Done!")
         return self.display_templates()
         
     def display_create_vm(self):
@@ -323,13 +346,6 @@ class OpenNodeTUI(object):
     
     def _display_template_settings_openvz(self, template_settings, validation_callback):
         form_rows = []
-            
-        # TODO: remove me
-        template_settings['memory_min'] = template_settings['memory_max'] = template_settings['memory']
-        template_settings['swap_min'] = template_settings['swap_max'] = template_settings['swap'] = template_settings['memory']
-        template_settings["vcpu_min"] = template_settings["vcpu_max"] = template_settings["vcpu"]
-        template_settings["disc_min"] = template_settings["disc_max"] = template_settings["disk"]
-        template_settings["vcpulimit_min"] = template_settings["vcpulimit_max"] = template_settings["vcpulimit"]
         
         input_memory = Entry(20, template_settings["memory"])
         form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
@@ -431,6 +447,73 @@ class OpenNodeTUI(object):
             
     def _display_template_settings_kvm(self, template_settings, validator_callback):
         raise NotImplementedError
+    
+    def _display_template_create_settings_openvz(self, template_settings, validation_callback):
+        ts = template_settings
+        form_rows = []
+        # memory
+        input_memory = Entry(20, ts["memory"])
+        form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
+        
+        input_memory_min = Entry(20, ts.get("memory_min", ""))
+        form_rows.append((Textbox(20, 1, "Min memory size (GB):", 0, 0), input_memory_min))
+        
+        input_memory_max = Entry(20, ts.get("memory_max", ""))
+        form_rows.append((Textbox(20, 1, "Max memory size (GB):", 0, 0), input_memory_max))
+        
+        # cpu
+        input_cpu = Entry(20, ts["vcpu"])
+        form_rows.append((Textbox(20, 1, "Number of CPUs:", 0, 0), input_cpu))
+        
+        input_cpu_min = Entry(20, ts["vcpu"])
+        form_rows.append((Textbox(20, 1, "Min number of CPUs:", 0, 0), input_cpu_min))
+        
+        input_cpu_max = Entry(20, ts["vcpu"])
+        form_rows.append((Textbox(20, 1, "Max number of CPUs:", 0, 0), input_cpu_max))
+        
+        # disk
+        input_disk_size = Entry(20, ts["disk"])
+        form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
+        
+        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        form_rows.append((button_save, button_exit))
+        
+        def _display_form():
+            form = GridForm(self.screen, TITLE, 2, 8)
+            for i, row in enumerate(form_rows): 
+                for j, cell in enumerate(row):
+                    form.add(cell, j, i)
+            return form.runOnce()
+        
+        while True:
+            # display form
+            form_result = _display_form()
+            
+            if form_result == button_exit:
+                return None
+            
+            # collect user input
+            input_settings = {
+                "memory": input_memory.value(),
+                "memory_min": input_memory_min.value(),
+                "memory_max": input_memory_max.value(),
+                "cpu": input_cpu.value(),
+                "cpu_min": input_cpu_min.value(),
+                "cpu_max": input_cpu_max.value(),
+                "disk": input_disk_size.value(),
+            }
+            
+            # validate user input
+            errors = validation_callback(input_settings)
+            
+            if errors:
+                key, msg = errors[0] 
+                display_info(self.screen, TITLE, msg)
+                continue
+            else:
+                settings = template_settings.copy()
+                settings.update(input_settings)
+                return settings
     
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
