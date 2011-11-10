@@ -325,7 +325,8 @@ class OpenNodeTUI(object):
         
         # get user input
         user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
-        
+        if user_settings is None:
+            return self.display_main_screen()
         # create openvz container
         print "Creating OpenVZ container..."
         vm.create_container(user_settings)
@@ -381,7 +382,8 @@ class OpenNodeTUI(object):
         form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
         
         form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
-                          Textbox(20, 1, "Disk size min/max:", 0, 0)))
+                          Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
+                                                      template_settings["disk_max"], 0, 0))))
         
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
