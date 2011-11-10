@@ -25,7 +25,7 @@ class DownloadMonitor():
                 
     def update_url(self, fnm):
         self.current_item = self.current_item + 1
-        self.fnm_label.setText("(%s/%s): %s" (self.current_item, self.item_count, fnm))
+        self.fnm_label.setText("(%s/%s): %s" % (self.current_item, self.item_count, fnm))
     
     def download_hook(self, count, blockSize, totalSize):
         donep = int(min(100, float(blockSize * count) / totalSize * 100))
