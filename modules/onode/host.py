@@ -18,7 +18,7 @@ class Host(func_module.FuncModule):
             return x & 0x0000003f
 
         def details(name):
-            res = {'type': 'simple'}
+            res = {'type': 'simple', 'name': name}
 
             if os.path.exists('/sys/class/net/' + name + '/tun_flags'):
                 res['type'] = 'virtual'
@@ -43,4 +43,4 @@ class Host(func_module.FuncModule):
 
             return res
 
-        return dict((i, details(i)) for i in netifaces.interfaces())
+        return [details(i) for i in netifaces.interfaces()]
