@@ -379,7 +379,10 @@ class OpenNodeTUI(object):
         form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
                           Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
                                                       template_settings["disk_max"]), 0, 0)))
-        
+       
+        input_hostname = Entry(20, template_settings.get("hostname", ''))
+        form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
+	 
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
         
@@ -420,7 +423,8 @@ class OpenNodeTUI(object):
                 "vcpu": input_cpu.value(),
                 "vcpulimit": input_cpu_limit.value(),
                 "disk": input_disk_size.value(),
-                "ip_address": input_ip.value(),
+                "hostname": input_hostname.value(),
+		"ip_address": input_ip.value(),
                 "nameserver": input_nameserver.value(),
                 "passwd": input_password.value(),
                 "passwd2": input_password2.value(),
