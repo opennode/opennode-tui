@@ -327,12 +327,7 @@ class OpenNodeTUI(object):
         user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
         if user_settings is None:
             return self.display_main_screen()
-        # create openvz container
-        print "Creating OpenVZ container..."
         vm.create_container(user_settings)
-        
-        # deploy 
-        print "Deploying..."
         vm.deploy(user_settings)
         
         display_info(self.screen, TITLE, "OpenVZ container %s deployed successfully" % user_settings["vm_id"])
