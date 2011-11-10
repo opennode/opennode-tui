@@ -280,7 +280,7 @@ def get_available_instances():
     for cont in vzcontainers:
         if len(cont.strip()) == 0: break
         cid, hn = cont.strip().split(' ')
-        candidates[int(cid)] = hn
+        candidates[int(cid)] = "%s (%s)" %(hn, cid)
     return candidates
 
 def get_template_name(ctid):
