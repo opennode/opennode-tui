@@ -151,7 +151,7 @@ def list_templates():
     """ Prints all local and remote templates """
     # local templates
     for vm_type in ["openvz", "kvm"]:
-        print "%s local templates:" % vm_type.upper() 
+        print "%s local templates:" % vm_type.upper()
         for storage_pool in storage.list_pools():
             print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"), 
                                                  storage_pool, vm_type)  
