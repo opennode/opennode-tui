@@ -383,7 +383,7 @@ class OpenNodeTUI(object):
         
         form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
                           Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
-                                                      template_settings["disk_max"], 0, 0))))
+                                                      template_settings["disk_max"]), 0, 0)))
         
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
