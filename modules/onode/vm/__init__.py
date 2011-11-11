@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
 import os
-import urlparse
 import time
+import urlparse
 from functools import wraps
 from uuid import UUID
 from xml.etree import ElementTree
@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
+from opennode.cli.actions.vm.openvz import get_hostname
 
 
 _connections = {}
@@ -104,7 +105,13 @@ class VM(func_module.FuncModule):
         }
 
         info = vm.info()
-        return {"uuid": get_uuid(vm), "name": vm.name(), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
+
+        def vm_name(vm):
+            if conn.getType() == 'OpenVZ':
+                return get_hostname(vm.name())
+            return vm.name()
+
+        return {"uuid": get_uuid(vm), "name": vm_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
                 'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i],
                 'interfaces': self._vm_interfaces(conn, get_uuid(vm))}
 
