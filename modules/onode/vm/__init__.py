@@ -197,7 +197,8 @@ class VM(func_module.FuncModule):
         dom.resume()
 
     def _vm_console_vnc(self, conn, uuid):
-        element = self.dom_dom(conn, uuid).find('.//graphics[@type="vnc"]')
+        # python 2.6 etree library doesn't support xpath with predicate
+        element = ([i for i in self.dom_dom(conn, uuid).findall('.//graphics') if i.attrib.get('type', None) == 'vnc'] or [None])[0]
         # elementtree element without children is treated as false
         if element != None:
             port = element.attrib.get('port', None)
@@ -207,7 +208,8 @@ class VM(func_module.FuncModule):
     vm_console_vnc = vm_method(_vm_console_vnc)
 
     def _vm_console_pty(self, conn, uuid):
-        element = self.dom_dom(conn, uuid).find('.//console[@type="pty"]')
+        # python 2.6 etree library doesn't support xpath with predicate
+        element = ([i for i in self.dom_dom(conn, uuid).findall('.//graphics') if i.attrib.get('type', None) == 'pty'] or [None])[0]
         if element != None:
             pty = element.attrib.get('tty', None)
             if pty:
