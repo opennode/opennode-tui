@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
-from opennode.cli.actions.vm.openvz import get_hostname, get_ip_address
+from opennode.cli.actions.vm.openvz import get_hostname
 
 
 _connections = {}
@@ -241,9 +241,9 @@ class VM(func_module.FuncModule):
 
             res = dict(mac=mac, name=alias, type=type)
 
-            if conn.getType() == 'OpenVZ':
-                vm = conn.lookupByUUIDString(uuid)
-                res['ipv4_address'] = get_ip_address(vm.name())
+            ip = i.find('ip')
+            if ip != None:
+                res['ipv4_address'] = ip.attrib.get('address', None)
                 if not '/' in res['ipv4_address']:
                     res['ipv4_address'] += '/24'
 

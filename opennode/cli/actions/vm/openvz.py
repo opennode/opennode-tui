@@ -308,11 +308,3 @@ def get_hostname(ctid):
     except ValueError:
         raise RuntimeError, "Incorrect format for a container id."
     return execute("vzlist %s -H -o hostname" % ctid)
-
-def get_ip_address(ctid):
-    """Return a ip address of the container"""
-    try:
-        int(ctid)
-    except ValueError:
-        raise RuntimeError, "Incorrect format for a container id."
-    return execute("vzlist %s -H -o ip" % ctid)
