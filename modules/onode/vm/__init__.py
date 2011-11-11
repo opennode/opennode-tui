@@ -244,6 +244,8 @@ class VM(func_module.FuncModule):
             if conn.getType() == 'OpenVZ':
                 vm = conn.lookupByUUIDString(uuid)
                 res['ipv4_address'] = get_ip_address(vm.name())
+                if not '/' in res['ipv4_address']:
+                    res['ipv4_address'] += '/24'
 
             return res
 
