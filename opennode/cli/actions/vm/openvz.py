@@ -73,7 +73,16 @@ def validate_template_settings(template_settings, input_settings):
         except socket.error:
             errors.append(("ip_address", "IP-address format not correct."))
             return False
-      
+    
+    def validate_hostname():
+	if input_settings.get("hostname") is None:
+	   errors.append("hostname", "Hostname cannot be missing")
+	   return False
+	if len(input_settings.get("hostname")) < 1:
+	   errors.append("hostname", "Hostname cannot be 0-length")
+	   return False
+	return True
+ 
     def validate_nameserver():
         if input_settings.get("nameserver") is None:
             return True
@@ -100,6 +109,7 @@ def validate_template_settings(template_settings, input_settings):
     validate_cpu_limit()
     _range_check("disk", float)
     validate_ip()
+    validate_hostname()
     validate_nameserver()
     validate_password()
     
@@ -269,7 +279,7 @@ def deploy(ovf_settings):
     #Network configuration for VENET
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
-    execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_type"]))
+    execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
     
