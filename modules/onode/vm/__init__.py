@@ -221,8 +221,8 @@ class VM(func_module.FuncModule):
             pty = element.attrib.get('tty', None)
             if pty:
                 return dict(type='pty', pty=pty)
-            elif conn.getType() == 'OpenVZ':
-                return dict(type='openvz', cid=conn.lookupByUUIDString(uuid).name())
+        elif conn.getType() == 'OpenVZ':
+            return dict(type='openvz', cid=conn.lookupByUUIDString(uuid).name())
 
 
     vm_console_pty = vm_method(_vm_console_pty)
