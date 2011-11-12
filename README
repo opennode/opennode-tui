@@ -13,4 +13,4 @@ Installation
 Running
 =======
 1. Make sure opennode module is on the PYTHONPATH, e.g. PYTHONPATH=`pwd`:$PYTHONPATH
-2. ''/opennode/cli/screen.py''
+2. ''scripts/opennode''
