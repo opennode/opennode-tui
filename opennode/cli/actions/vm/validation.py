@@ -1,7 +1,6 @@
-'''  Validation functions '''
-
 import socket
 import operator
+
 
 def check_range(setting_name, settings, typecheck=float):
     val, min_val, max_val = (settings.get(setting_name), settings.get("%s_min" % setting_name), 
@@ -20,7 +19,7 @@ def check_range(setting_name, settings, typecheck=float):
     return []
 
 def check_required(setting_name, settings):
-    if not settings.get(setting_name):
+    if settings.get(setting_name) is None:
         return [(setting_name, "%s is required" % setting_name)]
         
 def validate_memory(settings):

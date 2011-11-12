@@ -23,7 +23,7 @@ def read_default_ovf_settings():
         "interface": {"type" : "bridge", "source_bridge" : "vmbr0"},
         "serial": {"type" : "pty", "target_port" : 0},
         "console": {"type" : "pty", "target_port" : 0},
-        "graphics": {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "et"},
+        "graphics": {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "us"},
         "features": [],
         "disks": []
     }
@@ -42,9 +42,9 @@ def read_ovf_settings(settings, ovf_file):
     
     sys_type, sys_arch = ovfutil.get_vm_type(ovf_file).split("-")
     if sys_type != "kvm":
-        raise Exception, "Given template '%s' is not compatible with KVM on OpenNode server." % sys_type 
+        raise Exception, "The chosen template '%s' cannot run on KVM hypervisor." % sys_type 
     if sys_arch not in ["x86_64", "i686"]:
-        raise Exception, "Template architecture '%s' is not compatible with KVM on OpenNode server." % sys_arch
+        raise Exception, "Template architecture '%s' is not supported." % sys_arch
     settings["arch"] = sys_arch
 
     memory_settings = [
@@ -207,7 +207,8 @@ def generate_libvirt_conf(settings):
             disk_dom.setAttribute("device", disk["device"])
             devices_dom.appendChild(disk_dom)
             disk_source_dom = libvirt_conf_dom.createElement("source")
-            disk_source_dom.setAttribute("file", path.join(config.c("general", "kvm-images"),
+            image_path = path.join(config.c("general", "storage-endpoint"), config.c("general", "default-storage-pool"), "images")
+            disk_source_dom.setAttribute("file", path.join(image_path,
                                                            "%s-%s" % (settings["vm_type"], disk["source_file"])))
             disk_dom.appendChild(disk_source_dom)
             disk_target_dom = libvirt_conf_dom.createElement("target")
