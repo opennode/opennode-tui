@@ -1,7 +1,7 @@
 from opennode.cli.actions.vm import openvz, kvm
 
 
-__all__ = ['get_instance']
+__all__ = ['get_module']
 
 
 vm_types = {

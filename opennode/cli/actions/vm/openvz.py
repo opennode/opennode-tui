@@ -244,18 +244,15 @@ def generate_nonubc_config(conf_filename, settings):
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    
-    # create OpenVZ CT
     execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
-    
-    # generate ubc and non-ubc configuration
+
+def generate_config(ovf_settings):    
+    """ Generates  ubc and non-ubc configuration """
     conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"]) 
     ubc_conf_str = generate_ubc_config(ovf_settings)
     non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
-    
-    # final configuration is ubc + non-ubc
-    openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str)
+    openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc
     
     # overwrite configuration
     with open(conf_filename, 'w') as conf_file:
@@ -264,9 +261,14 @@ def create_container(ovf_settings):
 
 def deploy(ovf_settings):
     """ Deploys OpenVZ container """
-    #Network configuration for VETH
-    #ToDo: implement support for VETH
-    #Network configuration for VENET
+    
+    print "Creating OpenVZ container..."
+    create_container(ovf_settings)
+    
+    print "Generating configuration..."
+    generate_config(ovf_settings)
+    
+    print "Deploying..."
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_type"]))

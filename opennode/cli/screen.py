@@ -304,7 +304,7 @@ class OpenNodeTUI(object):
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
         
-        vm_type = display_vm_type_select(self.screen, TITLE)
+        vm_type = display_vm_type_select(self.screen, TITLE) 
         if vm_type is None: return self.display_main_screen()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
@@ -323,16 +323,10 @@ class OpenNodeTUI(object):
         
         # get user input
         user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
-        
-        # create openvz container
-        print "Creating OpenVZ container..."
-        vm.create_container(user_settings)
-        
-        # deploy 
-        print "Deploying..."
+        # deploy
         vm.deploy(user_settings)
         
-        display_info("OpenVZ container %s deployed successfully" % user_settings["vm_id"])
+        display_info("OpenVZ container %s deployed successfully!" % template_settings["vm_id"])
         return self.display_main_screen()
 
     def display_template_settings(self, template_settings, validation_callback):
@@ -343,6 +337,66 @@ class OpenNodeTUI(object):
         }
         view = views[template_settings["vm_type"]]
         return view(template_settings, validation_callback)
+    
+    def _display_template_settings_kvm(self, template_settings, validation_callback):
+        """ Display configuration details of new VM """
+        form_rows = {}
+
+        form_rows["memory"] = (Textbox(20, 1, "Memory size (GB):", 0, 0), Entry(20, template_settings["memory"]))
+        input_memory = Entry(20, template_settings["memory"])
+        form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
+        
+        form_rows["memory_bounds"] = (Textbox(20, 1, "Memory min/max:", 0, 0), 
+                               Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
+                                                           template_settings["memory_max"]), 0, 0))
+        form_rows.append((Textbox(20, 1, "Memory min/max:", 0, 0), 
+                          Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
+                                                      template_settings["memory_max"]), 0, 0)))
+        
+        input_cpu = Entry(20, template_settings["vcpu"])
+        form_rows.append((Textbox(20, 1, "Number of CPUs:", 0, 0), input_cpu))
+        
+        text_cpu_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpu_min"], 
+                                                            template_settings["vcpu_max"]), 0, 0)
+        form_rows.append((Textbox(20, 1, "CPU number min/max:", 0, 0), text_cpu_bounds_value))
+
+        button_save = Button("Save VM settings")
+        button_exit = Button("Main menu")
+        
+        form_rows.append((button_save, button_exit))
+        self._display_template_settings_form()
+        
+        def _display_form():
+            form = GridForm(self.screen, TITLE, 2, 7)
+            for i, row in enumerate(form_rows): 
+                for j, cell in enumerate(row):
+                    form.add(cell, j, i)
+            return form.runOnce()
+        
+        while 1:
+            # display form
+            form_result = _display_form()
+            
+            if form_result == button_exit:
+                return None
+            
+            # collect user input
+            input_settings = {
+                "memory": input_memory.value(),  
+                "vcpu": input_cpu.value(),
+            }
+            
+            # validate user input
+            errors = validation_callback(template_settings, input_settings)
+            
+            if errors:
+                key, msg = errors[0] 
+                display_info(self.screen, TITLE, msg)
+                continue
+            else:
+                settings = template_settings.copy()
+                settings.update(input_settings)
+                return settings
     
     def _display_template_settings_openvz(self, template_settings, validation_callback):
         form_rows = []
@@ -427,7 +481,7 @@ class OpenNodeTUI(object):
                 "passwd2": input_password2.value(),
             }
             
-            # validate user input 
+            # validate user input
             errors = validation_callback(template_settings, input_settings)
             
             if errors:
@@ -438,16 +492,7 @@ class OpenNodeTUI(object):
                 settings = template_settings.copy()
                 settings.update(input_settings)
                 return settings
-
-            #ToDo: VETH support
-            #if (entry9.selected()):
-            #    template_settings["veth"] = "1"
-            #else:
-            #    template_settings["veth"] = "0"
             
-    def _display_template_settings_kvm(self, template_settings, validator_callback):
-        raise NotImplementedError
-    
     def _display_template_create_settings_openvz(self, template_settings, validation_callback):
         ts = template_settings
         form_rows = []
