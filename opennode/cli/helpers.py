@@ -25,7 +25,7 @@ class DownloadMonitor():
                 
     def update_url(self, fnm):
         self.current_item = self.current_item + 1
-        self.fnm_label.setText("(%s/%s): %s" (self.current_item, self.item_count, fnm))
+        self.fnm_label.setText("(%s/%s): %s" % (self.current_item, self.item_count, fnm))
     
     def download_hook(self, count, blockSize, totalSize):
         donep = int(min(100, float(blockSize * count) / totalSize * 100))
@@ -73,7 +73,7 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     spacer1 = Textbox(1, 1, "", 0, 0)
     spacer2 = Textbox(1, 1, "", 0, 0)
     entry_newname = Entry(30, 'template_name')
-    bb = ButtonBar(screen, ('Create new template', 'Main menu'))
+    bb = ButtonBar(screen, ('Create new template', ('Back to menu', 'back')))
     form = GridFormHelp(screen, title, help, 1, 7)
     form.add(label_base, 0, 0)
     form.add(base_tmpl, 0, 1)

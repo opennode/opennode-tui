@@ -257,7 +257,9 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        _, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        action, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        if action == 'back':
+            return self.display_templates()
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         vm.get_template_name(ctid) + ".ovf"))
@@ -323,10 +325,11 @@ class OpenNodeTUI(object):
         
         # get user input
         user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
+        if user_settings is None:
+            return self.display_main_screen()
         # deploy
         vm.deploy(user_settings)
-        
-        display_info("OpenVZ container %s deployed successfully!" % template_settings["vm_id"])
+        display_info(self.screen, TITLE, "OpenVZ container %s deployed successfully" % user_settings["vm_id"])
         return self.display_main_screen()
 
     def display_template_settings(self, template_settings, validation_callback):
@@ -433,8 +436,12 @@ class OpenNodeTUI(object):
         form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
         
         form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
-                          Textbox(20, 1, "Disk size min/max:", 0, 0)))
-        
+                          Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
+                                                      template_settings["disk_max"]), 0, 0)))
+       
+        input_hostname = Entry(20, template_settings.get("hostname", ''))
+        form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
+	 
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
         
@@ -475,7 +482,8 @@ class OpenNodeTUI(object):
                 "vcpu": input_cpu.value(),
                 "vcpulimit": input_cpu_limit.value(),
                 "disk": input_disk_size.value(),
-                "ip_address": input_ip.value(),
+                "hostname": input_hostname.value(),
+		"ip_address": input_ip.value(),
                 "nameserver": input_nameserver.value(),
                 "passwd": input_password.value(),
                 "passwd2": input_password2.value(),

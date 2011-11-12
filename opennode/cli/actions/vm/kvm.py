@@ -1,5 +1,5 @@
 # TODO: implement me
-#import libvirt
+import libvirt
 import os
 import xml.dom
 import shutil

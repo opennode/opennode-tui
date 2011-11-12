@@ -29,7 +29,8 @@ class Host(func_module.FuncModule):
                 res['members'] = os.listdir(sys_bridge_path)
 
             addrs = netifaces.ifaddresses(name)
-            res['mac'] = addrs[netifaces.AF_LINK][0]['addr']
+            if addrs.has_key(netifaces.AF_LINK):
+                res['mac'] = addrs[netifaces.AF_LINK][0]['addr']
 
             if addrs.has_key(netifaces.AF_INET):
                 ip = addrs[netifaces.AF_INET][0]['addr']

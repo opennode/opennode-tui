@@ -4,11 +4,13 @@ OpenNode CLI utilities
 Installation
 ============
 
-1) pip install -r requirements.txt
+1) yum install python-devel  gcc gcc-c++ autoconf automake
 
-2) yum install newt-python
+2) pip install -r requirements.txt
+
+3) yum install newt-python
 
 Running
 =======
 1. Make sure opennode module is on the PYTHONPATH, e.g. PYTHONPATH=`pwd`:$PYTHONPATH
-2. ''/opennode/cli/screen.py''
+2. ''scripts/opennode''
