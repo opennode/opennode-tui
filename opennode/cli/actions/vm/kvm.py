@@ -1,180 +1,133 @@
-# TODO: implement me
-import libvirt
 import os
 import xml.dom
 import shutil
 from os import path
+import operator
+
+import libvirt
 
 from opennode.cli import config
 from opennode.cli.utils import execute
-
-#DRIVE_LETTERS = [chr(i) for i in xrange(ord("a"), ord("z") + 1)] # ["a", "b", ..., "z"]
-DRIVE_LETTERS = ["a", "b", "z"]
-SYSTEM_ARCHES = ["x86_64", "i686"]
+from opennode.cli.actions.vm import ovfutil
+from opennode.cli.actions import sysresources as sysres
 
 def get_ovf_template_settings(ovf_file):
     settings = read_default_ovf_settings()
-    ovf_settings = read_ovf_settings(ovf_file)
-    settings.update(ovf_settings)
+    read_ovf_settings(settings, ovf_file)
     settings["template_name"] = os.path.basename(ovf_file.path)
     return settings
     
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
-    st = dict(config.clist('ovf-defaults', 'kvm'))
-    if not os.path.exists(st["emulator"]): st["emulator"] = "/usr/bin/kvm"
-    st["interface"] = {"type" : "bridge", "source_bridge" : "vmbr0"}
-    st["serial"] = {"type" : "pty", "target_port" : 0}
-    st["console"] = {"type" : "pty", "target_port" : 0}
-    st["graphics"] = {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "et"}
-    st["features"] = []
-    st["disks"] = []
-    return st
+    settings = {
+        "interface": {"type" : "bridge", "source_bridge" : "vmbr0"},
+        "serial": {"type" : "pty", "target_port" : 0},
+        "console": {"type" : "pty", "target_port" : 0},
+        "graphics": {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "et"},
+        "features": [],
+        "disks": []
+    }
+    settings.update(dict(config.clist('ovf-defaults', 'kvm')))
+    if not os.path.exists(settings.get("emulator", "")): 
+        settings["emulator"] = "/usr/bin/kvm"
+    return settings
 
-def read_ovf_settings(ovf_file):
+def read_ovf_settings(settings, ovf_file):
     """
     Parse OVF template/appliance XML configuration and save parsed settings
 
     @return: Parsed OVF template/appliance XML configuration settings
     @rtype: Dictionary
     """
-    # TODO: check if we can do better with open-ovf library
-    ovf_dom = xml.dom.minidom.parseString(ovf_file.document.toxml())
-    envelope_dom = ovf_dom.getElementsByTagName("Envelope")[0]
-    vh_dom = envelope_dom.getElementsByTagName("VirtualHardwareSection")[0]
     
-    st = {}
+    sys_type, sys_arch = ovfutil.get_vm_type(ovf_file).split("-")
+    if sys_type != "kvm":
+        raise Exception, "Given template '%s' is not compatible with KVM on OpenNode server." % sys_type 
+    if sys_arch not in ["x86_64", "i686"]:
+        raise Exception, "Template architecture '%s' is not compatible with KVM on OpenNode server." % sys_arch
+    settings["arch"] = sys_arch
 
-    try:
-        on_dom = envelope_dom.getElementsByTagName("opennodens:OpenNodeSection")[0]
-        try:
-            feature_dom = on_dom.getElementsByTagName("Features")[0]
-            for feature in feature_dom.childNodes:
-                if (feature.nodeType == feature.ELEMENT_NODE):
-                    st["features"].append(str(feature.nodeName))
-        except:
-            pass
-    except:
-        pass
-
-    system_dom = vh_dom.getElementsByTagName("System")[0]
-    system_type_dom = system_dom.getElementsByTagName("vssd:VirtualSystemType")[0]
-    system_type = system_type_dom.firstChild.nodeValue
-    system_type_list = system_type.rsplit("-")
-    if ((len(system_type_list) != 2) or (system_type_list[0] != "kvm")):
-        raise Exception, "Given template is not compatible with KVM on OpenNode server"
-    if (not(system_type_list[1] in SYSTEM_ARCHES)):
-        raise Exception, "Template architecture is not compatible with KVM on OpenNode server" 
-    st["arch"] = system_type_list[1]
-
-    item_dom_list = vh_dom.getElementsByTagName("Item")
-    for item_dom in item_dom_list:
-        rt_dom = item_dom.getElementsByTagName("rasd:ResourceType")[0]
-        if (rt_dom.firstChild.nodeValue == "3"):
-            vq_dom = item_dom.getElementsByTagName("rasd:VirtualQuantity")[0]
-            bound = "normal"
-            if (item_dom.hasAttribute("ovf:bound")):
-                bound = item_dom.getAttribute("ovf:bound")
-            if (bound == "min"):
-                st["min_vcpu"] = vq_dom.firstChild.nodeValue
-            elif (bound == "max"):
-                st["max_vcpu"] = vq_dom.firstChild.nodeValue
-            else:
-                st["vcpu"] = vq_dom.firstChild.nodeValue
-        elif (rt_dom.firstChild.nodeValue == "4"):
-            vq_dom = item_dom.getElementsByTagName("rasd:VirtualQuantity")[0]
-            bound = "normal"
-            if (item_dom.hasAttribute("ovf:bound")):
-                bound = item_dom.getAttribute("ovf:bound")
-            if (bound == "min"):
-                st["min_memory"] = str(int(vq_dom.firstChild.nodeValue))
-            elif (bound == "max"):
-                st["max_memory"] = str(int(vq_dom.firstChild.nodeValue))
-            else:
-                st["memory"] = str(int(vq_dom.firstChild.nodeValue))
-        elif (rt_dom.firstChild.nodeValue == "10"):
-            vq_dom = item_dom.getElementsByTagName("rasd:Connection")[0]
-            st["interface"]["source_bridge"] = vq_dom.firstChild.nodeValue
-    file_references = dict()
-    disk_list = []
+    memory_settings = [
+        ("memory_min", ovfutil.get_ovf_min_memory_gb(ovf_file)),
+        ("memory_normal", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
+        ("memory_max", ovfutil.get_ovf_max_memory_gb(ovf_file))]
+    # set only those settings that are explicitly specified in the ovf file (non-null)
+    settings.update(dict(filter(operator.itemgetter(1), memory_settings)))
     
-    references_section_dom = envelope_dom.getElementsByTagName("References")[0]
-    file_dom_list = references_section_dom.getElementsByTagName("File")
-    for file_dom in file_dom_list:
-        file_references[file_dom.getAttribute("ovf:id")] = file_dom.getAttribute("ovf:href")
+    vcpu_settings = [
+        ("vcpu_min", ovfutil.get_ovf_min_vcpu(ovf_file)),
+        ("vcpu_normal", ovfutil.get_ovf_normal_vcpu(ovf_file)),
+        ("vcpu_max", ovfutil.get_ovf_max_vcpu(ovf_file))]
+    # set only those settings that are explicitly specified in the ovf file (non-null)
+    settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
-    disk_letter_count = 0
-    disk_section_dom = envelope_dom.getElementsByTagName("DiskSection")[0]
-    disk_dom_list = disk_section_dom.getElementsByTagName("Disk")        
-    for disk_dom in disk_dom_list:
-        disk = dict()
-        disk["template_name"] = file_references[disk_dom.getAttribute("ovf:fileRef")]
-        disk["template_format"] = disk_dom.getAttribute("ovf:format")
-        disk["template_capacity"] = str(int(disk_dom.getAttribute("ovf:capacity"))/1024)
-        disk["deploy_type"] = "file"
-        disk["type"] = "file"
-        disk["device"] = "disk"
-        disk["source_file"] = file_references[disk_dom.getAttribute("ovf:fileRef")]
-        disk["target_dev"] = "hd%s" % DRIVE_LETTERS[disk_letter_count]
-        disk["target_bus"] = "ide"
-        disk_list.append(disk)
-        disk_letter_count = disk_letter_count + 1
-    st["disks"] = disk_list
+    networks = ovfutil.get_networks(ovf_file)
+    if networks:
+        settings["interface"]["source_bridge"] = networks[0]["sourceName"] 
+    
+    settings["disks"] = ovfutil.get_disks(ovf_file)
+    settings["features"] = ovfutil.get_openode_features(ovf_file)
 
-    st.update(calculateSystemMinMax(st))
+def deploy(settings):
+    print "Copying KVM template disks (this may take a while)"
+    prepare_file_system(settings)
 
-    return st
+    print "Generating KVM VM configuration"
+    libvirt_conf_dom = generate_libvirt_conf(settings)
 
-def calculateSystemMinMax(ovf_template_settings):
+    print "Finalyzing KVM template deployment"
+    conn = libvirt.open("qemu:///system")
+    conn.defineXML(libvirt_conf_dom.toxml())
+
+def prepare_file_system(settings):
     """
-    Calculate OpenNode server's system minimum and maximum resource limits:
-    
-    Values to be calculated:
-      - memory min/max size
-      - CPU min/max count 
-        
-    @return: Calculated OpenNode server's system minimum and maximum resource limits
-    @rtype: Dictionary
+    Prepare file system for VM template creation in OVF appliance format:
+        - create template directory if it does not exist
+            - copy disk based images
+        - convert block device based images to file based images (ToDo)
     """
-    #CPU count calculation
-    output = execute("cat /proc/cpuinfo | grep processor")
-    vcpu = str(len(output.split("\n")))
-    ovf_template_settings["max_vcpu"] = vcpu
-    if (int(ovf_template_settings["min_vcpu"]) > int(vcpu)):
-        ovf_template_settings["min_vcpu"] = vcpu
+    for disk in settings["disks"]:
+        disk_template_path = path.join(config.c("general", "storage-endpoint"),
+                                       config.c("general", "default-storage-pool"),
+                                       "kvm", "unpacked", disk["template_name"])
+        if disk["deploy_type"] == "file":
+            disk_deploy_path = path.join(config.c("general", "storage-endpoint"), 
+                                         config.c("general", "default-storage-pool"),
+                                         "images",  settings["vm_type"] + "-" + disk["source_file"])
+            shutil.copy2(disk_template_path, disk_deploy_path)
+        elif disk["deploy_type"] in ["physical", "lvm"]:
+            disk_deploy_path = disk["source_dev"]
+            execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
 
-    #Memory size calculation
-    output = execute("cat /proc/meminfo | grep MemFree")
-    memory_list = output.split()
-    try:
-        int(memory_list[1])
-        memory = str(int(memory_list[1])/1024)
-    except:
-        raise Exception, "Unable to calculate OpenNode server memory size"
-    output = execute("cat /proc/meminfo | grep Buffers")
-    memory_list = output.split()
-    try:
-        int(memory_list[1])
-        memory = str(int(memory) + int(memory_list[1])/1024)   
-    except:
-        raise Exception, "Unable to calculate OpenNode server memory size" 
-    output = execute("cat /proc/meminfo | grep Cached")
-    memory_list = output.split()
-    try:
-        int(memory_list[1])
-        memory = str(int(memory) + int(memory_list[1])/1024)
-    except:
-        raise Exception, "Unable to calculate OpenNode server memory size"
+def adjust_setting_to_systems_resources(ovf_template_settings):
+    """ 
+    Adjusts maximum required resources to match available system resources. 
+    NB! Minimum bound is not adjusted.
+    """
+    st = ovf_template_settings
+    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10**30))))
+    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
 
+    st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10**10))))
+    st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
+    
+    # Checks if minimum required resources exceed maximum available resources
+    errors = []
+    if float(st["memory_min"]) > float(st["memory_max"]):
+        errors.append("Minimum required memory %sGB exceeds total available memory %sGB" %
+                      (st["memory_min"], st["memory_max"]))
+    if int(st["vcpu_min"]) > int(st["vcpu_max"]):
+        errors.append("Minimum required number of vcpus %s exceeds available number %s." %
+                      (st["vcpu_min"], st["vcpu_max"]))
+    return errors
 
-    ovf_template_settings["max_memory"] = memory
+def get_available_instances():
+    """Return a list of defined KVM VMs"""
+    conn = libvirt.open("qemu:///system")
+    name_list = conn.listDefinedDomains()
+    return dict(zip(name_list, name_list))
 
-    if (int(ovf_template_settings["min_memory"]) > int(memory)):
-        ovf_template_settings["min_memory"] = memory
-
-    return ovf_template_settings
-
-def generateKVMLibvirtXML(settings):
+def generate_libvirt_conf(settings):
     """
     Prepare Libvirt XML configuration file from OVF template/appliance.
 
@@ -187,12 +140,12 @@ def generateKVMLibvirtXML(settings):
     libvirt_conf_dom.appendChild(domain_dom)
     
     name_dom = libvirt_conf_dom.createElement("name")
-    name_value = libvirt_conf_dom.createTextNode(settings["vm_name"])
+    name_value = libvirt_conf_dom.createTextNode(settings["vm_type"])
     name_dom.appendChild(name_value)
     domain_dom.appendChild(name_dom)
     
     memory_dom = libvirt_conf_dom.createElement("memory")
-    memory_value = libvirt_conf_dom.createTextNode(str(int(int(settings["memory"])*1024)))
+    memory_value = libvirt_conf_dom.createTextNode(str(int(float(settings["memory"]) * 1024**2)))  # Gb -> Kb
     memory_dom.appendChild(memory_value)
     domain_dom.appendChild(memory_dom)
     
@@ -254,8 +207,8 @@ def generateKVMLibvirtXML(settings):
             disk_dom.setAttribute("device", disk["device"])
             devices_dom.appendChild(disk_dom)
             disk_source_dom = libvirt_conf_dom.createElement("source")
-            disk_source_dom.setAttribute("file", path.join(config("general", "kvm-images"),
-                                                           "%s-%s" % (settings["vm_name"], disk["source_file"])))
+            disk_source_dom.setAttribute("file", path.join(config.c("general", "kvm-images"),
+                                                           "%s-%s" % (settings["vm_type"], disk["source_file"])))
             disk_dom.appendChild(disk_source_dom)
             disk_target_dom = libvirt_conf_dom.createElement("target")
             disk_target_dom.setAttribute("dev", disk["target_dev"])
@@ -327,54 +280,3 @@ def generateKVMLibvirtXML(settings):
     devices_dom.appendChild(graphics_dom)
 
     return libvirt_conf_dom
-
-def deploy(settings):
-    print "Copying KVM template disks (this may take a while)"
-    prepare_file_system(settings)
-
-    print "Generating KVM VM configuration"
-    libvirt_conf_dom = generateKVMLibvirtXML(settings)
-
-    print "Finalyzing KVM template deployment"
-    conn = libvirt.open("qemu:///system")
-    conn.defineXML(libvirt_conf_dom.toxml())
-
-def prepare_file_system(settings):
-    """
-    Prepare file system for VM template creation in OVF appliance format:
-        - create template directory if it does not exist
-            - copy disk based images
-        - convert block device based images to file based images (ToDo)
-    @return: True if file system preparation was successful
-    @rtype: Boolean
-    """
-    for disk in settings["disks"]:
-        disk_template_path = path.join(config.c("general", "storage-endpoint"),
-                                       config.c("general", "default-storage-pool"),
-                                       "kvm", settings["template_name"], disk["template_name"])
-        if disk["deploy_type"] == "file":
-            disk_deploy_path = path.join(config("general", "kvm-images"), settings["vm_name"] + "-" + disk["source_file"])
-            shutil.copy2(disk_template_path, disk_deploy_path)
-        elif disk["deploy_type"] in ["physical", "lvm"]:
-            disk_deploy_path = disk["source_dev"]
-            execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
-    return True
-
-def adjust_setting_to_systems_resources(ovf_filename):
-    return []
-    
-def validate_template_settings(template_settings, input_settings):
-    raise []
-
-def get_available_instances():
-    """Return a list of defined KVM VMs"""
-    conn = libvirt.open("qemu:///system")
-    name_list = conn.listDefinedDomains();
-    vm_dict = dict()
-    for name in name_list:
-        vm_dict[name] = name
-    return vm_dict
-
-def get_template_name(uid):
-    """Return a name of the template used for creating specified VM."""
-    raise NotImplementedError

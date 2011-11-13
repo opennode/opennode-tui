@@ -11,6 +11,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
+from opennode.cli.actions.vm import validation
 
 VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -24,7 +25,7 @@ class OpenNodeTUI(object):
     def display_main_screen(self):
         logic = {'exit': self.menu_exit,
                  'console': self.display_console_menu,
-                 'createvm': self.display_create_vm,
+                 'createvm': self.display_vm_create,
                  'net': self.display_network,
                  'storage': self.display_storage,
                  'oms': self.display_oms,
@@ -295,12 +296,14 @@ class OpenNodeTUI(object):
             return errors
         
         template_settings = vm.get_ovf_template_settings(ovf_file)
-        vm_settings = self._display_template_create_settings_openvz(template_settings, template_sanity_check)
+        vm_settings = self._display_template_create_settings_openvz(template_settings, validation.validate_settings)
+        if not vm_settings:
+            return self.display_main_screen()
         actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
         display_info(self.screen, TITLE, "Done!")
         return self.display_templates()
         
-    def display_create_vm(self):
+    def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
@@ -310,7 +313,7 @@ class OpenNodeTUI(object):
         if vm_type is None: return self.display_main_screen()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None: return self.display_create_vm()
+        if template is None: return self.display_vm_create()
         
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
@@ -324,12 +327,12 @@ class OpenNodeTUI(object):
             return self.display_main_screen()
         
         # get user input
-        user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
+        user_settings = self.display_template_settings(template_settings, validation.validate_settings)
         if user_settings is None:
             return self.display_main_screen()
         # deploy
         vm.deploy(user_settings)
-        display_info(self.screen, TITLE, "OpenVZ container %s deployed successfully" % user_settings["vm_id"])
+        display_info(self.screen, TITLE, "Template deployed successfully!")
         return self.display_main_screen()
 
     def display_template_settings(self, template_settings, validation_callback):
@@ -343,15 +346,11 @@ class OpenNodeTUI(object):
     
     def _display_template_settings_kvm(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
-        form_rows = {}
+        form_rows = []
 
-        form_rows["memory"] = (Textbox(20, 1, "Memory size (GB):", 0, 0), Entry(20, template_settings["memory"]))
         input_memory = Entry(20, template_settings["memory"])
         form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
         
-        form_rows["memory_bounds"] = (Textbox(20, 1, "Memory min/max:", 0, 0), 
-                               Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
-                                                           template_settings["memory_max"]), 0, 0))
         form_rows.append((Textbox(20, 1, "Memory min/max:", 0, 0), 
                           Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
                                                       template_settings["memory_max"]), 0, 0)))
@@ -367,7 +366,6 @@ class OpenNodeTUI(object):
         button_exit = Button("Main menu")
         
         form_rows.append((button_save, button_exit))
-        self._display_template_settings_form()
         
         def _display_form():
             form = GridForm(self.screen, TITLE, 2, 7)
@@ -390,7 +388,7 @@ class OpenNodeTUI(object):
             }
             
             # validate user input
-            errors = validation_callback(template_settings, input_settings)
+            errors = validation_callback(dict(template_settings.items() + input_settings.items()))
             
             if errors:
                 key, msg = errors[0] 
@@ -441,7 +439,7 @@ class OpenNodeTUI(object):
        
         input_hostname = Entry(20, template_settings.get("hostname", ''))
         form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
-	 
+
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
         
@@ -483,14 +481,14 @@ class OpenNodeTUI(object):
                 "vcpulimit": input_cpu_limit.value(),
                 "disk": input_disk_size.value(),
                 "hostname": input_hostname.value(),
-		"ip_address": input_ip.value(),
+     	        "ip_address": input_ip.value(),
                 "nameserver": input_nameserver.value(),
                 "passwd": input_password.value(),
                 "passwd2": input_password2.value(),
             }
             
             # validate user input
-            errors = validation_callback(template_settings, input_settings)
+            errors = validation_callback(dict(template_settings.items() + input_settings.items()))
             
             if errors:
                 key, msg = errors[0] 
@@ -557,7 +555,8 @@ class OpenNodeTUI(object):
             }
             
             # validate user input
-            errors = validation_callback(input_settings)
+            errors = validation_callback(dict(template_settings.items() + input_settings.items()),
+                                         ["memory", "cpu", "disk"])
             
             if errors:
                 key, msg = errors[0] 
