@@ -7,7 +7,7 @@ setup(
     url='http://github.com/opennode/opennode-tui',
     license='GPL',
     version='2.0.1',
-    packages=['opennode'],
+    packages=find_packages(),
     zip_safe=False,
     classifiers=[
         'Development Status :: 4 - Beta',
