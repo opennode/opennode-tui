@@ -331,7 +331,9 @@ class OpenNodeTUI(object):
         if user_settings is None:
             return self.display_main_screen()
         # deploy
+	self.screen.finish()
         vm.deploy(user_settings)
+	self.screen = SnackScreen()
         display_info(self.screen, TITLE, "Template deployed successfully!")
         return self.display_main_screen()
 
@@ -347,6 +349,9 @@ class OpenNodeTUI(object):
     def _display_template_settings_kvm(self, template_settings, validation_callback):
         """ Display configuration details of new VM """
         form_rows = []
+	
+        input_hostname = Entry(20, template_settings.get("hostname", ''))
+        form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
 
         input_memory = Entry(20, template_settings["memory"])
         form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
@@ -383,8 +388,9 @@ class OpenNodeTUI(object):
             
             # collect user input
             input_settings = {
-                "memory": input_memory.value(),  
-                "vcpu": input_cpu.value(),
+                "memory": input_memory.value().strip(),  
+                "vcpu": input_cpu.value().strip(),
+		"hostname": input_hostname.value().strip()
             }
             
             # validate user input

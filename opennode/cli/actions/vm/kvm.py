@@ -140,7 +140,7 @@ def generate_libvirt_conf(settings):
     libvirt_conf_dom.appendChild(domain_dom)
     
     name_dom = libvirt_conf_dom.createElement("name")
-    name_value = libvirt_conf_dom.createTextNode(settings["vm_type"])
+    name_value = libvirt_conf_dom.createTextNode(settings["hostname"])
     name_dom.appendChild(name_value)
     domain_dom.appendChild(name_dom)
     
