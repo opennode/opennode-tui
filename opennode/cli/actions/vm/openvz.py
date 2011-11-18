@@ -20,101 +20,6 @@ def get_ovf_template_settings(ovf_file):
     settings["vm_id"] = _get_available_ct_id()
     return settings
 
-def validate_template_settings(template_settings, input_settings):
-    """ 
-    Checks if settings provided by the user match ovf template settings.
-    
-    @param template_settings: ovf template settings settings.
-    @type template_settings: dict
-
-    @param input_settings: settings provided by the user via ui form.
-    @type input_settings: dict
-    
-    @return: a dictionary of errors mapping incorrect parameters to the corresponding error message. 
-    @type: dict
-    """
-    
-    def _range_check(setting_name, typecheck=float):
-        val = input_settings.get(setting_name, None)
-        min_val = input_settings.get("%s_min" % setting_name, None)
-        max_val = input_settings.get("%s_max" % setting_name, None)
-        if val is None:
-            return
-        else:
-            try:
-                typecheck(val)
-            except ValueError:
-                errors.append((setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))) 
-        if min_val is not None and val < min_val:
-            errors.append((setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val)))
-        if max_val is not None and val > max_val:
-            errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))          
-
-      
-    def validate_cpu_limit():
-        try:
-            vcpulimit = int(input_settings["vcpulimit"])
-        except ValueError:
-            errors.append(("vcpulimit", "CPU count must be integer."))
-        else:
-            if 0 <= vcpulimit <= 100:
-                return True
-            else:
-                errors.append(("vcpulimit", "CPU usage limit must be between 0 and 100."))
-        return False
-
-    
-    def validate_ip():
-        if input_settings.get("ip_address") is None:
-            return True
-        try:
-            socket.inet_aton(input_settings["ip_address"])
-            return True
-        except socket.error:
-            errors.append(("ip_address", "IP-address format not correct."))
-            return False
-    
-    def validate_hostname():
-        if input_settings.get("hostname") is None:
-            errors.append("hostname", "Hostname cannot be missing")
-            return False
-        if len(input_settings.get("hostname")) < 1:
-            errors.append("hostname", "Hostname cannot be 0-length")
-            return False
-        return True
- 
-    def validate_nameserver():
-        if input_settings.get("nameserver") is None:
-            return True
-        try:
-            socket.inet_aton(input_settings["nameserver"])
-            return True
-        except socket.error:
-            errors.append(("nameserver", "Nameserver format not correct."))
-            return False
-         
-    def validate_password():
-        password, password2 = input_settings["passwd"], input_settings["passwd2"]
-        if password == password2:
-            return True
-        else:
-            errors.append(("passwd", "Passwords don't match."))
-        return False
-    
-    errors = []
-    
-    _range_check("memory")
-    _range_check("swap")
-    _range_check("vcpu", int)
-    validate_cpu_limit()
-    _range_check("disk", float)
-    validate_ip()
-    validate_hostname()
-    validate_nameserver()
-    validate_password()
-    
-    return errors
-
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
     return dict(config.clist('ovf-defaults', 'openvz'))
@@ -153,27 +58,23 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     NB! Minimum bound is not adjusted.
     """
     st = ovf_template_settings
-    st["memory_max"] = str(sysres.get_ram_size_gb())
+    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10**30))))
     st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
-
-    st["swap_max"] = str(sysres.get_swap_size_gb())
+    
+    st["swap_max"] = str(min(sysres.get_swap_size_gb(), float(st.get("swap_max", 10**30))))
     st["swap"] = str(min(float(st["swap"]), float(st["swap_max"])))
-
-    st["vcpu_max"] = str(sysres.get_cpu_count())
+    
+    st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10**10))))
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
     
-    st["vcpulimit_max"] = str(sysres.get_cpu_usage_limit())
+    st["vcpulimit_max"] = str(min(sysres.get_cpu_usage_limit(), int(st.get("vcpulimit_max", 100))))
     st["vcpulimit"] = str(min(int(st["vcpulimit"]), int(st["vcpulimit_max"])))
     
-    st["disk_max"] = str(sysres.get_disc_space_gb())
+    st["disk_max"] = str(min(sysres.get_disc_space_gb(), float(st.get("disk_max", 10**30))))
     st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
-
-    return _check_settings_min_max(st)
     
-def _check_settings_min_max(template_settings):
-    """ Checks if minimum required resources exceed maximum available resources. """
+    # Checks if minimum required resources exceed maximum available resources.
     errors = []
-    st = template_settings
     if float(st["memory_min"]) > float(st["memory_max"]):
         errors.append("Minimum required memory %sGB exceeds total available memory %sGB" %
                       (st["memory_min"], st["memory_max"]))
@@ -254,18 +155,15 @@ def generate_nonubc_config(conf_filename, settings):
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    
-    # create OpenVZ CT
     execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
-    
-    # generate ubc and non-ubc configuration
+
+def generate_config(ovf_settings):    
+    """ Generates  ubc and non-ubc configuration """
     conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"]) 
     ubc_conf_str = generate_ubc_config(ovf_settings)
     non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
-    
-    # final configuration is ubc + non-ubc
-    openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str)
+    openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc
     
     # overwrite configuration
     with open(conf_filename, 'w') as conf_file:
@@ -274,9 +172,14 @@ def create_container(ovf_settings):
 
 def deploy(ovf_settings):
     """ Deploys OpenVZ container """
-    #Network configuration for VETH
-    #ToDo: implement support for VETH
-    #Network configuration for VENET
+    
+    print "Creating OpenVZ container..."
+    create_container(ovf_settings)
+    
+    print "Generating configuration..."
+    generate_config(ovf_settings)
+    
+    print "Deploying..."
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
