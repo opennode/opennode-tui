@@ -15,7 +15,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
 from opennode.cli import actions
 from opennode.cli.config import c
 from opennode.cli.actions.vm import validation
-from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm
+from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm, KvmTemplateForm
 
 VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -329,7 +329,9 @@ class OpenNodeTUI(object):
         if not user_settings:
             return self.display_main_screen()
         # deploy
+        self.screen.finish()
         vm.deploy(user_settings)
+        self.screen = SnackScreen()
         display_info(self.screen, TITLE, "Template deployed successfully!")
         return self.display_main_screen()
 

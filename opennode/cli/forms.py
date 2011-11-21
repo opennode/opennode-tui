@@ -30,7 +30,8 @@ class KvmForm(Form):
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])  
         self.vcpu = IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
-        Form.__init__(self, screen, title, [self.memory, self.vcpu])
+        self.hostname = StringField("hostname", settings.get("hostname", "")) 
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname])
     
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
@@ -41,6 +42,7 @@ class KvmForm(Form):
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "CPU number min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.vcpu.min_value, self.vcpu.max_value), 0, 0)),
+            (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
             (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
