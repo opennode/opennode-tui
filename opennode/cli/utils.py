@@ -17,6 +17,9 @@ def delete(fnm):
     except OSError:
         pass
 
+def get_file_size_bytes(path):
+    return int(os.stat(path)[6]) 
+
 class CommandException(Exception):
     pass
 

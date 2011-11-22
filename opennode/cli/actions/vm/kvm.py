@@ -8,19 +8,22 @@ from contextlib import closing
 
 import libvirt
 from ovf.OvfFile import OvfFile, OVF_VERSION
+from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
-from opennode.cli.utils import execute
+from opennode.cli.utils import execute, get_file_size_bytes
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
 def get_ovf_template_settings(ovf_file):
+    """ Parses ovf file and creates a dictionary of settings """
     settings = read_default_ovf_settings()
     read_ovf_settings(settings, ovf_file)
     settings["template_name"] = path.basename(ovf_file.path)
     return settings
 
 def get_active_template_settings(vm_name, storage_pool):
+    """ Reads libvirt configuration of the specified kvm instance """
     settings = read_default_ovf_settings()
 
     kvm_xml_dom = get_libvirt_conf_xml(vm_name)
@@ -104,9 +107,9 @@ def read_ovf_settings(settings, ovf_file):
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
-    networks = ovfutil.get_networks(ovf_file)
-    if networks:
-        settings["interfaces"].append({"type" : "bridge", "source_bridge": networks[0]["sourceName"]}) 
+    network_list = ovfutil.get_networks(ovf_file)
+    for network in network_list:
+        settings["interfaces"].append({"type" : "bridge", "source_bridge": network["sourceName"]}) 
     
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
@@ -291,14 +294,14 @@ def generate_libvirt_conf(settings):
             disk_dom.appendChild(disk_target_dom)
         drive_letter_count = drive_letter_count + 1
     
-    # TODO: can we have more than 1 interface?
-    interface_dom = libvirt_conf_dom.createElement("interface")
-    interface_dom.setAttribute("type", settings["interfaces"][0]["type"])
-    devices_dom.appendChild(interface_dom)
-    interface_source_dom = libvirt_conf_dom.createElement("source")
-    interface_source_dom.setAttribute("bridge", settings["interfaces"][0]["source_bridge"])
-    interface_dom.appendChild(interface_source_dom)
-
+    for interface in settings["interfaces"]:
+        interface_dom = libvirt_conf_dom.createElement("interface")
+        interface_dom.setAttribute("type", interface["type"])
+        devices_dom.appendChild(interface_dom)
+        interface_source_dom = libvirt_conf_dom.createElement("source")
+        interface_source_dom.setAttribute("bridge", interface["source_bridge"])
+        interface_dom.appendChild(interface_source_dom)
+    
     serial_dom = libvirt_conf_dom.createElement("serial")
     serial_dom.setAttribute("type", settings["serial"]["type"])
     devices_dom.appendChild(serial_dom)
@@ -329,7 +332,7 @@ def generate_libvirt_conf(settings):
 
 def save_as_ovf(vm_settings, storage_pool):
     """
-    Creates ovf template archive for the specified container. 
+    Creates ovf template archive for the specified VM. 
     Steps:
         - relocate kvm disk files
         - generate ovf configuration file
@@ -339,11 +342,11 @@ def save_as_ovf(vm_settings, storage_pool):
     target_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
     
     # prepare file system
-    print "Preparing disks (This may take a while)."
+    print "Preparing disks... (This may take a while)"
     vm_settings["disks"] = _prepare_disks(vm_settings, target_dir) 
     
     # generate and save ovf configuration file
-    print "Generating ovf file."
+    print "Generating ovf file..."
     ovf = _generate_ovf_file(vm_settings)
     ovf_fnm = path.join(target_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
@@ -357,17 +360,20 @@ def save_as_ovf(vm_settings, storage_pool):
         for disk in vm_settings["disks"]:
             tar.add(disk["new_path"], arcname=path.basename(disk["new_path"]))
     
-    # TODO: remove files
-    print "Done! Template saved to %s" % ovf_archive_fnm
+    # remove generated files
+    os.remove(ovf_fnm)
+    for disk in vm_settings["disks"]:
+        os.remove(disk["new_path"])
+    
+    print "Done! Template saved at %s" % ovf_archive_fnm
 
 def _prepare_disks(vm_settings, target_dir):
     """
     Prepare VM disks for OVF appliance creation. 
     File based disks will be copied to VM creation directory.
     LVM and block-device based disks will be converted into file based images and copied to creation directory.
-
-    @param disk_list_dom: List of disk DOM objects
-    @type disk_list_dom: NodeList
+    
+    @param target_dir: directory where disks will be copied
     """
     disk_list_dom = get_libvirt_conf_xml(vm_settings["vm_name"])\
                             .getElementsByTagName("domain")[0].getElementsByTagName("disk")
@@ -385,24 +391,25 @@ def _prepare_disks(vm_settings, target_dir):
                 source_dev = source_dom.getAttribute("dev")
                 execute("qemu-img convert -f raw -O qcow2 %s %s" % (source_dev, new_path))
             disk_dict = {
-                "file_size" : str(os.stat(new_path)[6]),
+                "file_size" : str(get_file_size_bytes(new_path)),
                 "filename" : filename,
                 "new_path" : new_path,
                 "file_id" : "diskfile%d" % (disk_num), 
                 "disk_id" : "vmdisk%d.img" % (disk_num), 
-                "disk_capacity" : str(get_kvm_disk_capasity(new_path))
+                "disk_capacity" : str(get_kvm_disk_capasity_gb(new_path))
             }
             disk_list.append(disk_dict)
     return disk_list
 
-def get_kvm_disk_capasity(path):
+def get_kvm_disk_capasity_gb(path):
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
     for row in rows:
         row_elements = row.split(",")
-        capacity += 1024 * (int(row_elements[3]) + int(row_elements[4]))
-    return capacity
+        used, available = int(row_elements[3]), int(row_elements[4])
+        capacity += used + available
+    return round(capacity / 1024.0 ** 2, 3)
 
 def _generate_ovf_file(vm_settings):
     """
@@ -443,15 +450,14 @@ def _generate_ovf_file(vm_settings):
     for bound, memory in zip(["normal", "min", "max"],
                              [vm_settings.get("memory%s" % pfx) for pfx in ["", "_min", "_max"]]):
         if memory:
-            memory_mb = str(int(round(float(memory) * 1024)))
             ovf.addResourceItem(hardwareSection, {
-                "AllocationUnits": "MegaBytes",
-                "Caption": "%s MB of memory" % memory_mb,
+                "AllocationUnits": "GigaBytes",
+                "Caption": "%s GB of memory" % memory,
                 "Description": "Memory Size",
-                "ElementName": "%s MB of memory" % memory_mb ,
+                "ElementName": "%s GB of memory" % memory,
                 "InstanceID": str(instanceId),
                 "ResourceType": "4",
-                "VirtualQuantity": memory_mb
+                "VirtualQuantity": memory
                 }, bound=bound)
             instanceId += 1
     
@@ -488,7 +494,10 @@ def _generate_ovf_file(vm_settings):
             "diskId": disk["disk_id"],
             "fileRef": disk["file_id"],
             "capacity": str(disk["disk_capacity"]),
-            "format": "qcow2"
+            "format": "qcow2",
+            "parentRef": None,
+            "populatedSize": None,
+            "capacityAllocUnits": "GigaBytes"
         })
     ovf.createReferences()
     ovf.createDiskSection(ovf_disk_list, "KVM VM template disks")

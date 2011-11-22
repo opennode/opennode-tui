@@ -15,11 +15,12 @@ from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli import constants
-from opennode.cli.utils import SimpleConfigParser, execute
+from opennode.cli.utils import SimpleConfigParser, execute, get_file_size_bytes
 from opennode.cli.actions.vm.config_template import openvz_template
 
 
 def get_ovf_template_settings(ovf_file):
+    """ Parses ovf file and creates a dictionary of settings """
     settings = read_default_ovf_settings()
     ovf_settings = read_ovf_settings(ovf_file)
     settings.update(ovf_settings)
@@ -27,6 +28,7 @@ def get_ovf_template_settings(ovf_file):
     return settings
 
 def get_active_template_settings(vm_name, storage_pool):
+    """ Reads ovf settings of the specified VM """
     ovf_file = OvfFile(path.join(config.c("general", "storage-endpoint"), storage_pool, 
                        "openvz", "unpacked", get_template_name(vm_name) + ".ovf"))
     return get_ovf_template_settings(ovf_file)
@@ -238,7 +240,7 @@ def save_as_ovf(vm_settings, storage_pool):
     ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])
     
     # Pack vm container catalog
-    print "Archiving vm container catalog %s. This may take a while..." % ct_source_dir
+    print "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
     with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
         for file in os.listdir(ct_source_dir):
             tar.add(path.join(ct_source_dir, file), arcname=file)
@@ -290,15 +292,14 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
     for bound, memory in zip(["normal", "min", "max"],
                              [vm_settings.get("memory%s" % pfx) for pfx in ["", "_min", "_max"]]):
         if memory:
-            memory_mb = str(int(round(float(memory) * 1024)))
             ovf.addResourceItem(hardwareSection, {
-                "AllocationUnits": "MegaBytes",
-                "Caption": "%s MB of memory" % memory_mb,
+                "AllocationUnits": "GigaBytes",
+                "Caption": "%s GB of memory" % memory,
                 "Description": "Memory Size",
-                "ElementName": "%s MB of memory" % memory_mb ,
+                "ElementName": "%s GB of memory" % memory,
                 "InstanceID": str(instanceId),
                 "ResourceType": "4",
-                "VirtualQuantity": memory_mb
+                "VirtualQuantity": memory
                 }, bound=bound)
             instanceId += 1
     
@@ -318,7 +319,7 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
                                  path.basename("%s.tar.gz" % vm_settings["template_name"]), 
                                  file_id="diskfile1",
-                                 size=str(path.getsize(ct_archive_fnm)),
+                                 size=str(get_file_size_bytes(ct_archive_fnm)),
                                  compression="gz",
                                  checksum=get_checksum(ct_archive_fnm))
     ovf.addReferencedFile(ref_file)
