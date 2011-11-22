@@ -325,7 +325,7 @@ class KVM2OVF:
         @rtype: Integer
         """
         i = 1
-	ovf_disk_list = []
+	    ovf_disk_list = []
         for disk_dom in disk_list_dom:
             if (disk_dom.getAttribute("device") == "disk"):
                 if (disk_dom.getAttribute("type") == "file"):

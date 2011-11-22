@@ -5,6 +5,7 @@
 import sys
 sys.path = filter(lambda x: not x.startswith("/opt"), sys.path)
 import os
+from os import path
 
 from ovf.OvfFile import OvfFile
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
@@ -14,7 +15,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
-from opennode.cli.actions.vm import validation
+from opennode.cli.actions.vm import validation, kvm
 from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm, KvmTemplateForm
 
 VERSION = '2.0.0a'
@@ -262,29 +263,33 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        # pick an instance and locate corresponding ovf file
-        action, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        # pick an instance
+        action, vm_name, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
         if action == 'back':
             return self.display_templates()
-        ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked", 
-                                        vm.get_template_name(ctid) + ".ovf"))
         
-        # create new template settings
-        template_settings = vm.get_ovf_template_settings(ovf_file)
-        if template_settings["vm_type"] == "openvz":
+        # extract active template settings
+        template_settings = vm.get_active_template_settings(vm_name, storage_pool)
+        template_settings["template_name"] = new_templ_name
+        template_settings["vm_name"] = vm_name
+        
+        if vm_type == "openvz":
             form = OpoenvzTemplateForm(self.screen, TITLE, template_settings)
-        elif template_settings["vm_type"] == "kvm":
+        elif vm_type == "kvm":
             form = KvmTemplateForm(self.screen, TITLE, template_settings)
         else:
-            raise ValueError, "Vm '%s' not supported" % template_settings["vm_type"]
+            raise ValueError, "Vm '%s' is not supported" % template_settings["vm_type"]
+        
+        # get user settings
         user_settings = self._display_template_create_settings(form, template_settings)
         if not user_settings:
             return self.display_main_screen()
-        vm_settings = template_settings
-        vm_settings.update(user_settings)
-        actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
-        display_info(self.screen, TITLE, "Done!")
+        template_settings.update(user_settings)
+        self.screen.finish()
+        
+        # pack template
+        vm.save_as_ovf(template_settings, storage_pool)
+        self.screen = SnackScreen()
         return self.display_templates()
     
     def _display_template_create_settings(self, form, template_settings):

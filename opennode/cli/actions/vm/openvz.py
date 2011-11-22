@@ -1,5 +1,4 @@
 import os
-import socket
 import operator
 import datetime
 import tarfile
@@ -27,6 +26,11 @@ def get_ovf_template_settings(ovf_file):
     settings["vm_id"] = _get_available_ct_id()
     return settings
 
+def get_active_template_settings(vm_name, storage_pool):
+    ovf_file = OvfFile(path.join(config.c("general", "storage-endpoint"), storage_pool, 
+                       "openvz", "unpacked", get_template_name(vm_name) + ".ovf"))
+    return get_ovf_template_settings(ovf_file)
+    
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
     return dict(config.clist('ovf-defaults', 'openvz'))
@@ -219,7 +223,7 @@ def get_hostname(ctid):
         raise RuntimeError, "Incorrect format for a container id."
     return execute("vzlist %s -H -o hostname" % ctid)
 
-def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
+def save_as_ovf(vm_settings, storage_pool):
     """
     Creates ovf template archive for the specified container. 
     Steps:
@@ -228,10 +232,10 @@ def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
         - pack ovf and container arhive into tar.gz file  
     """
 
-    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, vm_type)
+    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
-    ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % new_tmpl_name)
-    ct_source_dir = path.join("/vz/private", str(ctid))
+    ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % vm_settings["template_name"])
+    ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])
     
     # Pack vm container catalog
     print "Archiving vm container catalog %s. This may take a while..." % ct_source_dir
@@ -241,31 +245,31 @@ def save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_tmpl_name):
     
     # generate and save ovf configuration file
     print "Generating ovf file..."
-    ovf = _generate_ovf_file(vm_type, ctid, vm_settings, new_tmpl_name, ct_archive_fnm)
-    ovf_fnm = path.join(unpacked_dir, "%s.ovf" % new_tmpl_name)
+    ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
+    ovf_fnm = path.join(unpacked_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
         ovf.writeFile(f, pretty=True, encoding='UTF-8')
     
     # pack container archive and ovf file
     print "Archiving..."
-    ovf_archive_fnm = path.join(dest_dir, "%s.tar" % new_tmpl_name)
+    ovf_archive_fnm = path.join(dest_dir, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
         
     print "Done! Saved template to %s" % ovf_archive_fnm
     
-def _generate_ovf_file(vm_type, ctid, vm_settings, template_name, ct_archive_fnm):
+def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ovf = OvfFile()
     ovf.createEnvelope()
     instanceId = 0
-    virtualSystem = ovf.createVirtualSystem(ident=template_name, 
-                                            info="%s OpenNode template" % vm_type.title())
+    virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"], 
+                                            info="OpenVZ OpenNode template")
     hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem, 
                                 ident="virtual_hadrware", 
                                 info="Virtual hardware requirements for a virtual machine")
     ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId), 
-                     {"VirtualSystemType": vm_type.lower()})
+                     {"VirtualSystemType": "openvz"})
     instanceId += 1
     
     # add cpu section
@@ -312,7 +316,7 @@ def _generate_ovf_file(vm_type, ctid, vm_settings, template_name, ct_archive_fnm
     
     # add reference a file (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
     ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
-                                 path.basename("%s.tar.gz" % template_name), 
+                                 path.basename("%s.tar.gz" % vm_settings["template_name"]), 
                                  file_id="diskfile1",
                                  size=str(path.getsize(ct_archive_fnm)),
                                  compression="gz",
@@ -327,11 +331,11 @@ def _generate_ovf_file(vm_type, ctid, vm_settings, template_name, ct_archive_fnm
     ovf.createDiskSection([{
         "diskId": "vmdisk1", 
         "capacity": vm_settings["disk"],
-        "populatedSize": get_ct_disk_usage(ctid),
+        "populatedSize": get_ct_disk_usage(vm_settings["vm_name"]),
         "capacityAllocUnits": "GigaBytes",
         "fileRef": "diskfile1",
         "parentRef": None,
         "format": "tar.gz"}],
-        "%s CT template disks" % vm_type.title())
+        "OpenVZ CT template disks")
     
     return ovf 

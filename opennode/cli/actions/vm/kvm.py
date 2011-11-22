@@ -3,8 +3,11 @@ import xml.dom
 import shutil
 from os import path
 import operator
+import tarfile
+from contextlib import closing
 
 import libvirt
+from ovf.OvfFile import OvfFile, OVF_VERSION
 
 from opennode.cli import config
 from opennode.cli.utils import execute
@@ -14,16 +17,56 @@ from opennode.cli.actions import sysresources as sysres
 def get_ovf_template_settings(ovf_file):
     settings = read_default_ovf_settings()
     read_ovf_settings(settings, ovf_file)
-    settings["template_name"] = os.path.basename(ovf_file.path)
+    settings["template_name"] = path.basename(ovf_file.path)
     return settings
+
+def get_active_template_settings(vm_name, storage_pool):
+    settings = read_default_ovf_settings()
+
+    kvm_xml_dom = get_libvirt_conf_xml(vm_name)
+    domain_dom = kvm_xml_dom.getElementsByTagName("domain")[0]
+    interface_list_dom = domain_dom.getElementsByTagName("interface")
+
+    os_dom = domain_dom.getElementsByTagName("os")[0]
+    os_type_dom = os_dom.getElementsByTagName("type")[0]
+    os_arch = os_type_dom.getAttribute("arch")
+    settings["arch"] = os_arch
+
+    vcpu_count = domain_dom.getElementsByTagName("vcpu")[0].firstChild.nodeValue
+    settings["vcpu"] = vcpu_count
+    settings["min_vcpu"] = vcpu_count
+    settings["max_vcpu"] = vcpu_count
+
+    memory_count = domain_dom.getElementsByTagName("memory")[0].firstChild.nodeValue
+    settings["memory"] = str(round(float(memory_count) / 1024 ** 2, 3)) # memory in Gb
+    settings["min_memory"] = str(round(float(memory_count) / 1024 ** 2, 3))
+    settings["max_memory"] = str(round(float(memory_count) / 1024 ** 2, 3))
     
+    features_dom_list = domain_dom.getElementsByTagName("features")[0].childNodes
+    for feature in features_dom_list:
+        if (feature.nodeType == feature.ELEMENT_NODE):
+            settings["features"].append(str(feature.nodeName))
+    
+    for interface_dom in interface_list_dom:
+        if interface_dom.getAttribute("type") == "bridge":
+            mac_address = interface_dom.getElementsByTagName("mac")[0].getAttribute("address")
+            bridge_name = interface_dom.getElementsByTagName("source")[0].getAttribute("bridge")
+            settings["interfaces"].append({"type" : "bridge", "source_bridge" : bridge_name, "mac_address" : mac_address})
+    return settings
+
+def get_libvirt_conf_xml(vm_name):
+    conn = libvirt.open("qemu:///system")
+    vm = conn.lookupByName(vm_name)
+    document = xml.dom.minidom.parseString(vm.XMLDesc(0))
+    return document
+
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
     settings = {
-        "interface": {"type" : "bridge", "source_bridge" : "vmbr0"},
         "serial": {"type" : "pty", "target_port" : 0},
         "console": {"type" : "pty", "target_port" : 0},
         "graphics": {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "us"},
+        "interfaces": [],
         "features": [],
         "disks": []
     }
@@ -34,7 +77,7 @@ def read_default_ovf_settings():
 
 def read_ovf_settings(settings, ovf_file):
     """
-    Parse OVF template/appliance XML configuration and save parsed settings
+    Parses OVF template/appliance XML configuration and save parsed settings.
 
     @return: Parsed OVF template/appliance XML configuration settings
     @rtype: Dictionary
@@ -63,10 +106,11 @@ def read_ovf_settings(settings, ovf_file):
     
     networks = ovfutil.get_networks(ovf_file)
     if networks:
-        settings["interface"]["source_bridge"] = networks[0]["sourceName"] 
+        settings["interfaces"].append({"type" : "bridge", "source_bridge": networks[0]["sourceName"]}) 
     
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
+    return settings
 
 def deploy(settings):
     print "Copying KVM template disks (this may take a while)"
@@ -83,8 +127,8 @@ def prepare_file_system(settings):
     """
     Prepare file system for VM template creation in OVF appliance format:
         - create template directory if it does not exist
-            - copy disk based images
-        - convert block device based images to file based images (ToDo)
+        - copy disk based images
+        - convert block device based images to file based images
     """
     for disk in settings["disks"]:
         disk_template_path = path.join(config.c("general", "storage-endpoint"),
@@ -100,7 +144,7 @@ def prepare_file_system(settings):
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
 
 def adjust_setting_to_systems_resources(ovf_template_settings):
-    """ 
+    """
     Adjusts maximum required resources to match available system resources. 
     NB! Minimum bound is not adjusted.
     """
@@ -200,7 +244,7 @@ def generate_libvirt_conf(settings):
 
     drive_letter_count = 0        
     for disk in settings["disks"]:
-        if (disk["deploy_type"] == "file"):
+        if disk["deploy_type"] == "file":
             #File based disk
             disk_dom = libvirt_conf_dom.createElement("disk")
             disk_dom.setAttribute("type", disk["type"])
@@ -215,7 +259,7 @@ def generate_libvirt_conf(settings):
             disk_target_dom.setAttribute("dev", disk["target_dev"])
             disk_target_dom.setAttribute("bus", disk["target_bus"])
             disk_dom.appendChild(disk_target_dom)
-        elif (disk["deploy_type"] == "physical"):
+        elif disk["deploy_type"] == "physical":
             #Physical block-device based disk
             disk_dom = libvirt_conf_dom.createElement("disk")
             disk_dom.setAttribute("type", disk["type"])
@@ -246,12 +290,13 @@ def generate_libvirt_conf(settings):
             disk_target_dom.setAttribute("bus", disk["target_bus"])
             disk_dom.appendChild(disk_target_dom)
         drive_letter_count = drive_letter_count + 1
-
+    
+    # TODO: can we have more than 1 interface?
     interface_dom = libvirt_conf_dom.createElement("interface")
-    interface_dom.setAttribute("type", settings["interface"]["type"])
+    interface_dom.setAttribute("type", settings["interfaces"][0]["type"])
     devices_dom.appendChild(interface_dom)
     interface_source_dom = libvirt_conf_dom.createElement("source")
-    interface_source_dom.setAttribute("bridge", settings["interface"]["source_bridge"])
+    interface_source_dom.setAttribute("bridge", settings["interfaces"][0]["source_bridge"])
     interface_dom.appendChild(interface_source_dom)
 
     serial_dom = libvirt_conf_dom.createElement("serial")
@@ -281,3 +326,188 @@ def generate_libvirt_conf(settings):
     devices_dom.appendChild(graphics_dom)
 
     return libvirt_conf_dom
+
+def save_as_ovf(vm_settings, storage_pool):
+    """
+    Creates ovf template archive for the specified container. 
+    Steps:
+        - relocate kvm disk files
+        - generate ovf configuration file
+        - pack ovf and disk files into tar.gz file  
+    """
+     
+    target_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
+    
+    # prepare file system
+    print "Preparing disks (This may take a while)."
+    vm_settings["disks"] = _prepare_disks(vm_settings, target_dir) 
+    
+    # generate and save ovf configuration file
+    print "Generating ovf file."
+    ovf = _generate_ovf_file(vm_settings)
+    ovf_fnm = path.join(target_dir, "%s.ovf" % vm_settings["template_name"])
+    with open(ovf_fnm, 'w') as f:
+        ovf.writeFile(f, pretty=True, encoding='UTF-8')
+    
+    # pack container archive and ovf file
+    print "Archiving..."
+    ovf_archive_fnm = path.join(target_dir, "%s.tar" % vm_settings["template_name"])
+    with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
+        tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
+        for disk in vm_settings["disks"]:
+            tar.add(disk["new_path"], arcname=path.basename(disk["new_path"]))
+    
+    # TODO: remove files
+    print "Done! Template saved to %s" % ovf_archive_fnm
+
+def _prepare_disks(vm_settings, target_dir):
+    """
+    Prepare VM disks for OVF appliance creation. 
+    File based disks will be copied to VM creation directory.
+    LVM and block-device based disks will be converted into file based images and copied to creation directory.
+
+    @param disk_list_dom: List of disk DOM objects
+    @type disk_list_dom: NodeList
+    """
+    disk_list_dom = get_libvirt_conf_xml(vm_settings["vm_name"])\
+                            .getElementsByTagName("domain")[0].getElementsByTagName("disk")
+    disk_list = []
+    for counter, disk_dom in enumerate(disk_list_dom):
+        disk_num = counter + 1
+        if disk_dom.getAttribute("device") == "disk":
+            source_dom = disk_dom.getElementsByTagName("source")[0]
+            filename = "%s%d.img" % (vm_settings["template_name"], disk_num)
+            new_path = path.join(target_dir, filename)
+            if disk_dom.getAttribute("type") == "file":
+                disk_path = source_dom.getAttribute("file")
+                shutil.copy2(disk_path, new_path)
+            elif disk_dom.getAttribute("type") == "block":
+                source_dev = source_dom.getAttribute("dev")
+                execute("qemu-img convert -f raw -O qcow2 %s %s" % (source_dev, new_path))
+            disk_dict = {
+                "file_size" : str(os.stat(new_path)[6]),
+                "filename" : filename,
+                "new_path" : new_path,
+                "file_id" : "diskfile%d" % (disk_num), 
+                "disk_id" : "vmdisk%d.img" % (disk_num), 
+                "disk_capacity" : str(get_kvm_disk_capasity(new_path))
+            }
+            disk_list.append(disk_dict)
+    return disk_list
+
+def get_kvm_disk_capasity(path):
+    res = execute("virt-df --csv %s" % (path))
+    rows = res.split("\n")[2:]
+    capacity = 0
+    for row in rows:
+        row_elements = row.split(",")
+        capacity += 1024 * (int(row_elements[3]) + int(row_elements[4]))
+    return capacity
+
+def _generate_ovf_file(vm_settings):
+    """
+    Prepare OVF XML configuration file from Libvirt's KVM xml_dump.
+
+    @return: KVM VM configuration in OVF standard
+    @rtype: DOM Document
+    """
+    ovf = OvfFile()
+    ovf.createEnvelope()
+    instanceId = 0
+    virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"], 
+                                            info="KVM OpenNode template")
+    hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem, 
+                                ident="virtual_hadrware", 
+                                info="Virtual hardware requirements for a virtual machine")
+    
+    # add virtual system
+    ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId), 
+                     {"VirtualSystemType": "%s-%s" % (vm_settings["domain_type"], vm_settings["arch"])})
+    instanceId += 1
+    
+    # add cpu section
+    for bound, cpu in zip(["normal", "min", "max"],
+                          [vm_settings.get("vcpu%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if cpu:
+            ovf.addResourceItem(hardwareSection, {
+                "Caption": "%s virtual CPU" % cpu,
+                "Description": "Number of virtual CPUs",
+                "ElementName": "%s virtual CPU" % cpu,
+                "InstanceID": str(instanceId),
+                "ResourceType": "3",
+                "VirtualQuantity": cpu
+                }, bound=bound)
+            instanceId += 1
+    
+    # add memory section
+    for bound, memory in zip(["normal", "min", "max"],
+                             [vm_settings.get("memory%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if memory:
+            memory_mb = str(int(round(float(memory) * 1024)))
+            ovf.addResourceItem(hardwareSection, {
+                "AllocationUnits": "MegaBytes",
+                "Caption": "%s MB of memory" % memory_mb,
+                "Description": "Memory Size",
+                "ElementName": "%s MB of memory" % memory_mb ,
+                "InstanceID": str(instanceId),
+                "ResourceType": "4",
+                "VirtualQuantity": memory_mb
+                }, bound=bound)
+            instanceId += 1
+    
+    # add network interfaces
+    network_list = []
+    for interface in vm_settings["interfaces"]:
+        if interface["type"] == "bridge":
+            ovf.addResourceItem(hardwareSection, {
+                "Address": interface["mac_address"],
+                "AutomaticAllocation": "true",
+                "Caption": "Ethernet adapter on '%s'" % interface["source_bridge"],
+                "Connection": interface["source_bridge"],
+                "Description": "Network interface",
+                "ElementName": "Ethernet adapter on '%s'" % interface["source_bridge"],
+                "InstanceID": "%d" % instanceId,
+                "ResourceSubType": "E1000",
+                "ResourceType": "10",
+            })
+            network_list.append({
+                "networkID": interface["source_bridge"],
+                "networkName": interface["source_bridge"],
+                "description": "Network for OVF appliance"
+            })
+            instanceId += 1
+    ovf.createNetworkSection(network_list, "Network for OVF appliance")
+    
+    # add references of KVM VM disks (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
+    ovf_disk_list = []
+    for disk in vm_settings["disks"]:
+        ref_file = OvfReferencedFile(path=disk["new_path"], href=disk["filename"], 
+                                     file_id=disk["file_id"], size = disk["file_size"])
+        ovf.addReferencedFile(ref_file)
+        ovf_disk_list.append({
+            "diskId": disk["disk_id"],
+            "fileRef": disk["file_id"],
+            "capacity": str(disk["disk_capacity"]),
+            "format": "qcow2"
+        })
+    ovf.createReferences()
+    ovf.createDiskSection(ovf_disk_list, "KVM VM template disks")
+    
+    # Add OpenNode section to Virtual System node
+    doc = xml.dom.minidom.Document()
+    on_section = doc.createElement("opennodens:OpenNodeSection")
+    on_section.setAttribute("ovf:required","false")
+    virtualSystem.appendChild(on_section)
+
+    info_dom = doc.createElement("Info")
+    on_section.appendChild(info_dom)
+    info_value = doc.createTextNode("OpenNode Section for template customization")
+    info_dom.appendChild(info_value)
+    
+    features_dom = doc.createElement("Features")
+    on_section.appendChild(features_dom)
+    
+    for feature in vm_settings["features"]:
+        feature_dom = doc.createElement(feature)
+        features_dom.appendChild(feature_dom)
+    return ovf 

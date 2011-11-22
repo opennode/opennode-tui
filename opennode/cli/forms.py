@@ -61,10 +61,10 @@ class OpenvzForm(Form):
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
         self.hostname = StringField("hostname", settings.get("hostname", ""))
-        self.ip_address = IpField("ip_address", settings["ip_address"])
+        self.ip_address = IpField("ip_address", settings["ip_address"], display_name="ip address")
         self.nameserver = IpField("nameserver", settings["nameserver"])
-        self.password = PasswordField("password", settings["passwd"])
-        self.password2 = PasswordField("password2", settings["passwd"])
+        self.password = PasswordField("passwd", settings["passwd"], display_name="password")
+        self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu, 
                                             self.vcpulimit, self.disk, self.hostname,
                                             self.ip_address, self.nameserver, 
@@ -113,11 +113,11 @@ class OpoenvzTemplateForm(Form):
     
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""))
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""))
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory")
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory")
         self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""))
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""))
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu")
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu")
         self.disk = FloatField("disk", settings["disk"])
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max, 
                                             self.vcpu, self.vcpu_min, self.vcpu_max, 
@@ -151,37 +151,72 @@ class OpoenvzTemplateForm(Form):
 
 
 class KvmTemplateForm(Form):
-    pass
+    
+    def __init__(self, screen, title, settings):
+        self.memory = FloatField("memory", settings["memory"])
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory")
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory")
+        self.vcpu = FloatField("vcpu", settings["vcpu"])
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu")
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu")
+        Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max, 
+                                            self.vcpu, self.vcpu_min, self.vcpu_max])
+    
+    def display(self):
+        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        rows = [
+            (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
+            (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
+            (Textbox(20, 1, "Max memory size (GB):", 0, 0), self.memory_max),
+            (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
+            (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
+            (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
+            (button_save, button_exit)
+        ]
+        form = GridForm(self.screen, self.title, 2, len(rows))
+        for i, row in enumerate(rows): 
+            for j, cell in enumerate(row):
+                form.add(cell, j, i)
+        return form.runOnce() != button_exit
+    
+    def validate(self):
+        if Form.validate(self):
+            self.errors.extend(validate_range("memory", self.memory.value(), self.memory_min.value(),
+                                              self.memory_max.value(), float))
+            self.errors.extend(validate_range("vcpu", self.vcpu.value(), self.vcpu_min.value(), 
+                                              self.vcpu_max.value(), int))
+        return not self.errors
 
 class Field(Entry):
     errors = []
     
     def __init__(self, name, default, width, min_value=None, max_value=None, 
-                 typee=None, required=True, password=0):
+                 typee=None, required=True, password=0, display_name=None):
         Entry.__init__(self, width, default, password=password)
         self.name, self.min_value, self.max_value = name, min_value, max_value  
         self.typee, self.required =  typee, required
+        self.display_name = display_name or name
     
     def validate(self):
         self.errors = []
         if self.required:
-            self.errors.extend(validate_required(self.name, self.value()))
+            self.errors.extend(validate_required(self.display_name, self.value()))
         if self.typee:
-            er = validate_type(self.name, self.value(), self.typee)
+            er = validate_type(self.display_name, self.value(), self.typee)
             if er:
                 self.errors.extend(er)
             elif self.min_value or self.max_value:
-                self.errors.extend(validate_range(self.name, self.value(), self.min_value, 
+                self.errors.extend(validate_range(self.display_name, self.value(), self.min_value, 
                                                   self.max_value, self.typee))
         return not self.errors
 
 class StringField(Field):
-    def __init__(self, name, default, required=True, width=20):
-        Field.__init__(self, name, default, width, required=required)
+    def __init__(self, name, default, required=True, width=20, display_name=None):
+        Field.__init__(self, name, default, width, required=required, display_name=display_name)
 
 class IpField(Field):
-    def __init__(self, name, default, required=True, width=20):
-        Field.__init__(self, name, default, width, required=required)
+    def __init__(self, name, default, required=True, width=20, display_name=None):
+        Field.__init__(self, name, default, width, required=required, display_name=display_name)
     
     def validate(self):
         if Field.validate(self):
@@ -194,8 +229,9 @@ class IpField(Field):
 
 
 class PasswordField(Field):
-    def __init__(self, name, default, required=True, width=20):
-        Field.__init__(self, name, default, width, required=required, password=1)
+    def __init__(self, name, default, required=True, width=20, display_name=None):
+        Field.__init__(self, name, default, width, required=required, 
+                       password=1, display_name=display_name)
     
     def validate(self):
         # TODO: cracklib?
@@ -203,14 +239,18 @@ class PasswordField(Field):
         
 
 class IntegerField(Field):
-    def __init__(self, name, default, min_value=None, max_value=None, required=True, width=20):
+    def __init__(self, name, default, min_value=None, max_value=None, 
+                 required=True, width=20, display_name=None):
         Field.__init__(self, name, default, width, min_value=min_value, 
-                       max_value=max_value, typee=int, required=required)
+                       max_value=max_value, typee=int, required=required, 
+                       display_name=display_name)
 
 class FloatField(Field):
-    def __init__(self, name, default, min_value=None, max_value=None, required=True, width=20):
+    def __init__(self, name, default, min_value=None, max_value=None, 
+                 required=True, width=20, display_name=None):
         Field.__init__(self, name, default, width, min_value=min_value, 
-                       max_value=max_value, typee=float, required=required)
+                       max_value=max_value, typee=float, required=required,
+                       display_name=display_name)
 
 
 def validate_required(name, value):
