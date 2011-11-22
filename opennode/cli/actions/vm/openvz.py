@@ -62,7 +62,7 @@ def read_ovf_settings(ovf_file):
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
-    # ??? TODO: apparently need to check disks also?
+    # TODO: apparently need to check disks also?
     return settings
 
 def adjust_setting_to_systems_resources(ovf_template_settings):
@@ -183,7 +183,7 @@ def generate_config(ovf_settings):
         conf_file.write(openvz_ct_conf)
     execute("chmod 644 %s" % conf_filename)
 
-def deploy(ovf_settings):
+def deploy(ovf_settings, storage_pool):
     """ Deploys OpenVZ container """
     
     print "Creating OpenVZ container..."
@@ -196,8 +196,9 @@ def deploy(ovf_settings):
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
-    execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["password"]))
+    execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    print "Template %s deployed successfully!" % ovf_settings["vm_id"]
     
 def get_available_instances():
     """Return deployed and stopped OpenVZ instances"""
@@ -259,7 +260,7 @@ def save_as_ovf(vm_settings, storage_pool):
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
         
-    print "Done! Saved template to %s" % ovf_archive_fnm
+    print "Done! Saved template at %s" % ovf_archive_fnm
     
 def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ovf = OvfFile()
@@ -325,15 +326,15 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ovf.addReferencedFile(ref_file)
     ovf.createReferences()
     
-    def get_ct_disk_usage(ctid):
-        return str(round(float(execute("du -s /vz/private/%s/" % ctid).split()[0]) / 1024 ** 2, 3)) # in GB
+    def get_ct_disk_usage_bytes(ctid):
+        return str(int(execute("du -s /vz/private/%s/" % ctid).split()[0]) * 1024)
     
     # add disk section
     ovf.createDiskSection([{
         "diskId": "vmdisk1", 
-        "capacity": vm_settings["disk"],
-        "populatedSize": get_ct_disk_usage(vm_settings["vm_name"]),
-        "capacityAllocUnits": "GigaBytes",
+        "capacity": str(round(float(vm_settings["disk"]) * 1024 ** 3)), # in bytes
+        "capacityAllocUnits": None, # bytes default
+        "populatedSize": get_ct_disk_usage_bytes(vm_settings["vm_name"]),
         "fileRef": "diskfile1",
         "parentRef": None,
         "format": "tar.gz"}],

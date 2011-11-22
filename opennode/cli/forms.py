@@ -35,14 +35,18 @@ class KvmForm(Form):
     
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
             (Textbox(20, 1, "Memory min/max:", 0, 0), 
              Textbox(20, 1, "%s / %s" % (self.memory.min_value, self.memory.max_value), 0, 0)),
+            separator,
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "CPU number min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.vcpu.min_value, self.vcpu.max_value), 0, 0)),
+            separator,
             (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
+            separator,
             (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
@@ -72,6 +76,7 @@ class OpenvzForm(Form):
     
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
             (Textbox(20, 1, "Memory min/max:", 0, 0), 
@@ -93,6 +98,7 @@ class OpenvzForm(Form):
             (Textbox(20, 2, "Nameserver:", 0, 0), self.nameserver),
             (Textbox(20, 1, "Root password:", 0, 0), self.password),
             (Textbox(20, 2, "Root password x2:", 0, 0), self.password2),
+            separator,
             (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
@@ -125,14 +131,18 @@ class OpoenvzTemplateForm(Form):
     
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
             (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
             (Textbox(20, 1, "Max memory size (GB):", 0, 0), self.memory_max),
+            separator,
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
+            separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
             (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
@@ -154,23 +164,26 @@ class KvmTemplateForm(Form):
     
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory")
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory")
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory", required=False)
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory", required=False)
         self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu")
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu")
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max, 
                                             self.vcpu, self.vcpu_min, self.vcpu_max])
     
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0)) 
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
             (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
             (Textbox(20, 1, "Max memory size (GB):", 0, 0), self.memory_max),
+            separator,
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
+            separator,
             (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
@@ -181,10 +194,14 @@ class KvmTemplateForm(Form):
     
     def validate(self):
         if Form.validate(self):
-            self.errors.extend(validate_range("memory", self.memory.value(), self.memory_min.value(),
-                                              self.memory_max.value(), float))
-            self.errors.extend(validate_range("vcpu", self.vcpu.value(), self.vcpu_min.value(), 
-                                              self.vcpu_max.value(), int))
+            if (self.memory_min.value() and self.memory_max.value() and
+                    float(self.memory_min.value()) > float(self.memory_max.value())):
+                self.errors.extend([("memory", "Min memory exceeds max memory value.")])
+            else:
+                self.errors.extend(validate_range("memory", self.memory.value(), self.memory_min.value(),
+                                                  self.memory_max.value(), float))
+                self.errors.extend(validate_range("vcpu", self.vcpu.value(), self.vcpu_min.value(), 
+                                                  self.vcpu_max.value(), int))
         return not self.errors
 
 class Field(Entry):
@@ -200,14 +217,21 @@ class Field(Entry):
     def validate(self):
         self.errors = []
         if self.required:
-            self.errors.extend(validate_required(self.display_name, self.value()))
-        if self.typee:
+            er = validate_required(self.display_name, self.value())
+            if er:
+                self.errors.extend(er)
+                return False
+        if self.typee and self.value():
             er = validate_type(self.display_name, self.value(), self.typee)
             if er:
                 self.errors.extend(er)
-            elif self.min_value or self.max_value:
-                self.errors.extend(validate_range(self.display_name, self.value(), self.min_value, 
-                                                  self.max_value, self.typee))
+                return False
+            if self.min_value or self.max_value:
+                er = validate_range(self.display_name, self.value(), self.min_value,  
+                                    self.max_value, self.typee)
+                if er:
+                    self.errors.extend(er)
+                    return False
         return not self.errors
 
 class StringField(Field):

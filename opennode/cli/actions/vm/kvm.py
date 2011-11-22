@@ -115,32 +115,33 @@ def read_ovf_settings(settings, ovf_file):
     settings["features"] = ovfutil.get_openode_features(ovf_file)
     return settings
 
-def deploy(settings):
-    print "Copying KVM template disks (this may take a while)"
-    prepare_file_system(settings)
-
-    print "Generating KVM VM configuration"
+def deploy(settings, storage_pool):
+    print "Copying KVM template disks (this may take a while)..."
+    prepare_file_system(settings, storage_pool)
+    
+    print "Generating KVM VM configuration..."
     libvirt_conf_dom = generate_libvirt_conf(settings)
-
-    print "Finalyzing KVM template deployment"
+    
+    print "Finalyzing KVM template deployment..."
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
+    print "Done!"
 
-def prepare_file_system(settings):
+def prepare_file_system(settings, storage_pool):
     """
     Prepare file system for VM template creation in OVF appliance format:
         - create template directory if it does not exist
         - copy disk based images
         - convert block device based images to file based images
     """
+    images_dir = path.join(config.c("general", "storage-endpoint"), 
+                           storage_pool, "images")
+    target_dir = path.join(config.c("general", "storage-endpoint"),
+                           storage_pool, "kvm", "unpacked")
     for disk in settings["disks"]:
-        disk_template_path = path.join(config.c("general", "storage-endpoint"),
-                                       config.c("general", "default-storage-pool"),
-                                       "kvm", "unpacked", disk["template_name"])
+        disk_template_path = path.join(target_dir, disk["template_name"])
         if disk["deploy_type"] == "file":
-            disk_deploy_path = path.join(config.c("general", "storage-endpoint"), 
-                                         config.c("general", "default-storage-pool"),
-                                         "images",  settings["vm_type"] + "-" + disk["source_file"])
+            disk_deploy_path = path.join(images_dir, settings["vm_type"] + "-" + disk["source_file"])
             shutil.copy2(disk_template_path, disk_deploy_path)
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
@@ -376,11 +377,11 @@ def _prepare_disks(vm_settings, target_dir):
     @param target_dir: directory where disks will be copied
     """
     disk_list_dom = get_libvirt_conf_xml(vm_settings["vm_name"])\
-                            .getElementsByTagName("domain")[0].getElementsByTagName("disk")
-    disk_list = []
-    for counter, disk_dom in enumerate(disk_list_dom):
-        disk_num = counter + 1
+                        .getElementsByTagName("domain")[0].getElementsByTagName("disk")
+    disk_num, disk_list = 0, []
+    for disk_dom in disk_list_dom:
         if disk_dom.getAttribute("device") == "disk":
+            disk_num += 1
             source_dom = disk_dom.getElementsByTagName("source")[0]
             filename = "%s%d.img" % (vm_settings["template_name"], disk_num)
             new_path = path.join(target_dir, filename)
@@ -396,12 +397,12 @@ def _prepare_disks(vm_settings, target_dir):
                 "new_path" : new_path,
                 "file_id" : "diskfile%d" % (disk_num), 
                 "disk_id" : "vmdisk%d.img" % (disk_num), 
-                "disk_capacity" : str(get_kvm_disk_capasity_gb(new_path))
+                "disk_capacity" : str(get_kvm_disk_capacity_bytes(new_path))
             }
             disk_list.append(disk_dict)
     return disk_list
 
-def get_kvm_disk_capasity_gb(path):
+def get_kvm_disk_capacity_bytes(path):
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
@@ -409,7 +410,7 @@ def get_kvm_disk_capasity_gb(path):
         row_elements = row.split(",")
         used, available = int(row_elements[3]), int(row_elements[4])
         capacity += used + available
-    return round(capacity / 1024.0 ** 2, 3)
+    return capacity * 1024
 
 def _generate_ovf_file(vm_settings):
     """
@@ -420,6 +421,8 @@ def _generate_ovf_file(vm_settings):
     """
     ovf = OvfFile()
     ovf.createEnvelope()
+    ovf.envelope.setAttribute("xmlns:opennodens","http://opennode.activesys.org/schema/ovf/opennodens/1")
+    
     instanceId = 0
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"], 
                                             info="KVM OpenNode template")
@@ -497,7 +500,7 @@ def _generate_ovf_file(vm_settings):
             "format": "qcow2",
             "parentRef": None,
             "populatedSize": None,
-            "capacityAllocUnits": "GigaBytes"
+            "capacityAllocUnits": None 
         })
     ovf.createReferences()
     ovf.createDiskSection(ovf_disk_list, "KVM VM template disks")

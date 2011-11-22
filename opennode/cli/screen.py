@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
 
-# TODO: remove me
 import sys
-sys.path = filter(lambda x: not x.startswith("/opt"), sys.path)
 import os
 from os import path
 
@@ -316,7 +314,8 @@ class OpenNodeTUI(object):
         if vm_type is None: return self.display_main_screen()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None: return self.display_vm_create()
+        if template is None: 
+            return self.display_vm_create()
         
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
@@ -335,9 +334,8 @@ class OpenNodeTUI(object):
             return self.display_main_screen()
         # deploy
         self.screen.finish()
-        vm.deploy(user_settings)
+        vm.deploy(user_settings, storage_pool)
         self.screen = SnackScreen()
-        display_info(self.screen, TITLE, "Template deployed successfully!")
         return self.display_main_screen()
 
     def display_template_settings(self, template_settings):
