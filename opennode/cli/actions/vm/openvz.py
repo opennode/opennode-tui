@@ -1,25 +1,38 @@
 import os
-import socket
 import operator
 import datetime
+import tarfile
+from os import path
+from hashlib import sha1
+from contextlib import closing
 
 import libvirt
 from ovf.OvfFile import OvfFile
+from ovf import Ovf, OvfLibvirt
+from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli import constants
-from opennode.cli.utils import SimpleConfigParser, execute
+from opennode.cli.utils import SimpleConfigParser, execute, get_file_size_bytes
 from opennode.cli.actions.vm.config_template import openvz_template
 
+
 def get_ovf_template_settings(ovf_file):
+    """ Parses ovf file and creates a dictionary of settings """
     settings = read_default_ovf_settings()
     ovf_settings = read_ovf_settings(ovf_file)
     settings.update(ovf_settings)
     settings["vm_id"] = _get_available_ct_id()
     return settings
 
+def get_active_template_settings(vm_name, storage_pool):
+    """ Reads ovf settings of the specified VM """
+    ovf_file = OvfFile(path.join(config.c("general", "storage-endpoint"), storage_pool, 
+                       "openvz", "unpacked", get_template_name(vm_name) + ".ovf"))
+    return get_ovf_template_settings(ovf_file)
+    
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
     return dict(config.clist('ovf-defaults', 'openvz'))
@@ -49,7 +62,7 @@ def read_ovf_settings(ovf_file):
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
-    # ??? TODO: apparently need to check disks also?
+    # TODO: apparently need to check disks also?
     return settings
 
 def adjust_setting_to_systems_resources(ovf_template_settings):
@@ -170,7 +183,7 @@ def generate_config(ovf_settings):
         conf_file.write(openvz_ct_conf)
     execute("chmod 644 %s" % conf_filename)
 
-def deploy(ovf_settings):
+def deploy(ovf_settings, storage_pool):
     """ Deploys OpenVZ container """
     
     print "Creating OpenVZ container..."
@@ -185,6 +198,7 @@ def deploy(ovf_settings):
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    print "Template %s deployed successfully!" % ovf_settings["vm_id"]
     
 def get_available_instances():
     """Return deployed and stopped OpenVZ instances"""
@@ -211,3 +225,119 @@ def get_hostname(ctid):
     except ValueError:
         raise RuntimeError, "Incorrect format for a container id."
     return execute("vzlist %s -H -o hostname" % ctid)
+
+def save_as_ovf(vm_settings, storage_pool):
+    """
+    Creates ovf template archive for the specified container. 
+    Steps:
+        - archive container directory
+        - generate ovf configuration file
+        - pack ovf and container arhive into tar.gz file  
+    """
+
+    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
+    unpacked_dir = path.join(dest_dir, "unpacked")
+    ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % vm_settings["template_name"])
+    ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])
+    
+    # Pack vm container catalog
+    print "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
+    with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
+        for file in os.listdir(ct_source_dir):
+            tar.add(path.join(ct_source_dir, file), arcname=file)
+    
+    # generate and save ovf configuration file
+    print "Generating ovf file..."
+    ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
+    ovf_fnm = path.join(unpacked_dir, "%s.ovf" % vm_settings["template_name"])
+    with open(ovf_fnm, 'w') as f:
+        ovf.writeFile(f, pretty=True, encoding='UTF-8')
+    
+    # pack container archive and ovf file
+    print "Archiving..."
+    ovf_archive_fnm = path.join(dest_dir, "%s.tar" % vm_settings["template_name"])
+    with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
+        tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
+        tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
+        
+    print "Done! Saved template at %s" % ovf_archive_fnm
+    
+def _generate_ovf_file(vm_settings, ct_archive_fnm):
+    ovf = OvfFile()
+    ovf.createEnvelope()
+    instanceId = 0
+    virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"], 
+                                            info="OpenVZ OpenNode template")
+    hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem, 
+                                ident="virtual_hadrware", 
+                                info="Virtual hardware requirements for a virtual machine")
+    ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId), 
+                     {"VirtualSystemType": "openvz"})
+    instanceId += 1
+    
+    # add cpu section
+    for bound, cpu in zip(["normal", "min", "max"],
+                          [vm_settings.get("vcpu%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if cpu:
+            ovf.addResourceItem(hardwareSection, {
+                "Caption": "%s virtual CPU" % cpu,
+                "Description": "Number of virtual CPUs",
+                "ElementName": "%s virtual CPU" % cpu,
+                "InstanceID": str(instanceId),
+                "ResourceType": "3",
+                "VirtualQuantity": cpu
+                }, bound=bound)
+            instanceId += 1
+    
+    # add memory section
+    for bound, memory in zip(["normal", "min", "max"],
+                             [vm_settings.get("memory%s" % pfx) for pfx in ["", "_min", "_max"]]):
+        if memory:
+            ovf.addResourceItem(hardwareSection, {
+                "AllocationUnits": "GigaBytes",
+                "Caption": "%s GB of memory" % memory,
+                "Description": "Memory Size",
+                "ElementName": "%s GB of memory" % memory,
+                "InstanceID": str(instanceId),
+                "ResourceType": "4",
+                "VirtualQuantity": memory
+                }, bound=bound)
+            instanceId += 1
+    
+    def get_checksum(fnm):
+        # calculate checksum for the file 
+        chunk_size = 1024 ** 2 # 1Mb 
+        sha = sha1()
+        with open(fnm) as file:
+            while 1:
+                data = file.read(chunk_size)
+                if not data:
+                    break
+                sha.update(data)
+        return sha.hexdigest()
+    
+    # add reference a file (see http://gitorious.org/open-ovf/mainline/blobs/master/py/ovf/OvfReferencedFile.py)
+    ref_file = OvfReferencedFile(path.dirname(ct_archive_fnm), 
+                                 path.basename("%s.tar.gz" % vm_settings["template_name"]), 
+                                 file_id="diskfile1",
+                                 size=str(get_file_size_bytes(ct_archive_fnm)),
+                                 compression="gz",
+                                 checksum=get_checksum(ct_archive_fnm))
+    ovf.addReferencedFile(ref_file)
+    ovf.createReferences()
+    
+    def get_ct_disk_usage_bytes(ctid):
+        return str(int(execute("du -s /vz/private/%s/" % ctid).split()[0]) * 1024)
+    
+    # add disk section
+    ovf.createDiskSection([{
+        "diskId": "vmdisk1", 
+        "capacity": str(round(float(vm_settings["disk"]) * 1024 ** 3)), # in bytes
+        "capacityAllocUnits": None, # bytes default
+        "populatedSize": get_ct_disk_usage_bytes(vm_settings["vm_name"]),
+        "fileRef": "diskfile1",
+        "parentRef": None,
+        "format": "tar.gz"}],
+        "OpenVZ CT template disks")
+    
+    return ovf 

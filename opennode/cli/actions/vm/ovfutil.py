@@ -80,16 +80,18 @@ def get_disks(ovf_file):
     disk_dom_list = disk_section_dom.getElementsByTagName("Disk")
     disk_list = []        
     for i, disk_dom in enumerate(disk_dom_list):
-        disk = dict()
-        disk["template_name"] = fileref_dict[disk_dom.getAttribute("ovf:fileRef")]
-        disk["template_format"] = disk_dom.getAttribute("ovf:format")
-        disk["template_capacity"] = str(int(disk_dom.getAttribute("ovf:capacity"))/1024)
-        disk["deploy_type"] = "file"
-        disk["type"] = "file"
-        disk["device"] = "disk"
-        disk["source_file"] = fileref_dict[disk_dom.getAttribute("ovf:fileRef")]
-        disk["target_dev"] = "hd%s" % chr(ord("a") + i)
-        disk["target_bus"] = "ide"
+        disk = {
+            "template_name": fileref_dict[disk_dom.getAttribute("ovf:fileRef")],
+            "template_format": disk_dom.getAttribute("ovf:format"),
+            "deploy_type": "file",
+            "type": "file",
+            "template_capacity": disk_dom.getAttribute("ovf:capacity"),
+            "template_capacity_unit": disk_dom.getAttribute("ovf:capacityAllocationUnits") or "bytes",
+            "device": "disk",
+            "source_file": fileref_dict[disk_dom.getAttribute("ovf:fileRef")],
+            "target_dev": "hd%s" % chr(ord("a") + i),
+            "target_bus": "ide"
+        }
         disk_list.append(disk)
     return disk_list
 
