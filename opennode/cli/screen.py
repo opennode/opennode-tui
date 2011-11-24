@@ -35,7 +35,7 @@ class OpenNodeTUI(object):
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
-                ('Network', 'net'),
+                #('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],

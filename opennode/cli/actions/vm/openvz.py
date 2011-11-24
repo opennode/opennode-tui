@@ -276,6 +276,10 @@ def start(ctid):
     """Start a defined container"""
     execute("vzctl start %s" % ctid)
     
+def delete(ctid):
+    """Remove a container"""
+    execute("vzctl destroy %s" % ctid)
+    
 def get_available_instances():
     """Return deployed and stopped OpenVZ instances"""
     vzcontainers = execute("vzlist -H -S -o ctid,hostname").split('\n')
