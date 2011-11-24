@@ -404,7 +404,7 @@ def _prepare_disks(vm_settings, target_dir):
 
 def get_kvm_disk_capacity_bytes(path):
     print "Getting capacity of the kvm disk '%s'" %path
-    res = execute("virt-df --csv %s" % (path))
+    res = execute("LC_ALL=C virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
     for row in rows:
