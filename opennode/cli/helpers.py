@@ -1,8 +1,8 @@
 import types
 
-from snack import Textbox, Entry, Button, Listbox, Grid, Scale, Form
-from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp
-from snack import ButtonChoiceWindow, ListboxChoiceWindow
+from snack import (Textbox, Entry, Button, Listbox, Grid, Scale, Form,
+                   ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp,
+                   ButtonChoiceWindow, ListboxChoiceWindow)
 
 class DownloadMonitor():
     
@@ -83,7 +83,7 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     form.add(spacer2, 0, 5)
     form.add(bb, 0, 6)
     form_result = form.runOnce()
-    return (bb.buttonPressed(form_result), base_tmpl.current(), entry_newname.value())
+    return (bb.buttonPressed(form_result), str(base_tmpl.current()), entry_newname.value())
 
 def display_selection(screen, title, list_of_items, subtitle, default = None):
     """Display a list of items, return selected one or None, if nothing was selected"""

@@ -9,7 +9,7 @@ from hashlib import sha1
 from datetime import datetime
 from os import path
 
-from ovf import Ovf
+from ovf import Ovf, OvfLibvirt
 from ovf.OvfReferencedFile import OvfReferencedFile
 from ovf.OvfFile import OvfFile
 
@@ -45,6 +45,55 @@ def _get_ovf_vcpu(ovf_file, bound):
                 vcpu = resource['rasd:VirtualQuantity']
                 break
     return vcpu
+
+def get_networks(ovf_file):
+    """
+    Retrieves network interface information for the virtual machine from the Ovf file.
+    @return: list of dictionaries eg. {interfaceType = 'network', sourceName = 'vmbr0'}     
+    @rtype: list
+    """
+    virtual_hardware_node = ovf_file.document.getElementsByTagName("VirtualHardwareSection")[0]
+    nets = OvfLibvirt.getOvfNetworks(virtual_hardware_node)
+    return nets 
+
+def get_openode_features(ovf_file):
+    features = []
+    try:
+        on_dom = ovf_file.document.getElementsByTagName("opennodens:OpenNodeSection")[0]
+        feature_dom = on_dom.getElementsByTagName("Features")[0]
+        for feature in feature_dom.childNodes:
+            if (feature.nodeType == feature.ELEMENT_NODE):
+                features.append(str(feature.nodeName))
+    except:
+        pass
+    return features
+
+def get_disks(ovf_file):
+    envelope_dom = ovf_file.document.getElementsByTagName("Envelope")[0]
+    references_section_dom = envelope_dom.getElementsByTagName("References")[0]
+    file_dom_list = references_section_dom.getElementsByTagName("File")
+    fileref_dict = {}
+    for file_dom in file_dom_list:
+        fileref_dict[file_dom.getAttribute("ovf:id")] = file_dom.getAttribute("ovf:href")
+    
+    disk_section_dom = envelope_dom.getElementsByTagName("DiskSection")[0]
+    disk_dom_list = disk_section_dom.getElementsByTagName("Disk")
+    disk_list = []        
+    for i, disk_dom in enumerate(disk_dom_list):
+        disk = {
+            "template_name": fileref_dict[disk_dom.getAttribute("ovf:fileRef")],
+            "template_format": disk_dom.getAttribute("ovf:format"),
+            "deploy_type": "file",
+            "type": "file",
+            "template_capacity": disk_dom.getAttribute("ovf:capacity"),
+            "template_capacity_unit": disk_dom.getAttribute("ovf:capacityAllocationUnits") or "bytes",
+            "device": "disk",
+            "source_file": fileref_dict[disk_dom.getAttribute("ovf:fileRef")],
+            "target_dev": "hd%s" % chr(ord("a") + i),
+            "target_bus": "ide"
+        }
+        disk_list.append(disk)
+    return disk_list
 
 def get_ovf_normal_memory_gb(ovf_file):
     return _get_ovf_memory_gb(ovf_file, "normal")

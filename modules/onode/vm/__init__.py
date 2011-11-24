@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
 import os
-import urlparse
 import time
+import urlparse
 from functools import wraps
 from uuid import UUID
 from xml.etree import ElementTree
@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
+from opennode.cli.actions.vm.openvz import get_hostname
 
 
 _connections = {}
@@ -104,7 +105,13 @@ class VM(func_module.FuncModule):
         }
 
         info = vm.info()
-        return {"uuid": get_uuid(vm), "name": vm.name(), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
+
+        def vm_name(vm):
+            if conn.getType() == 'OpenVZ':
+                return get_hostname(vm.name())
+            return vm.name()
+
+        return {"uuid": get_uuid(vm), "name": vm_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
                 'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i],
                 'interfaces': self._vm_interfaces(conn, get_uuid(vm))}
 
@@ -197,7 +204,8 @@ class VM(func_module.FuncModule):
         dom.resume()
 
     def _vm_console_vnc(self, conn, uuid):
-        element = self.dom_dom(conn, uuid).find('.//graphics[@type="vnc"]')
+        # python 2.6 etree library doesn't support xpath with predicate
+        element = ([i for i in self.dom_dom(conn, uuid).findall('.//graphics') if i.attrib.get('type', None) == 'vnc'] or [None])[0]
         # elementtree element without children is treated as false
         if element != None:
             port = element.attrib.get('port', None)
@@ -207,11 +215,15 @@ class VM(func_module.FuncModule):
     vm_console_vnc = vm_method(_vm_console_vnc)
 
     def _vm_console_pty(self, conn, uuid):
-        element = self.dom_dom(conn, uuid).find('.//console[@type="pty"]')
+        # python 2.6 etree library doesn't support xpath with predicate
+        element = ([i for i in self.dom_dom(conn, uuid).findall('.//console') if i.attrib.get('type', None) == 'pty'] or [None])[0]
         if element != None:
             pty = element.attrib.get('tty', None)
             if pty:
                 return dict(type='pty', pty=pty)
+        elif conn.getType() == 'OpenVZ':
+            return dict(type='openvz', cid=conn.lookupByUUIDString(uuid).name())
+
 
     vm_console_pty = vm_method(_vm_console_pty)
 
@@ -230,7 +242,15 @@ class VM(func_module.FuncModule):
             else:
                 alias = alias.attrib.get('name', None)
 
-            return dict(mac=mac, name=alias, type=type)
+            res = dict(mac=mac, name=alias, type=type)
+
+            ip = i.find('ip')
+            if ip != None:
+                res['ipv4_address'] = ip.attrib.get('address', None)
+                if not '/' in res['ipv4_address']:
+                    res['ipv4_address'] += '/24'
+
+            return res
 
         return [interface(idx, i) for idx, i in enumerate(elements)]
 

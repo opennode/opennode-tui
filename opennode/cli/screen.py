@@ -4,13 +4,13 @@
 import os
 
 from ovf.OvfFile import OvfFile
-from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
-                   Textbox, Button, GridForm)
+from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection, 
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
+from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm, KvmTemplateForm
 
 VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -24,7 +24,7 @@ class OpenNodeTUI(object):
     def display_main_screen(self):
         logic = {'exit': self.menu_exit,
                  'console': self.display_console_menu,
-                 'createvm': self.display_create_vm,
+                 'createvm': self.display_vm_create,
                  'net': self.display_network,
                  'storage': self.display_storage,
                  'oms': self.display_oms,
@@ -35,7 +35,7 @@ class OpenNodeTUI(object):
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
-                #('Network', 'net'),
+                ('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
@@ -257,60 +257,61 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, "No suitable VMs found.")
             return self.display_templates()
         
-        action, ctid, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
+        # pick an instance
+        action, vm_name, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
         if action == 'back':
             return self.display_templates()
-        ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked", 
-                                        vm.get_template_name(ctid) + ".ovf"))
         
-        def template_sanity_check(input_settings):
-            def _range_check(setting_name, typecheck=float, required=True):
-                val = input_settings.get(setting_name, None)
-                min_val = input_settings.get("%s_min" % setting_name, None)
-                max_val = input_settings.get("%s_max" % setting_name, None)
-                if not val:
-                    if required:
-                        errors.append((setting_name, "%s is required!" % setting_name))
-                    return
-                else:
-                    try:
-                        typecheck(val)
-                    except ValueError:
-                        errors.append((setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))) 
-                if min_val and val < min_val:
-                    errors.append((setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val)))
-                if max_val and val > max_val:
-                    errors.append((setting_name, "%s is larger than template limits (%s > %s)." % (setting_name.capitalize(), val, max_val)))          
-            errors = []
-            _range_check("memory")
-            _range_check("cpu", int)
-            if not input_settings.get("disk"):
-                errors.append(("disk", "Disk size is required."))
-            else:
-                try:
-                    float(input_settings["disk"])
-                except ValueError:
-                    errors.append(("disk", "Disk size must be numeric."))
-            return errors
+        # extract active template settings
+        template_settings = vm.get_active_template_settings(vm_name, storage_pool)
+        template_settings["template_name"] = new_templ_name
+        template_settings["vm_name"] = vm_name
         
-        template_settings = vm.get_ovf_template_settings(ovf_file)
-        vm_settings = self._display_template_create_settings_openvz(template_settings, template_sanity_check)
-        actions.vm.ovfutil.save_as_ovf(vm_type, vm_settings, ctid, storage_pool, new_templ_name)
-        display_info(self.screen, TITLE, "Done!")
+        if vm_type == "openvz":
+            form = OpoenvzTemplateForm(self.screen, TITLE, template_settings)
+        elif vm_type == "kvm":
+            form = KvmTemplateForm(self.screen, TITLE, template_settings)
+        else:
+            raise ValueError, "Vm '%s' is not supported" % template_settings["vm_type"]
+        
+        # get user settings
+        user_settings = self._display_template_create_settings(form, template_settings)
+        if not user_settings:
+            return self.display_main_screen()
+        template_settings.update(user_settings)
+        self.screen.finish()
+        
+        # pack template
+        vm.save_as_ovf(template_settings, storage_pool)
+        self.screen = SnackScreen()
         return self.display_templates()
-        
-    def display_create_vm(self):
+    
+    def _display_template_create_settings(self, form, template_settings):
+        while 1:
+            if not form.display():
+                return None
+            if form.validate():
+                settings = template_settings.copy()
+                settings.update(form.data)
+                return settings
+            else:
+                errors = form.errors
+                key, msg = errors[0] 
+                display_info(self.screen, TITLE, msg, width=75)
+                continue
+    
+    def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
         
-        vm_type = display_vm_type_select(self.screen, TITLE)
+        vm_type = display_vm_type_select(self.screen, TITLE) 
         if vm_type is None: return self.display_main_screen()
         
         template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None: return self.display_create_vm()
+        if template is None: 
+            return self.display_vm_create()
         
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
@@ -324,202 +325,37 @@ class OpenNodeTUI(object):
             return self.display_main_screen()
         
         # get user input
-        user_settings = self.display_template_settings(template_settings, vm.validate_template_settings)
-        if user_settings is None:
+        user_settings = self.display_template_settings(template_settings)
+        if not user_settings:
             return self.display_main_screen()
-        vm.create_container(user_settings)
-        vm.deploy(user_settings)
-        
-        display_info(self.screen, TITLE, "OpenVZ container %s deployed successfully" % user_settings["vm_id"])
+        # deploy
+        self.screen.finish()
+        vm.deploy(user_settings, storage_pool)
+        self.screen = SnackScreen()
         return self.display_main_screen()
 
-    def display_template_settings(self, template_settings, validation_callback):
+    def display_template_settings(self, template_settings):
         """ Display configuration details of new VM """
-        views = {
-            "openvz": self._display_template_settings_openvz,
-            "kvm": self._display_template_settings_kvm,
-        }
-        view = views[template_settings["vm_type"]]
-        return view(template_settings, validation_callback)
-    
-    def _display_template_settings_openvz(self, template_settings, validation_callback):
-        form_rows = []
-        
-        input_memory = Entry(20, template_settings["memory"])
-        form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
-        
-        form_rows.append((Textbox(20, 1, "Memory min/max:", 0, 0), 
-                          Textbox(20, 1, "%s / %s" % (template_settings["memory_min"], 
-                                                      template_settings["memory_max"]), 0, 0)))
-        
-        input_swap = Entry(20, template_settings["swap"])
-        form_rows.append((Textbox(20, 1, "VSwap size (GB):", 0, 0), input_swap))
-        
-        form_rows.append((Textbox(20, 1, "VSwap min/max:", 0, 0), 
-                          Textbox(20, 1, "%s / %s" % (template_settings["swap_min"], 
-                                                      template_settings["swap_max"]), 0, 0)))
-        
-        input_cpu = Entry(20, template_settings["vcpu"])
-        form_rows.append((Textbox(20, 1, "Number of CPUs:", 0, 0), input_cpu))
-        
-        text_cpu_bounds_value = Textbox(20, 1, "%s / %s" % (template_settings["vcpu_min"], 
-                                                            template_settings["vcpu_max"]), 0, 0)
-        form_rows.append((Textbox(20, 1, "CPU number min/max:", 0, 0), text_cpu_bounds_value))
-        
-        input_cpu_limit = Entry(20, template_settings["vcpulimit"])
-        form_rows.append((Textbox(20, 1, "CPU usage limit (%):", 0, 0), input_cpu_limit))
-        
-        form_rows.append((Textbox(20, 1, "CPU usage min/max:", 0, 0), 
-                          Textbox(20, 1, "%s / %s" % (template_settings["vcpulimit_min"], 
-                                                      template_settings["vcpulimit_max"]), 0, 0)))
-        
-        input_disk_size = Entry(20, template_settings["disk"])
-        form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
-        
-        form_rows.append((Textbox(20, 1, "Disk size min/max:", 0, 0),
-                          Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
-                                                      template_settings["disk_max"]), 0, 0)))
-        
-        form_rows.append(Textbox(1, 1, '', 0, 0), Textbox(1, 1, '', 0, 0))
-        
-        input_hostname = Entry(20, template_settings["hostname"])
-        form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
-        
-        input_ip = Entry(20, template_settings["ip_address"])
-        form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
-        
-        input_nameserver = Entry(20, template_settings["nameserver"])
-        form_rows.append((Textbox(20, 2, "Nameserver:", 0, 0), input_nameserver))
-        
-        #ToDo: VETH support
-        #text13 = Textbox(20, 2, "Use VETH:", 0, 0)
-        
-        input_password = Entry(20, template_settings["passwd"], password = 1)
-        form_rows.append((Textbox(20, 1, "Root password:", 0, 0), input_password))
-        
-        input_password2 = Entry(20, template_settings["passwd"], password = 1)
-        form_rows.append((Textbox(20, 2, "Root password x2:", 0, 0), input_password2))
-        
-        button_save = Button("Save VM settings")
-        button_exit = Button("Main menu")
-        form_rows.append((button_save, button_exit))
-        
-        def _display_form():
-            form = GridForm(self.screen, TITLE, 2, 16)
-            for i, row in enumerate(form_rows): 
-                for j, cell in enumerate(row):
-                    form.add(cell, j, i)
-            return form.runOnce()
-        
-        while True:
-            # display form
-            form_result = _display_form()
-            
-            if form_result == button_exit:
+        vm_type = template_settings["vm_type"]
+        if vm_type == "openvz":
+            form = OpenvzForm(self.screen, TITLE, template_settings)
+        elif vm_type == "kvm":
+            form = KvmForm(self.screen, TITLE, template_settings)
+        else:
+            raise ValueError, "Unsupported vm type '%s'" %  vm_type
+        while 1:
+            if not form.display():
                 return None
-            
-            # collect user input
-            input_settings = {
-                "memory": input_memory.value(),  
-                "swap": input_swap.value(), 
-                "vcpu": input_cpu.value(),
-                "vcpulimit": input_cpu_limit.value(),
-                "disk": input_disk_size.value(),
-                "hostname": input_hostname.value(),
-                "ip_address": input_ip.value(),
-                "nameserver": input_nameserver.value(),
-                "passwd": input_password.value(),
-                "passwd2": input_password2.value(),
-            }
-            
-            # validate user input 
-            errors = validation_callback(template_settings, input_settings)
-            
-            if errors:
-                key, msg = errors[0] 
-                display_info(self.screen, TITLE, msg)
-                continue
-            else:
+            if form.validate():
                 settings = template_settings.copy()
-                settings.update(input_settings)
+                settings.update(form.data)
                 return settings
-
-            #ToDo: VETH support
-            #if (entry9.selected()):
-            #    template_settings["veth"] = "1"
-            #else:
-            #    template_settings["veth"] = "0"
-            
-    def _display_template_settings_kvm(self, template_settings, validator_callback):
-        raise NotImplementedError
-    
-    def _display_template_create_settings_openvz(self, template_settings, validation_callback):
-        ts = template_settings
-        form_rows = []
-        # memory
-        input_memory = Entry(20, ts["memory"])
-        form_rows.append((Textbox(20, 1, "Memory size (GB):", 0, 0), input_memory))
-        
-        input_memory_min = Entry(20, ts.get("memory_min", ""))
-        form_rows.append((Textbox(20, 1, "Min memory size (GB):", 0, 0), input_memory_min))
-        
-        input_memory_max = Entry(20, ts.get("memory_max", ""))
-        form_rows.append((Textbox(20, 1, "Max memory size (GB):", 0, 0), input_memory_max))
-        
-        # cpu
-        input_cpu = Entry(20, ts["vcpu"])
-        form_rows.append((Textbox(20, 1, "Number of CPUs:", 0, 0), input_cpu))
-        
-        input_cpu_min = Entry(20, ts["vcpu"])
-        form_rows.append((Textbox(20, 1, "Min number of CPUs:", 0, 0), input_cpu_min))
-        
-        input_cpu_max = Entry(20, ts["vcpu"])
-        form_rows.append((Textbox(20, 1, "Max number of CPUs:", 0, 0), input_cpu_max))
-        
-        # disk
-        input_disk_size = Entry(20, ts["disk"])
-        form_rows.append((Textbox(20, 1, "Disk size (GB):", 0, 0), input_disk_size))
-        
-        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
-        form_rows.append((button_save, button_exit))
-        
-        def _display_form():
-            form = GridForm(self.screen, TITLE, 2, 8)
-            for i, row in enumerate(form_rows): 
-                for j, cell in enumerate(row):
-                    form.add(cell, j, i)
-            return form.runOnce()
-        
-        while True:
-            # display form
-            form_result = _display_form()
-            
-            if form_result == button_exit:
-                return None
-            
-            # collect user input
-            input_settings = {
-                "memory": input_memory.value(),
-                "memory_min": input_memory_min.value(),
-                "memory_max": input_memory_max.value(),
-                "cpu": input_cpu.value(),
-                "cpu_min": input_cpu_min.value(),
-                "cpu_max": input_cpu_max.value(),
-                "disk": input_disk_size.value(),
-            }
-            
-            # validate user input
-            errors = validation_callback(input_settings)
-            
-            if errors:
-                key, msg = errors[0] 
-                display_info(self.screen, TITLE, msg)
-                continue
             else:
-                settings = template_settings.copy()
-                settings.update(input_settings)
-                return settings
-    
+                errors = form.errors
+                key, msg = errors[0] 
+                display_info(self.screen, TITLE, msg, width=75)
+                continue
+            
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
         self.__displayInfoScreen(msg, 70)
