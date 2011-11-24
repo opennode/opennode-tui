@@ -10,7 +10,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
-from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm, KvmTemplateForm
+from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
 
 VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -237,7 +237,8 @@ class OpenNodeTUI(object):
         list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
         purely_local_templates = list(set(local_templates) - set(remote_templates))
         list_items.extend([('(l)' + tmpl, tmpl, tmpl in local_templates) for tmpl in purely_local_templates])
-        return display_checkbox_selection(self.screen, TITLE, list_items, 'Please, select templates to keep in the storage pool:')
+        return display_checkbox_selection(self.screen, TITLE, list_items, 
+                        'Please, select templates to keep in the storage pool (r - remote, l - local):')
 
     def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""
@@ -270,7 +271,7 @@ class OpenNodeTUI(object):
         template_settings["vm_name"] = vm_name
         
         if vm_type == "openvz":
-            form = OpoenvzTemplateForm(self.screen, TITLE, template_settings)
+            form = OpenvzTemplateForm(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmTemplateForm(self.screen, TITLE, template_settings)
         else:
