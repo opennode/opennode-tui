@@ -1,7 +1,7 @@
 import types
 
-from snack import Textbox, Entry, Button, Listbox, Grid, Scale, Form, GridForm
-from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp, SnackScreen
+from snack import Textbox, Entry, Button, Listbox, Grid, Scale, Form
+from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp
 from snack import ButtonChoiceWindow, ListboxChoiceWindow
 
 class DownloadMonitor():

@@ -4,12 +4,10 @@ import operator
 import datetime
 
 import libvirt
-from ovf.OvfFile import OvfFile
 
 from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
-from opennode.cli import constants
 from opennode.cli.utils import SimpleConfigParser, execute
 from opennode.cli.actions.vm.config_template import openvz_template
 
@@ -250,7 +248,7 @@ def create_container(ovf_settings):
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
     
     # generate ubc and non-ubc configuration
-    conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"]) 
+    conf_filename = os.path.join('/etc/vz/conf', "%s.conf" % ovf_settings["vm_id"]) 
     ubc_conf_str = generate_ubc_config(ovf_settings)
     non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
     
@@ -262,7 +260,7 @@ def create_container(ovf_settings):
         conf_file.write(openvz_ct_conf)
     execute("chmod 644 %s" % conf_filename)
 
-def deploy(ovf_settings):
+def deploy(ovf_settings, start = False):
     """ Deploys OpenVZ container """
     #Network configuration for VETH
     #ToDo: implement support for VETH
@@ -271,7 +269,12 @@ def deploy(ovf_settings):
     execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["vm_type"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
-    execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    if start:
+        start(ovf_settings["vm_id"])
+
+def start(ctid):
+    """Start a defined container"""
+    execute("vzctl start %s" % ctid)
     
 def get_available_instances():
     """Return deployed and stopped OpenVZ instances"""

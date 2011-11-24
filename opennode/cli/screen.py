@@ -5,7 +5,7 @@ import os
 
 from ovf.OvfFile import OvfFile
 from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
-                   ListboxChoiceWindow, Textbox, Button, GridForm, Grid, Scale, Form)
+                   Textbox, Button, GridForm)
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection, 
                                   display_selection, display_vm_type_select, display_info)
@@ -380,6 +380,11 @@ class OpenNodeTUI(object):
                           Textbox(20, 1,  "%s / %s" % (template_settings["disk_min"], 
                                                       template_settings["disk_max"]), 0, 0)))
         
+        form_rows.append(Textbox(1, 1, '', 0, 0), Textbox(1, 1, '', 0, 0))
+        
+        input_hostname = Entry(20, template_settings["hostname"])
+        form_rows.append((Textbox(20, 1, "Hostname:", 0, 0), input_hostname))
+        
         input_ip = Entry(20, template_settings["ip_address"])
         form_rows.append((Textbox(20, 1, "IP-address:", 0, 0), input_ip))
         
@@ -420,6 +425,7 @@ class OpenNodeTUI(object):
                 "vcpu": input_cpu.value(),
                 "vcpulimit": input_cpu_limit.value(),
                 "disk": input_disk_size.value(),
+                "hostname": input_hostname.value(),
                 "ip_address": input_ip.value(),
                 "nameserver": input_nameserver.value(),
                 "passwd": input_password.value(),
