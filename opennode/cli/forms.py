@@ -208,10 +208,10 @@ class Field(Entry):
     errors = []
     
     def __init__(self, name, default, width, min_value=None, max_value=None, 
-                 typee=None, password=0, display_name=None, required=True):
+                 expected_type=None, password=0, display_name=None, required=True):
         Entry.__init__(self, width, default, password=password)
         self.name, self.min_value, self.max_value = name, min_value, max_value  
-        self.typee, self.required =  typee, required
+        self.expected_type, self.required =  expected_type, required
         self.display_name = display_name or name
     
     def validate(self):
@@ -221,14 +221,14 @@ class Field(Entry):
             if er:
                 self.errors.extend(er)
                 return False
-        if self.typee and self.value():
-            er = validate_type(self.display_name, self.value(), self.typee)
+        if self.expected_type and self.value():
+            er = validate_type(self.display_name, self.value(), self.expected_type)
             if er:
                 self.errors.extend(er)
                 return False
             if self.min_value or self.max_value:
                 er = validate_range(self.display_name, self.value(), self.min_value,  
-                                    self.max_value, self.typee)
+                                    self.max_value, self.expected_type)
                 if er:
                     self.errors.extend(er)
                     return False
@@ -266,33 +266,33 @@ class IntegerField(Field):
     def __init__(self, name, default, min_value=None, max_value=None, 
                  width=20, display_name=None, required=True):
         Field.__init__(self, name, default, width, min_value=min_value, 
-                       max_value=max_value, typee=int, display_name=display_name, 
+                       max_value=max_value, expected_type=int, display_name=display_name, 
                        required=required)
 
 class FloatField(Field):
     def __init__(self, name, default, min_value=None, max_value=None, 
                  width=20, display_name=None, required=True):
         Field.__init__(self, name, default, width, min_value=min_value, 
-                       max_value=max_value, typee=float, display_name=display_name, 
+                       max_value=max_value, expected_type=float, display_name=display_name, 
                        required=required)
 
 
 def validate_required(name, value):
     return [] if value else [(name, "%s is required." % name.capitalize())]
 
-def validate_type(name, value, typee):
+def validate_type(name, value, expected_type):
     try:
-        typee(value)
+        expected_type(value)
     except ValueError:
         return [(name, "%s value couldn't be converted to comparable representation.\nWe've got '%s'." 
                        %(name.capitalize(), value))]
     return []
 
-def validate_range(name, value, min_value, max_value, typee):
+def validate_range(name, value, min_value, max_value, expected_type):
     if not value:
         return []
-    if min_value and typee(value) < typee(min_value):
+    if min_value and expected_type(value) < expected_type(min_value):
         return [(name, "%s is less than template limits (%s < %s)." % (name.capitalize(), value, min_value))]
-    if max_value and typee(value) > typee(max_value):
+    if max_value and expected_type(value) > expected_type(max_value):
         return [(name, "%s is larger than template limits (%s > %s)." % (name.capitalize(), value, max_value))]
     return []
