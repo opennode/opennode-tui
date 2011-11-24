@@ -8,13 +8,11 @@ from contextlib import closing
 
 import libvirt
 from ovf.OvfFile import OvfFile
-from ovf import Ovf, OvfLibvirt
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
-from opennode.cli import constants
 from opennode.cli.utils import SimpleConfigParser, execute, get_file_size_bytes
 from opennode.cli.actions.vm.config_template import openvz_template
 
@@ -173,7 +171,7 @@ def create_container(ovf_settings):
 
 def generate_config(ovf_settings):    
     """ Generates  ubc and non-ubc configuration """
-    conf_filename = os.path.join(constants.INSTALL_CONFIG_OPENVZ, "%s.conf" % ovf_settings["vm_id"]) 
+    conf_filename = os.path.join('/etc/vz/conf', "%s.conf" % ovf_settings["vm_id"]) 
     ubc_conf_str = generate_ubc_config(ovf_settings)
     non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
     openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc

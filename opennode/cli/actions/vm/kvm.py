@@ -7,7 +7,7 @@ import tarfile
 from contextlib import closing
 
 import libvirt
-from ovf.OvfFile import OvfFile, OVF_VERSION
+from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
@@ -331,17 +331,19 @@ def generate_libvirt_conf(settings):
 
     return libvirt_conf_dom
 
-def save_as_ovf(vm_settings, storage_pool):
+def save_as_ovf(vm_settings, storage_pool, unpack=True):
     """
     Creates ovf template archive for the specified VM. 
     Steps:
         - relocate kvm disk files
         - generate ovf configuration file
         - pack ovf and disk files into tar.gz file  
+        - (if unpack) leave generated files as unpacked
     """
      
     target_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
-    
+    if unpack:
+        target_dir = path.join(target_dir, 'unpacked')
     # prepare file system
     print "Preparing disks... (This may take a while)"
     vm_settings["disks"] = _prepare_disks(vm_settings, target_dir) 
@@ -355,16 +357,18 @@ def save_as_ovf(vm_settings, storage_pool):
     
     # pack container archive and ovf file
     print "Archiving..."
-    ovf_archive_fnm = path.join(target_dir, "%s.tar" % vm_settings["template_name"])
+    arch_location =  path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
+    ovf_archive_fnm = path.join(arch_location, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
         for disk in vm_settings["disks"]:
             tar.add(disk["new_path"], arcname=path.basename(disk["new_path"]))
     
     # remove generated files
-    os.remove(ovf_fnm)
-    for disk in vm_settings["disks"]:
-        os.remove(disk["new_path"])
+    if not unpack:
+        os.remove(ovf_fnm)
+        for disk in vm_settings["disks"]:
+            os.remove(disk["new_path"])
     
     print "Done! Template saved at %s" % ovf_archive_fnm
 
@@ -403,7 +407,8 @@ def _prepare_disks(vm_settings, target_dir):
     return disk_list
 
 def get_kvm_disk_capacity_bytes(path):
-    res = execute("virt-df --csv %s" % (path))
+    print "Getting capacity of the kvm disk '%s'" %path
+    res = execute("LC_ALL=C virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
     for row in rows:
