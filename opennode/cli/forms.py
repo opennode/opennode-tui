@@ -115,7 +115,7 @@ class OpenvzForm(Form):
         return not self.errors
 
 
-class OpoenvzTemplateForm(Form):
+class OpenvzTemplateForm(Form):
     
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"])
