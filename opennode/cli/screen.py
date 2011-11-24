@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
 
-import sys
 import os
-from os import path
 
 from ovf.OvfFile import OvfFile
-from snack import (SnackScreen, ButtonChoiceWindow, Entry, EntryWindow,
-                   ListboxChoiceWindow, Textbox, Button, GridForm, Grid, Scale, Form)
+from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection, 
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
-from opennode.cli.actions.vm import validation, kvm
 from opennode.cli.forms import KvmForm, OpenvzForm, OpoenvzTemplateForm, KvmTemplateForm
 
 VERSION = '2.0.0a'
@@ -238,8 +234,10 @@ class OpenNodeTUI(object):
     def display_select_template_from_repo(self, repo, storage_pool = c('general', 'default-storage-pool')): 
         remote_templates = actions.templates.get_template_list(repo)
         local_templates = actions.templates.get_local_templates(storage_pool, c(repo, 'type'))
-        list_items = [(tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
-        return display_checkbox_selection(self.screen, TITLE, list_items, 'Please, select templates for synchronisation')
+        list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
+        purely_local_templates = list(set(local_templates) - set(remote_templates))
+        list_items.extend([('(l)' + tmpl, tmpl, tmpl in local_templates) for tmpl in purely_local_templates])
+        return display_checkbox_selection(self.screen, TITLE, list_items, 'Please, select templates to keep in the storage pool:')
 
     def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""

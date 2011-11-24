@@ -3,8 +3,6 @@ from sys import exit
 from sys import argv
 from getopt import getopt, GetoptError
 
-from opennode.cli import mainmenu as on
-
 ACTIONS = { 
             0 : "GUI mode",
             1 : "Update templates",
@@ -14,7 +12,7 @@ ACTIONS = {
 def _help():
     print """
 NAME
-    opennode: OpenNode Management Utility
+    opennode: OpenNode Terminal User Interface (TUI)
 
 SYNOPSIS
     opennode [OPTIONS]
@@ -58,6 +56,3 @@ if __name__ == '__main__':
     elif action == 'lib_list':
         from opennode.cli.actions import templates
         templates.list_templates()
-    else:
-        opennode_utility = on.OpenNodeUtility()
-        opennode_utility.run(action)
