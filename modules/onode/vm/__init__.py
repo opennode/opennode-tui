@@ -10,6 +10,8 @@ from xml.etree import ElementTree
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
+
+from opennode.cli.actions.vm import deploy_vm
 from opennode.cli.actions.vm.openvz import get_hostname
 
 
@@ -202,6 +204,16 @@ class VM(func_module.FuncModule):
     def resume_vm(self, conn, uuid):
         dom = conn.lookupByUUIDString(uuid)
         dom.resume()
+
+    @vm_method
+    def deploy_vm(self, conn, vm_parameters):
+        self.logger.info("Vm params %s" % (vm_parameters,))
+        try:
+            deploy_vm(vm_parameters, logger=self.logger.info)
+        except Exception as e:
+            self.logger.exception("Cannot deploy")
+            raise e
+        return "OK"
 
     def _vm_console_vnc(self, conn, uuid):
         # python 2.6 etree library doesn't support xpath with predicate

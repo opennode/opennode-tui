@@ -107,7 +107,7 @@ def _get_available_ct_id():
     @return: Next available ID for new OpenVZ CT
     @rtype: Integer
     """
-    return max (100, max(_get_openvz_ct_id_list())) + 1
+    return max (100, max([0] + _get_openvz_ct_id_list())) + 1
 
 def _get_openvz_ct_id_list():
     """
@@ -169,11 +169,11 @@ def generate_nonubc_config(conf_filename, settings):
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    execute("vzctl create %s --ostemplate %s --config /etc/vz/conf/%s.conf" % (ovf_settings["vm_id"], 
-                                                            ovf_settings["template_name"], ovf_settings["vm_id"]))
+    execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"],
+                                                            ovf_settings["template_name"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
 
-def generate_config(ovf_settings):    
+def generate_config(ovf_settings):
     """ Generates  ubc and non-ubc configuration """
     base_conf = os.path.join('/etc/vz/conf', "ve-vswap-256m.conf-sample")
     ubc_conf_str = generate_ubc_config(ovf_settings)
