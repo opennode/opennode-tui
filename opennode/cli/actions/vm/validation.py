@@ -3,7 +3,7 @@ import operator
 
 
 def check_range(setting_name, settings, typecheck=float):
-    val, min_val, max_val = (settings.get(setting_name), settings.get("%s_min" % setting_name), 
+    val, min_val, max_val = (settings.get(setting_name), settings.get("%s_min" % setting_name),
                              settings.get("%s_max" % setting_name))
     if not val:
         return []
@@ -11,7 +11,7 @@ def check_range(setting_name, settings, typecheck=float):
         try:
             typecheck(val)
         except ValueError:
-            return [(setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))] 
+            return [(setting_name, "%s value couldn't be converted to comparable representation. We've got %s." %(setting_name, val))]
     if min_val and typecheck(val) < typecheck(min_val):
         return [(setting_name, "%s is less than template limits (%s < %s)." % (setting_name.capitalize(), val, min_val))]
     if max_val and typecheck(val) > typecheck(max_val):
@@ -21,13 +21,13 @@ def check_range(setting_name, settings, typecheck=float):
 def check_required(setting_name, settings):
     if settings.get(setting_name) is None:
         return [(setting_name, "%s is required" % setting_name)]
-        
+
 def validate_memory(settings):
     return check_required("memory", settings) or check_range("memory", settings)
-    
+
 def validate_cpu(settings):
     return check_required("vcpu", settings) or check_range("vcpu", settings, int)
-  
+
 def validate_disk(settings):
     return check_required("disk", settings) or check_range("disk", settings)
 
@@ -82,16 +82,16 @@ validators = {
 }
 
 def validate_settings(settings, attribute_filter = None):
-    """ 
+    """
     Checks if settings provided by a user match ovf template limits.
-    
-    @param settings: settings provided by the user via ui form with corresponding min/max values from ovf template file.  
+
+    @param settings: settings provided by the user via ui form with corresponding min/max values from ovf template file.
     @type input_settings: dict
-    
+
     @param attribute_filter: which attributes from settings to check
     @type attribute_filter: list
-    
-    @return: a list of errors mapping incorrect parameters to the corresponding error message. 
+
+    @return: a list of errors mapping incorrect parameters to the corresponding error message.
     @type: list
     """
     filter = set(attribute_filter or validators.keys())
