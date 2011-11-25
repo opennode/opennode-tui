@@ -1,5 +1,9 @@
+import os
+
+from ovf.OvfFile import OvfFile
+
 from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.ovfopenvz import OVF2Openvz
+from opennode.cli.config import c
 
 
 vm_types = {
@@ -15,22 +19,27 @@ def get_module(vm_type):
 
 
 def deploy_vm(vm_parameters, logger=None):
-    deploy_converter = OVF2Openvz(vm_parameters['template_name'], vm_parameters['vm_name'])
-    deploy_converter.unarchiveOVF()
-    template_settings = deploy_converter.parseOVFXML()
-    if logger:
-        logger("Template settings %s" % (template_settings, ))
+    from opennode.cli import actions
 
-    deploy_converter.testSystem()
+    storage_pool = actions.storage.get_default_pool()
+    if storage_pool is None:
+        raise  Exception("storage pool not defined")
 
-    template_errors = deploy_converter.updateOVFSettings(vm_parameters)
-    if (len(template_errors) > 0):
-        error_string = ""
-        for (k, v) in template_errors.items():
-            error_string = error_string + v + " "
-            return error_string
+    vm_type = vm_parameters['vm_type']
 
-    deploy_converter.prepareFileSystem()
-    deploy_converter.generateOpenvzConfiguration()
-    deploy_converter.writeOpenVZConfiguration()
-    deploy_converter.defineOpenvzCT()
+    template = vm_parameters['template_name']
+
+    ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
+                                    storage_pool, vm_type, "unpacked",
+                                    template + ".ovf"))
+    vm = actions.vm.get_module(vm_type)
+    template_settings = vm.get_ovf_template_settings(ovf_file)
+
+    template_settings.update(vm_parameters)
+
+    errors = vm.adjust_setting_to_systems_resources(template_settings)
+    if errors:
+        logger("Got %s" % (errors,))
+        raise  Exception("got errors %s" % (errors,))
+
+    vm.deploy(template_settings, storage_pool)
