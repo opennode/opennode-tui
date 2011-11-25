@@ -4,3 +4,5 @@
 sudo chown $USER:$USER -R .
 rsync -av --delete --exclude '*.pyc' modules/onode/ root@on6test:/usr/lib/python2.6/site-packages/func/minion/modules/onode/
 rsync -av --delete --exclude '*.pyc' opennode/ root@on6test:/usr/lib/python2.6/site-packages/opennode/
+
+rsync -av --delete --exclude '*.pyc' scripts/ root@on6test:opennode/
