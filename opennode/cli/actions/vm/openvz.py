@@ -158,37 +158,42 @@ def generate_nonubc_config(conf_filename, settings):
     parser.read(conf_filename)
     config_dict = parser.items()
     # Parameters to read. Others will be generated using ovf settings.
-    include_params = set(["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE",
-                        "IP_ADDRESS", "NAMESERVER","HOSTNAME"])
+    include_params = ["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE"]
     config_dict = dict((k, v) for k, v in config_dict.iteritems() if k in include_params)
     config_str = "\n".join("%s=%s" % (k, v) for k, v in config_dict.iteritems()) 
+    
+    # set UUID if provided
+    if settings.get('uuid') is not None:
+        config_str += "\n\n#UUID: %s" % settings.get('uuid')
     return config_str
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"], ovf_settings["template_name"]))
+    execute("vzctl create %s --ostemplate %s --config /etc/vz/conf/%s.conf" % (ovf_settings["vm_id"], 
+                                                            ovf_settings["template_name"], ovf_settings["vm_id"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
 
 def generate_config(ovf_settings):    
     """ Generates  ubc and non-ubc configuration """
-    conf_filename = os.path.join('/etc/vz/conf', "%s.conf" % ovf_settings["vm_id"]) 
+    base_conf = os.path.join('/etc/vz/conf', "ve-vswap-256m.conf-sample")
     ubc_conf_str = generate_ubc_config(ovf_settings)
-    non_ubc_conf_str = generate_nonubc_config(conf_filename, ovf_settings) 
+    non_ubc_conf_str = generate_nonubc_config(base_conf, ovf_settings) 
     openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc
     
     # overwrite configuration
-    with open(conf_filename, 'w') as conf_file:
+    target_conf_fnm = os.path.join('/etc/vz/conf', "%s.conf" % ovf_settings["vm_id"]) 
+    with open(target_conf_fnm, 'w') as conf_file:
         conf_file.write(openvz_ct_conf)
-    execute("chmod 644 %s" % conf_filename)
+    execute("chmod 644 %s" % target_conf_fnm)
 
 def deploy(ovf_settings, storage_pool):
     """ Deploys OpenVZ container """
     
-    print "Creating OpenVZ container..."
-    create_container(ovf_settings)
-    
     print "Generating configuration..."
     generate_config(ovf_settings)
+    
+    print "Creating OpenVZ container..."
+    create_container(ovf_settings)
     
     print "Deploying..."
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
