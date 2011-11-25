@@ -107,7 +107,7 @@ def _get_available_ct_id():
     @return: Next available ID for new OpenVZ CT
     @rtype: Integer
     """
-    return max (100, max(_get_openvz_ct_id_list())) + 1
+    return max (100, max([0] + _get_openvz_ct_id_list())) + 1
 
 def _get_openvz_ct_id_list():
     """
