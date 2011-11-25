@@ -1,6 +1,7 @@
 import os, errno
 import commands
 import ConfigParser
+import shutil
 
 def mkdir_p(path):
     """Emulates mkdir -p. http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python"""
@@ -16,6 +17,9 @@ def delete(fnm):
         os.unlink(fnm)
     except OSError:
         pass
+
+def del_folder(path):
+    shutil.rmtree(path)
 
 def get_file_size_bytes(path):
     return int(os.stat(path)[6]) 

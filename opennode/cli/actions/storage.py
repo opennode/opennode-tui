@@ -3,7 +3,7 @@ import os
 import re
 
 from opennode.cli.config import c, cs
-from opennode.cli.utils import delete,execute, mkdir_p
+from opennode.cli.utils import del_folder, execute, mkdir_p
 
 
 __all__ = ['list_pools', 'set_default_pool']
@@ -35,7 +35,7 @@ def delete_pool(pool_name):
     try:
         execute("virsh 'pool-destroy %s'" %pool_name)
         execute("virsh 'pool-undefine %s'" %pool_name)
-        delete(os.path.join(c('general', 'storage-endpoint'), pool_name))
+        del_folder(os.path.join(c('general', 'storage-endpoint'), pool_name))
         if pool_name == c('general', 'default-storage-pool'):
             set_default_pool('')
     except Exception, e:
