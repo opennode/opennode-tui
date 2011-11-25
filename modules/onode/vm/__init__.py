@@ -10,8 +10,9 @@ from xml.etree import ElementTree
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
+
+from opennode.cli.actions.vm import deploy_vm
 from opennode.cli.actions.vm.openvz import get_hostname
-from opennode.cli.ovfopenvz import OVF2Openvz
 
 
 _connections = {}
@@ -208,25 +209,7 @@ class VM(func_module.FuncModule):
     def deploy_vm(self, conn, vm_parameters):
         self.logger.info("Vm params %s" % (vm_parameters,))
         try:
-
-            deploy_converter = OVF2Openvz(vm_parameters['template_name'], vm_parameters['vm_name'])
-            deploy_converter.unarchiveOVF()
-            template_settings = deploy_converter.parseOVFXML()
-            self.logger.info("Template settings %s" % (template_settings, ))
-
-            deploy_converter.testSystem()
-
-            template_errors = deploy_converter.updateOVFSettings(vm_parameters)
-            if (len(template_errors) > 0):
-                error_string = ""
-                for (k, v) in template_errors.items():
-                    error_string = error_string + v + " "
-                    return error_string
-
-            deploy_converter.prepareFileSystem()
-            deploy_converter.generateOpenvzConfiguration()
-            deploy_converter.writeOpenVZConfiguration()
-            deploy_converter.defineOpenvzCT()
+            deploy_vm(vm_parameters, logger=self.logger.info)
         except Exception as e:
             self.logger.exception("Cannot deploy")
             raise e
