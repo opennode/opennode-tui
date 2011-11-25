@@ -215,6 +215,11 @@ class VM(func_module.FuncModule):
             raise e
         return "OK"
 
+    @vm_method
+    def undeploy_vm(self, conn, uuid):
+        dom = conn.lookupByUUIDString(uuid)
+        dom.undefine()
+
     def _vm_console_vnc(self, conn, uuid):
         # python 2.6 etree library doesn't support xpath with predicate
         element = ([i for i in self.dom_dom(conn, uuid).findall('.//graphics') if i.attrib.get('type', None) == 'vnc'] or [None])[0]
