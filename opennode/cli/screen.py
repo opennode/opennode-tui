@@ -233,7 +233,7 @@ class OpenNodeTUI(object):
 
     def display_select_template_from_repo(self, repo, storage_pool = c('general', 'default-storage-pool')): 
         remote_templates = actions.templates.get_template_list(repo)
-        local_templates = actions.templates.get_local_templates(storage_pool, c(repo, 'type'))
+        local_templates = actions.templates.get_local_templates(c(repo, 'type'), storage_pool)
         list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
         purely_local_templates = list(set(local_templates) - set(remote_templates))
         list_items.extend([('(l)' + tmpl, tmpl, tmpl in local_templates) for tmpl in purely_local_templates])
@@ -242,7 +242,7 @@ class OpenNodeTUI(object):
 
     def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""
-        templates = actions.templates.get_local_templates(storage_pool, vm_type)
+        templates = actions.templates.get_local_templates(vm_type, storage_pool)
         return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_template_create(self):
