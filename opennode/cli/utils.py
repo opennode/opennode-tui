@@ -28,7 +28,7 @@ class CommandException(Exception):
     pass
 
 def execute(cmd):
-    status, output = commands.getstatusoutput(cmd)
+    status, output = commands.getstatusoutput("LC_ALL=C %s" %cmd)
     if status != 0:
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'" 
                                % (cmd, status, output))  
