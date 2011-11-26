@@ -44,7 +44,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = N
     """Synchronize selected storage pool with the remote repo. Only selected templates 
     will be persisted, all of the other templates shall be purged"""
     vm_type = c(remote_repo, 'type')
-    existing_templates = get_local_templates(storage_pool, vm_type)
+    existing_templates = get_local_templates(vm_type, storage_pool)
     # synchronize selected templates
     if templates is None: templates = []
     for tmpl in templates:
