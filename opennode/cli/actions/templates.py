@@ -110,7 +110,7 @@ def unpack_template(templatefile, vm_type):
         if not os.path.isfile(dest_file):
             os.symlink(source_file, dest_file)
 
-def get_local_templates(storage_pool, vm_type):
+def get_local_templates(vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
     for pool in os.listdir("%s" % storage_endpoint):
