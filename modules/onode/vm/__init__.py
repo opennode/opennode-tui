@@ -268,5 +268,30 @@ class VM(func_module.FuncModule):
 
     vm_interfaces = vm_method(_vm_interfaces)
 
+    @vm_method
+    def metrics(self, conn):
+        import random
+        random.seed()
+
+        def get_uuid(vm):
+            return str(UUID(bytes=vm.UUID()))
+
+        def vm_metrics(vm):
+            def cpu_usage():
+                return random.random()
+            def memory_usage():
+                return random.randint(0, 100)
+            def network_usage():
+                return random.randint(0, 100)
+            def diskspace_usage():
+                return random.random() * 0.5 + 600  # useful
+
+            return dict(cpu_usage=cpu_usage(),
+                        memory_usage=memory_usage(),
+                        network_usage=network_usage(),
+                        diskspace_usage=diskspace_usage())
+
+        return dict((get_uuid(vm), vm_metrics(vm)) for vm in (conn.lookupByID(i) for i in conn.listDomainsID()))
+
 
 #delegate_methods(VM, mod)
