@@ -286,11 +286,11 @@ class VM(func_module.FuncModule):
             def cpu_usage():
                 return execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID())
             def memory_usage():
-                return execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())
+                return float(execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())) * 100
             def network_usage():
                 return random.randint(0, 100)
             def diskspace_usage():
-                return random.random() * 0.5 + 600  # useful
+                return execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID())
 
             return dict(cpu_usage=cpu_usage(),
                         memory_usage=memory_usage(),
