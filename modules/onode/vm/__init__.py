@@ -279,6 +279,9 @@ class VM(func_module.FuncModule):
         random.seed()
         from opennode.cli.utils import execute
 
+        if conn.getType() != 'OpenVZ':
+            return {}
+
         def get_uuid(vm):
             return str(UUID(bytes=vm.UUID()))
 
