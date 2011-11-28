@@ -41,8 +41,11 @@ def delete_pool(pool_name):
     except Exception, e:
         print "Failed to delete pool %s: %s" % (pool_name, e)
         
-def add_pool(pool_name):
+def add_pool(pool_name, careful=True):
     """Add a new pool_name"""
+    if careful and pool_name in list_pools():
+        print "Pool '%s' already exists." %pool_name
+        return
     try:
         pool_name = re.sub(" " , "_", pool_name) # safety measure
         pool_path = os.path.join(c('general', 'storage-endpoint'), pool_name)
