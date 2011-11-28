@@ -44,7 +44,7 @@ class VM(func_module.FuncModule):
         return self.options.backends
 
     def _connection(self, backend):
-        if backend not in self.options.backends and not backend.startswith('test://'):
+        if self.options.backends and (backend not in self.options.backends and not backend.startswith('test://')):
             raise Exception("unsupported backend %s" % backend)
 
         conn = libvirt.open(backend)
