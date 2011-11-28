@@ -43,7 +43,7 @@ def delete_pool(pool_name):
         
 def add_pool(pool_name, careful=True):
     """Add a new pool_name"""
-    if careful and pool_name in list_pools():
+    if careful and filter(lambda p: p[0] == pool_name, list_pools()):
         print "Pool '%s' already exists." %pool_name
         return
     try:
