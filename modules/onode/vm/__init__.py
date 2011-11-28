@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import os
-import datetime
 import time
 import urlparse
 from functools import wraps
@@ -297,7 +296,7 @@ class VM(func_module.FuncModule):
                     return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 |awk '{print \$2, \$10}'\"" 
                                                     % vm.ID()).split(' ')]
                                 
-                t2 = datetime.datetime.now()
+                t2 = time.time()
                 rx2, tx2 = get_netstats()
                 old_data = "/tmp/func-network-%s" % vm.ID()
                 if os.path.exists(old_data):
@@ -309,8 +308,8 @@ class VM(func_module.FuncModule):
                     with open(old_data, 'w') as od:
                         pickle.dump((t2, rx2, tx2), od)
                     return (0, 0)
-                window = (t2 - t1).seconds
-                return ((rx2 - rx1) / window, tx2 - tx1 / window)
+                window = t2 - t1
+                return ((rx2 - rx1) / window, (tx2 - tx1) / window)
             def diskspace_usage():
                 return execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID())
 
