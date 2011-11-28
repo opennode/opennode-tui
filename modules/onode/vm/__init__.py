@@ -277,15 +277,16 @@ class VM(func_module.FuncModule):
     def metrics(self, conn):
         import random
         random.seed()
+        from opennode.cli.utils import execute
 
         def get_uuid(vm):
             return str(UUID(bytes=vm.UUID()))
 
         def vm_metrics(vm):
             def cpu_usage():
-                return random.random()
+                return execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID())
             def memory_usage():
-                return random.randint(0, 100)
+                return execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())
             def network_usage():
                 return random.randint(0, 100)
             def diskspace_usage():
