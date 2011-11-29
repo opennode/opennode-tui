@@ -293,7 +293,7 @@ class VM(func_module.FuncModule):
 
         def vm_metrics(vm):
             def cpu_usage():
-                return execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID())
+                return float(execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID()))
             def memory_usage():
                 return float(execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())) * 100
             def network_usage():
@@ -316,11 +316,11 @@ class VM(func_module.FuncModule):
                 window = t2 - t1
                 return ((rx2 - rx1) / window, (tx2 - tx1) / window)
             def diskspace_usage():
-                return execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID())
+                return float(execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID()))
 
             return dict(cpu_usage=cpu_usage(),
                         memory_usage=memory_usage(),
-                        network_usage=network_usage(),
+                        network_usage=max(network_usage()),
                         diskspace_usage=diskspace_usage())
 
         return dict((get_uuid(vm), vm_metrics(vm)) for vm in (conn.lookupByID(i) for i in conn.listDomainsID()))
