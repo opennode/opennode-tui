@@ -54,6 +54,7 @@ class OpenNodeTUI(object):
             self.screen.finish()
             logic[result]()
             self.screen = SnackScreen()
+            return self.display_console_menu()
         else:
             return self.display_main_screen()
 
