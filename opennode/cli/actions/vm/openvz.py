@@ -27,9 +27,13 @@ def get_ovf_template_settings(ovf_file):
 
 def get_active_template_settings(vm_name, storage_pool):
     """ Reads ovf settings of the specified VM """
-    ovf_file = OvfFile(path.join(config.c("general", "storage-endpoint"), storage_pool, 
-                       "openvz", "unpacked", get_template_name(vm_name) + ".ovf"))
-    return get_ovf_template_settings(ovf_file)
+    ovf_fnm = path.join(config.c("general", "storage-endpoint"), storage_pool, 
+                       "openvz", "unpacked", get_template_name(vm_name) + ".ovf")
+    if path.exists(ovf_fnm):
+        ovf_file = OvfFile()
+        return get_ovf_template_settings(ovf_file)
+    else:
+        return read_default_ovf_settings()
     
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
