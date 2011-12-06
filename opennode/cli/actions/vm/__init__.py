@@ -29,6 +29,10 @@ def deploy_vm(vm_parameters, logger=None):
 
     template = vm_parameters['template_name']
 
+    if not template:
+        logger("Cannot deploy because template is '%s'" % (template))
+        return
+
     ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                     storage_pool, vm_type, "unpacked",
                                     template + ".ovf"))

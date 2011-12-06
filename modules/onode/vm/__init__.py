@@ -13,7 +13,7 @@ from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
 
 from opennode.cli.actions.vm import deploy_vm
-from opennode.cli.actions.vm.openvz import get_hostname
+from opennode.cli.actions.vm.openvz import get_hostname, get_template_name as openvz_template_name
 from opennode.cli.actions.templates import get_local_templates
 
 
@@ -123,7 +123,12 @@ class VM(func_module.FuncModule):
                 return get_hostname(vm.name())
             return vm.name()
 
-        return {"uuid": get_uuid(vm), "name": vm_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
+        def vm_template_name(vm):
+            if conn.getType() == 'OpenVZ':
+                return openvz_template_name(vm.name())
+            return None
+
+        return {"uuid": get_uuid(vm), "name": vm_name(vm), "template": vm_template_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
                 'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i],
                 'interfaces': self._vm_interfaces(conn, get_uuid(vm))}
 
