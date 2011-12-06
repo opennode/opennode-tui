@@ -45,6 +45,14 @@ class VM(func_module.FuncModule):
     def backends(self):
         return self.options.backends
 
+    def autodetected_backends(self):
+        auto = []
+        if os.path.exists('/dev/vzctl'):
+            auto.append('openvz:///system')
+        if os.path.exists('/dev/kvm'):
+            auto.append('qemu:///system')
+        return self.options.backends or auto
+
     def _connection(self, backend):
         if self.options.backends and (backend not in self.options.backends and not backend.startswith('test://')):
             raise Exception("unsupported backend %s" % backend)
