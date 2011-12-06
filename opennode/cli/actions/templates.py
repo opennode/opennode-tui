@@ -73,17 +73,20 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
             download_monitor.update_url(template)
             download_hook = download_monitor.download_hook
         urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
-        urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile, download_hook)
+        urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile,
+                           download_hook)
         unpack_template("%s.tar" % localfile, vm_type)
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
     # get a list of files in the template
     storage_endpoint = c('general', 'storage-endpoint')
-    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type, template)
+    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type, 
+                                        template)
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
-        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type, packed_file)
+        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type, 
+                                        packed_file)
         if not os.path.isdir(fnm):
             delete(fnm)
         else:
@@ -114,10 +117,8 @@ def unpack_template(templatefile, vm_type):
 def get_local_templates(vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
-    # for resilience
-    for pool in os.listdir("%s" % storage_endpoint):
-        storage.prepare_storage_pool(pool)
-    return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint, storage_pool, vm_type)) if tmpl.endswith('tar')]
+    return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
+                                storage_pool, vm_type)) if tmpl.endswith('tar')]
 
 def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
     """Synchronize OMS template"""
