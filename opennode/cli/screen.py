@@ -258,7 +258,8 @@ class OpenNodeTUI(object):
         vm = actions.vm.get_module(vm_type)
         instances = vm.get_available_instances()
         if len(instances) == 0:
-            display_info(self.screen, TITLE, "No suitable VMs found.")
+            display_info(self.screen, TITLE, 
+                "No suitable VMs found. Only stopped VMs can be\nused for creating new templates!")
             return self.display_templates()
         
         # pick an instance
