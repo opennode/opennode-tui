@@ -6,7 +6,7 @@ from opennode.cli.config import c, cs
 from opennode.cli.utils import del_folder, execute, mkdir_p
 
 
-__all__ = ['list_pools', 'set_default_pool']
+__all__ = ['list_pools', 'set_default_pool', 'prepare_storage_pool']
 
 
 def list_pools():
@@ -50,9 +50,19 @@ def add_pool(pool_name, careful=True):
         pool_name = re.sub(" " , "_", pool_name) # safety measure
         pool_path = os.path.join(c('general', 'storage-endpoint'), pool_name)
         mkdir_p(pool_path)
+        prepare_storage_pool(pool_name)
         execute("virsh 'pool-define-as %s dir --target %s'" %(pool_name, pool_path))
         execute("virsh 'pool-start %s'" %pool_name)
         execute("virsh 'pool-autostart %s'" %pool_name)
     except Exception, e:
         print "Failed to create a new pool: %s" %e
+        
+def prepare_storage_pool(storage_pool=get_default_pool()):
+    """Assures that storage pool has the correct folder structure"""
+    # create structure
+    storage_pool = "%s/%s" % (c('general', 'storage-endpoint'), storage_pool)
+    mkdir_p("%s/iso/" % storage_pool)
+    mkdir_p("%s/images/" % storage_pool)
+    mkdir_p("%s/openvz/unpacked" % storage_pool)
+    mkdir_p("%s/kvm/unpacked" % storage_pool)
         

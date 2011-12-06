@@ -362,12 +362,16 @@ class OpenNodeTUI(object):
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
         self.__displayInfoScreen(msg, 70)
-        
+    
+    def assure_env_sanity(self):
+        """Double check we have everything needed for running TUI"""
+        actions.storage.prepare_storage_pool()
     
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
         try:
+            self.assure_env_sanity()
             self.display_main_screen()
         finally:
             self.screen.finish()

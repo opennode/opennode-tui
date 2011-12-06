@@ -6,7 +6,7 @@ import shutil
 import re
 
 from opennode.cli.config import c
-from opennode.cli.utils import mkdir_p, delete
+from opennode.cli.utils import delete
 from opennode.cli.actions import storage
 from opennode.cli import config 
 
@@ -65,7 +65,8 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
     remotefile =  "/".join([url, template])
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):
-        prepare_storage_pool(storage_pool)
+        # for resilience
+        storage.prepare_storage_pool(storage_pool)
         if download_monitor is None:
             download_hook = _simple_download_hook
         else:
@@ -113,8 +114,9 @@ def unpack_template(templatefile, vm_type):
 def get_local_templates(vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
+    # for resilience
     for pool in os.listdir("%s" % storage_endpoint):
-        prepare_storage_pool(pool)
+        storage.prepare_storage_pool(pool)
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint, storage_pool, vm_type)) if tmpl.endswith('tar')]
 
 def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
@@ -137,15 +139,6 @@ def is_fresh(localfile, remotefile):
         # no local hash found
         return False 
     return remote_hash == local_hash
-
-def prepare_storage_pool(storage_pool):
-    """Assures that storage pool has the correct folder structure"""
-    # create structure
-    storage_pool = "%s/%s" % (c('general', 'storage-endpoint'), storage_pool)
-    mkdir_p("%s/iso/" % storage_pool)
-    mkdir_p("%s/images/" % storage_pool)
-    mkdir_p("%s/openvz/unpacked" % storage_pool)
-    mkdir_p("%s/kvm/unpacked" % storage_pool)
 
 def list_templates():
     """ Prints all local and remote templates """
