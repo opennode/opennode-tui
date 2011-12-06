@@ -47,7 +47,10 @@ def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = N
     existing_templates = get_local_templates(vm_type, storage_pool)
     # synchronize selected templates
     if templates is None: templates = []
+    purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
     for tmpl in templates:
+        if tmpl in purely_local_tmpl: 
+            continue
         sync_template(remote_repo, tmpl, storage_pool, download_monitor)
         if tmpl in existing_templates:
             existing_templates.remove(tmpl)
@@ -57,7 +60,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = N
 
 
 def sync_template(remote_repo, template, storage_pool, download_monitor = None):
-    """Synchronizes local template (cache) with the remote one (master)"""    
+    """Synchronizes local template (cache) with the remote one (master)"""
     url = c(remote_repo, 'url')
     vm_type = c(remote_repo, 'type')
     storage_endpoint = c('general', 'storage-endpoint')
@@ -162,3 +165,10 @@ def list_templates():
         for tmpl in get_template_list(repo_group):
             print "\t\t",  tmpl
         print
+
+def get_purely_local_templates(storage_pool, vm_type, remote_repo):
+    remote_templates = get_template_list(remote_repo)
+    local_templates = get_local_templates(vm_type, storage_pool)
+    return list(set(local_templates) - set(remote_templates))
+    
+

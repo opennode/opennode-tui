@@ -236,7 +236,7 @@ class OpenNodeTUI(object):
         local_templates = actions.templates.get_local_templates(c(repo, 'type'), storage_pool)
         list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
         purely_local_templates = list(set(local_templates) - set(remote_templates))
-        list_items.extend([('(l)' + tmpl, tmpl, tmpl in local_templates) for tmpl in purely_local_templates])
+        list_items.extend([('(l)' + tmpl, tmpl, True) for tmpl in purely_local_templates])
         return display_checkbox_selection(self.screen, TITLE, list_items, 
                         'Please, select templates to keep in the storage pool (r - remote, l - local):')
 
