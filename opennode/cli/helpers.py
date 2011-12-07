@@ -63,7 +63,7 @@ def create_select_checkbox(screen, title, text, items, buttons = ('Ok', 'Cancel'
 
 def display_create_template(screen, title, vm_type, templates, help = None):
     """Helper class for displaying a form for creating a new VM template"""
-    label_base = Textbox(40, 2, 'Select %s VM to be used as a template' %vm_type, 0, 0)
+    label_base = Textbox(40, 2, 'Select %s VM to be used as a basis\n(only stopped VMs are allowed)' %vm_type, 0, 0)
     
     base_tmpl = Listbox(7, 1, 0, 30, 1)
     for vm in templates.keys():
