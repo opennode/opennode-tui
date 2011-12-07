@@ -4,6 +4,7 @@ import datetime
 import tarfile
 from os import path
 from hashlib import sha1
+import errno
 from contextlib import closing
 
 import libvirt
@@ -173,9 +174,13 @@ def generate_nonubc_config(conf_filename, settings):
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    execute("vzctl create %s --ostemplate %s" % (ovf_settings["vm_id"],
-                                                            ovf_settings["template_name"]))
+    execute("vzctl create %s --ostemplate %s --config %s" % (ovf_settings["vm_id"], 
+                                                           ovf_settings["template_name"],
+                                                           ovf_settings["vm_id"]))
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
+    # unlink base config
+    base_config = os.path.join('/etc/vz/conf/', "ve-%s.conf-sample" % ovf_settings["vm_id"]) 
+    os.unlink(base_config)
 
 def generate_config(ovf_settings):
     """ Generates  ubc and non-ubc configuration """
@@ -185,13 +190,15 @@ def generate_config(ovf_settings):
     openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc
     
     # overwrite configuration
-    target_conf_fnm = os.path.join('/etc/vz/conf', "%s.conf" % ovf_settings["vm_id"]) 
+    target_conf_fnm = os.path.join('/etc/vz/conf/', "ve-%s.conf-sample" % ovf_settings["vm_id"]) 
     with open(target_conf_fnm, 'w') as conf_file:
         conf_file.write(openvz_ct_conf)
     execute("chmod 644 %s" % target_conf_fnm)
 
 def deploy(ovf_settings, storage_pool):
     """ Deploys OpenVZ container """
+    # make sure we have required template present and symlinked        
+    link_template(storage_pool, ovf_settings["template_name"])
     
     print "Generating configuration..."
     generate_config(ovf_settings)
@@ -233,13 +240,30 @@ def get_hostname(ctid):
         raise RuntimeError, "Incorrect format for a container id."
     return execute("vzlist %s -H -o hostname" % ctid)
 
+def link_template(storage_pool, tmpl_name, overwrite = True):
+    """Setup symlinks from the OpenVZ template to the location expected by vzctl"""
+    tmpl_name = tmpl_name + '.tar.gz'
+    source_file = os.path.join(config.c('general', 'storage-endpoint'), 
+                                                  storage_pool, 'openvz', 
+                                                  'unpacked', tmpl_name)
+    dest_file = os.path.join(config.c('general', 'openvz-templates'), 
+                             tmpl_name)
+    if overwrite:
+        try:
+            os.unlink(dest_file)
+        except OSError as exc: 
+            if exc.errno != errno.ENOENT:
+                raise
+    if not os.path.exists(dest_file):
+        os.symlink(source_file, dest_file)
+
 def save_as_ovf(vm_settings, storage_pool):
     """
     Creates ovf template archive for the specified container. 
     Steps:
         - archive container directory
         - generate ovf configuration file
-        - pack ovf and container arhive into tar.gz file  
+        - pack ovf and container archive into tar.gz file  
     """
 
     dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
@@ -268,7 +292,7 @@ def save_as_ovf(vm_settings, storage_pool):
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
         
     print "Done! Saved template at %s" % ovf_archive_fnm
-    
+
 def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ovf = OvfFile()
     ovf.createEnvelope()

@@ -78,7 +78,7 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
         urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
         urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile,
                            download_hook)
-        unpack_template("%s.tar" % localfile, vm_type)
+        unpack_template(storage_pool, vm_type, localfile)
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
@@ -101,21 +101,21 @@ def delete_template(storage_pool, vm_type, template):
     if vm_type == 'openvz':
         delete("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
 
-def unpack_template(templatefile, vm_type):
+def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
-    tmpl = tarfile.open(templatefile)
-    unpacked_dir = os.path.dirname(templatefile)
+    basedir = os.path.join([c('general', 'storage-endpoint'), storage_pool, vm_type])
+    tmpl = tarfile.open(os.path.join([basedir, tmpl_name]))
+    unpacked_dir = os.path.join([basedir, 'unpacked'])
     tmpl.extractall("%s/unpacked" % unpacked_dir)
     # special case for openvz vm_type
     if vm_type == 'openvz':
-        tmpl_file = [fnm for fnm in tmpl.getnames() if fnm.endswith('tar.gz')]
-        assert len(tmpl_file) == 1
-        source_file = os.path.join(unpacked_dir, 'unpacked', tmpl_file[0])
-        dest_file = os.path.join(c('general', 'openvz-templates'), tmpl_file[0])
-        if not os.path.isfile(dest_file):
-            os.symlink(source_file, dest_file)
+        from opennode.cli.actions import vm
+        tmpl_name = [fnm for fnm in tmpl.getnames() if fnm.endswith('tar.gz')]
+        # make sure we have only a single tarball with the image
+        assert len(tmpl_name) == 1
+        vm.openvz.link_template(storage_pool, tmpl_name[0])
 
 def get_local_templates(vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
