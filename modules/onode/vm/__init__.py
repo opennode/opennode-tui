@@ -324,6 +324,13 @@ class VM(func_module.FuncModule):
 
         def vm_metrics(vm):
             def cpu_usage():
+                time_list_now = map(int, execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
+                time_list_was = roll_data('/tmp/func-cpu-%s' % vm.ID(), time_list_now, [0]*6)
+                deltas = [yi-xi for yi,xi in zip(time_list_now, time_list_was)]
+
+                cpu_pct = 100 - (deltas[-1] * 100.00 / sum(deltas))
+                return cpu_pct
+            def load():
                 return float(execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID()))
             def memory_usage():
                 return float(execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())) * 100
@@ -341,6 +348,7 @@ class VM(func_module.FuncModule):
                 return float(execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID()))
 
             return dict(cpu_usage=cpu_usage(),
+                        load=load(),
                         memory_usage=memory_usage(),
                         network_usage=max(network_usage()),
                         diskspace_usage=diskspace_usage())
