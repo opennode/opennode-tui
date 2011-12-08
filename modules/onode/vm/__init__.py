@@ -14,7 +14,7 @@ from func.minion.modules import func_module
 
 from opennode.cli.actions.vm import deploy_vm
 from opennode.cli.actions.vm.openvz import get_hostname, get_template_name as openvz_template_name
-from opennode.cli.actions.templates import get_local_templates
+from opennode.cli.actions.templates import get_local_templates, get_template_info
 
 
 _connections = {}
@@ -237,7 +237,13 @@ class VM(func_module.FuncModule):
 
     @vm_method
     def get_local_templates(self, conn):
-        return get_local_templates(conn.getType().lower())
+        vm_type = conn.getType().lower()
+        tmpls = []
+        for tmpl_name in get_local_templates(vm_type):
+            tmpl_data = get_template_info(tmpl_name, vm_type)
+            tmpl_data['template_name'] = tmpl_name
+            tmpls.append(tmpl_data)
+        return tmpls
 
     def _vm_console_vnc(self, conn, uuid):
         # python 2.6 etree library doesn't support xpath with predicate
