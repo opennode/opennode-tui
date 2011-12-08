@@ -310,6 +310,18 @@ class VM(func_module.FuncModule):
         def get_uuid(vm):
             return str(UUID(bytes=vm.UUID()))
 
+        def roll_data(filename, data, default=None):
+            if os.path.exists(filename):
+                with open(filename, 'r') as od:
+                    res = pickle.load(od)
+                with open(filename, 'w') as od:
+                    pickle.dump(data, od)
+                return res
+            else:
+                with open(filename, 'w') as od:
+                    pickle.dump(data, od)
+                return default
+
         def vm_metrics(vm):
             def cpu_usage():
                 return float(execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID()))
@@ -320,18 +332,9 @@ class VM(func_module.FuncModule):
                     return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 |awk '{print \$2, \$10}'\""
                                                     % vm.ID()).split(' ')]
 
-                t2 = time.time()
-                rx2, tx2 = get_netstats()
-                old_data = "/tmp/func-network-%s" % vm.ID()
-                if os.path.exists(old_data):
-                    with open(old_data, 'r') as od:
-                        t1, rx1, tx1 = pickle.load(od)
-                    with open(old_data, 'w') as od:
-                        pickle.dump((t2, rx2, tx2), od)
-                else:
-                    with open(old_data, 'w') as od:
-                        pickle.dump((t2, rx2, tx2), od)
-                    return (0, 0)
+                t2, (rx2, tx2) = time.time(), get_netstats()
+                t1, rx1, tx1 = roll_data("/tmp/func-network-%s" % vm.ID(), (t2, rx2, tx2), (0, 0, 0))
+
                 window = t2 - t1
                 return ((rx2 - rx1) / window, (tx2 - tx1) / window)
             def diskspace_usage():
