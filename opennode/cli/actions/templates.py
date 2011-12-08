@@ -5,9 +5,11 @@ import os
 import shutil
 import re
 
+from ovf.OvfFile import OvfFile
+
 from opennode.cli.config import c
 from opennode.cli.utils import delete
-from opennode.cli.actions import storage
+from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli import config 
 
 
@@ -171,4 +173,13 @@ def get_purely_local_templates(storage_pool, vm_type, remote_repo):
     local_templates = get_local_templates(vm_type, storage_pool)
     return list(set(local_templates) - set(remote_templates))
     
-
+def get_template_info(template_name, vm_type, storage_pool = c('general', 'default-storage-pool')):
+    ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
+                                        storage_pool, vm_type, "unpacked", 
+                                        template_name + ".ovf"))
+    vm = vm_ops.get_module(vm_type)
+    template_settings = vm.get_ovf_template_settings(ovf_file)
+    # XXX handle modification to system params
+    #errors = vm.adjust_setting_to_systems_resources(template_settings)
+    return template_settings
+        
