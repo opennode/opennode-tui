@@ -317,9 +317,9 @@ class VM(func_module.FuncModule):
                 return float(execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / \$2}'\"" % vm.ID())) * 100
             def network_usage():
                 def get_netstats():
-                    return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 |awk '{print \$2, \$10}'\"" 
+                    return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 |awk '{print \$2, \$10}'\""
                                                     % vm.ID()).split(' ')]
-                                
+
                 t2 = time.time()
                 rx2, tx2 = get_netstats()
                 old_data = "/tmp/func-network-%s" % vm.ID()
