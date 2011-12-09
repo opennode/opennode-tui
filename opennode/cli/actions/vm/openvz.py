@@ -376,3 +376,7 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
 def get_memory(ctid):
     """Max memory in MB"""
     return int(execute("vzlist %s -H -o physpages.l" % ctid)) * 4 / 1024
+
+def get_diskspace(ctid):
+    """Max disk space in MB"""
+    return float(execute("vzlist %s -H -o diskspace.h" % ctid))  / 1024
