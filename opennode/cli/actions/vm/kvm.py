@@ -369,7 +369,8 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
         os.remove(ovf_fnm)
         for disk in vm_settings["disks"]:
             os.remove(disk["new_path"])
-
+    
+    calculate_hash(ovf_archive_fnm)
     print "Done! Template saved at %s" % ovf_archive_fnm
 
 def _prepare_disks(vm_settings, target_dir):
