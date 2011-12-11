@@ -243,7 +243,10 @@ def get_hostname(ctid):
 
 def link_template(storage_pool, tmpl_name, overwrite = True):
     """Setup symlinks from the OpenVZ template to the location expected by vzctl"""
-    tmpl_name = tmpl_name + '.tar.gz'
+    # added resilience. Openvz templates are distributed as tarballs, so sometimes 
+    # name and name.tar.gz are used in a mixed way
+    if not tmpl_name.endswith('.tar.gz'):
+        tmpl_name = tmpl_name + '.tar.gz'
     source_file = os.path.join(config.c('general', 'storage-endpoint'), 
                                                   storage_pool, 'openvz', 
                                                   'unpacked', tmpl_name)
