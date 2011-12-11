@@ -28,11 +28,17 @@ class CommandException(Exception):
     pass
 
 def execute(cmd):
+    """Run cmd in a shell, return output of the execution. Raise exception for non-0 return code"""
     status, output = commands.getstatusoutput("LC_ALL=C %s" %cmd)
     if status != 0:
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'" 
                                % (cmd, status, output))  
-    return output 
+    return output
+
+def calculate_hash(target_file):
+    """Hash contents of a file and write hashes out to a file"""
+    execute("pfff -k 6996807 -B %s > %s.pfff" % (target_file, target_file))
+
 
 class SimpleConfigParser(ConfigParser.ConfigParser):
     """ Parses configuration file without sections. """
