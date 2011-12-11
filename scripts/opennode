@@ -3,6 +3,8 @@ from sys import exit
 from sys import argv
 from getopt import getopt, GetoptError
 
+from opennode.cli.actions import templates
+
 ACTIONS = { 
             0 : "GUI mode",
             1 : "Update templates",
@@ -18,10 +20,12 @@ SYNOPSIS
     opennode [OPTIONS]
 
 OPTIONS
-    -u, --update-templates
-        Update locally stored remote templates
     -l, --list-templates
         List local and remote templates in all storage pools
+    -i --import [template-fnm]
+        Import specified template archive into the locale storage.
+    -t --template-type [type]
+        Specify template type. Supported values: 'openvz', 'kvm'. Default: 'openvz'
     -h, --help
         Display usage help
 
@@ -35,7 +39,8 @@ if __name__ == '__main__':
     #Run OpenNode utility
 
     try:
-        options, args = getopt(argv[1:], 'ulh', ['update-templates','list-templates','help'])
+        options, args = getopt(argv[1:], 'lhi:t:', 
+                               ['list-templates','help', 'import', 'template-type'])
     except GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -43,10 +48,15 @@ if __name__ == '__main__':
         exit(2)
 
     action = 'cli'
-
+    vm_type = 'openvz'
+    template_fnm = None
+    
     for o, a in options:
-        if o in ("-u", "--update-templates"): action = 'lib_update'
-        elif o in ("-l", "--list-templates"): action = 'lib_list'
+        if o in ("-l", "--list-templates"): action = 'lib_list'
+        elif o in ("-i", "--import"): 
+            action = 'import'
+            template_fnm = a
+        elif o in ("-t", "--template-type"): vm_type = a
         elif o in ("-h", "--help"): _help()
     
     if action == 'cli':
@@ -54,5 +64,6 @@ if __name__ == '__main__':
         tui = screen.OpenNodeTUI()
         tui.run()
     elif action == 'lib_list':
-        from opennode.cli.actions import templates
         templates.list_templates()
+    elif action == 'import':
+        templates.import_template(template_fnm, vm_type)
