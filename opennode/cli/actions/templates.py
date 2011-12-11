@@ -8,7 +8,7 @@ import re
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import c
-from opennode.cli.utils import delete
+from opennode.cli.utils import delete, calculate_hash
 from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli import config 
 
@@ -66,8 +66,8 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
     url = c(remote_repo, 'url')
     vm_type = c(remote_repo, 'type')
     storage_endpoint = c('general', 'storage-endpoint')
-    localfile = "/".join([storage_endpoint, storage_pool, vm_type, template])
-    remotefile =  "/".join([url, template])
+    localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
+    remotefile = os.path.join(url, template)
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):
         # for resilience
@@ -81,6 +81,21 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
         urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile,
                            download_hook)
         unpack_template(storage_pool, vm_type, localfile)
+
+def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
+    """Import external template into ON storage pool"""
+    if not os.path.exists(template):
+        raise RuntimeError("Template not found: " % template)
+    if not template.endswith('tar'):
+        raise RuntimeError("Expecting a file ending with .tar for a template")
+    storage_endpoint = c('general', 'storage-endpoint')
+    target_file = os.path.join(storage_endpoint, storage_pool, vm_type, template)
+    print "Copying template to the storage pool..."
+    print template, target_file
+    shutil.copyfile(template, target_file)
+    calculate_hash(target_file)
+    print "Unpacking..."
+    unpack_template(storage_pool, vm_type, template)
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
@@ -107,10 +122,10 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
-    basedir = os.path.join([c('general', 'storage-endpoint'), storage_pool, vm_type])
-    tmpl = tarfile.open(os.path.join([basedir, tmpl_name]))
-    unpacked_dir = os.path.join([basedir, 'unpacked'])
-    tmpl.extractall("%s/unpacked" % unpacked_dir)
+    basedir = os.path.join(c('general', 'storage-endpoint'), storage_pool, vm_type)
+    tmpl = tarfile.open(os.path.join(basedir, tmpl_name))
+    unpacked_dir = os.path.join(basedir, 'unpacked')
+    tmpl.extractall(unpacked_dir)
     # special case for openvz vm_type
     if vm_type == 'openvz':
         from opennode.cli.actions import vm
