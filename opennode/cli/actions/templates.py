@@ -89,13 +89,14 @@ def import_template(template, vm_type, storage_pool = c('general', 'default-stor
     if not template.endswith('tar'):
         raise RuntimeError("Expecting a file ending with .tar for a template")
     storage_endpoint = c('general', 'storage-endpoint')
-    target_file = os.path.join(storage_endpoint, storage_pool, vm_type, template)
+    tmpl_name = os.path.basename(template)
+    target_file = os.path.join(storage_endpoint, storage_pool, vm_type, tmpl_name)
     print "Copying template to the storage pool..."
     print template, target_file
     shutil.copyfile(template, target_file)
     calculate_hash(target_file)
     print "Unpacking..."
-    unpack_template(storage_pool, vm_type, template)
+    unpack_template(storage_pool, vm_type, tmpl_name)
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
