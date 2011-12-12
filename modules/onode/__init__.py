@@ -28,7 +28,7 @@ class OpenNode(func_module.FuncModule):
             return float(execute("free | tail -n 2 | head -n 1 |awk '{print $3 / 1024}'"))
         def network_usage():
             def get_netstats():
-                return [int(v) for v in execute("grep eth0 /proc/net/dev |awk '{print $2, $10}'").split(' ')]
+                return [int(v) for v in execute("grep eth0 /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'").split(' ')]
 
             t2, (rx2, tx2) = time.time(), get_netstats()
             t1, rx1, tx1 = roll_data("/tmp/func-network-host", (t2, rx2, tx2), (0, 0, 0))
