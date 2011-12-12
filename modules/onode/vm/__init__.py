@@ -353,7 +353,7 @@ class VM(func_module.FuncModule):
                 cpu_pct = 1 - (float(deltas[-1]) / sum(deltas))
                 return cpu_pct
             def load():
-                return float(execute("vzctl exec %s \"uptime | awk -F , '{print \$4}'\"" % vm.ID()))
+                return float(execute("vzctl exec %s \"cat /proc/loadavg | awk '{print \$1}'\"" % vm.ID()))
             def memory_usage():
                 return float(execute("vzctl exec %s \"free -o | tail -n 2 | head -n 1 |awk '{print \$3 / 1024}'\"" % vm.ID()))
             def network_usage():
