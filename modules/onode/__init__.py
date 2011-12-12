@@ -25,7 +25,7 @@ class OpenNode(func_module.FuncModule):
         def load():
             return float(execute("cat /proc/loadavg | awk '{print $1}'"))
         def memory_usage():
-            return float(execute("free -o | tail -n 2 | head -n 1 |awk '{print $3 / 1024}'"))
+            return float(execute("free | tail -n 2 | head -n 1 |awk '{print $3 / 1024}'"))
         def network_usage():
             def get_netstats():
                 return [int(v) for v in execute("grep eth0 /proc/net/dev |awk '{print $2, $10}'").split(' ')]
