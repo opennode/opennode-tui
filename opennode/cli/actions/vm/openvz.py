@@ -384,3 +384,7 @@ def get_memory(ctid):
 def get_diskspace(ctid):
     """Max disk space in MB"""
     return float(execute("vzlist %s -H -o diskspace.h" % ctid))  / 1024
+
+def get_uptime(ctid):
+    """Get uptime in seconds"""
+    return float(execute("vzctl exec %s \"awk '{print \$1}' /proc/uptime\"" % ctid))

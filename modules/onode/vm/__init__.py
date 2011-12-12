@@ -13,7 +13,7 @@ from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
 
 from opennode.cli.actions.vm import deploy_vm
-from opennode.cli.actions.vm.openvz import get_hostname, get_template_name as openvz_template_name, get_memory as openvz_memory, get_diskspace as openvz_diskspace
+from opennode.cli.actions.vm.openvz import get_hostname, get_template_name as openvz_template_name, get_memory as openvz_memory, get_diskspace as openvz_diskspace, get_uptime as openvz_uptime
 from opennode.cli.actions.templates import get_local_templates, get_template_info
 
 
@@ -135,12 +135,22 @@ class VM(func_module.FuncModule):
             # XXX: todo use libvirt
             return 0
 
+        def vm_uptime(vm, state):
+            if state != 'active':
+                return None
+
+            # libvirt doesn't work with openvz
+            if conn.getType() == 'OpenVZ':
+                return openvz_uptime(vm.name())
+            # XXX: todo use libvirt
+            return 0
+
         def vm_diskspace(vm):
             if conn.getType() == 'OpenVZ':
                 return {'/': openvz_diskspace(vm.name())}
             return {'/': 0}
 
-        return {"uuid": get_uuid(vm), "name": vm_name(vm), "memory": vm_memory(vm), "diskspace": vm_diskspace(vm), "template": vm_template_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
+        return {"uuid": get_uuid(vm), "name": vm_name(vm), "memory": vm_memory(vm), "uptime": vm_uptime(vm, STATE_MAP[info[0]]), "diskspace": vm_diskspace(vm), "template": vm_template_name(vm), "state": STATE_MAP[info[0]], "run_state": RUN_STATE_MAP[info[0]],
                 'consoles': [i for i in [self._vm_console_vnc(conn, get_uuid(vm)), self._vm_console_pty(conn, get_uuid(vm))] if i],
                 'interfaces': self._vm_interfaces(conn, get_uuid(vm))}
 
