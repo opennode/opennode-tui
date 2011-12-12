@@ -6,11 +6,11 @@ import urlparse
 from functools import wraps
 from uuid import UUID
 from xml.etree import ElementTree
-import cPickle as pickle
 
 import libvirt
 from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
+from func.minion.modules.onode.common import roll_data
 
 from opennode.cli.actions.vm import deploy_vm
 from opennode.cli.actions.vm.openvz import get_hostname, get_template_name as openvz_template_name, get_memory as openvz_memory, get_diskspace as openvz_diskspace, get_uptime as openvz_uptime
@@ -18,7 +18,6 @@ from opennode.cli.actions.templates import get_local_templates, get_template_inf
 
 
 _connections = {}
-
 
 def vm_method(fun):
     @wraps(fun)
@@ -331,18 +330,6 @@ class VM(func_module.FuncModule):
 
         def get_uuid(vm):
             return str(UUID(bytes=vm.UUID()))
-
-        def roll_data(filename, data, default=None):
-            if os.path.exists(filename):
-                with open(filename, 'r') as od:
-                    res = pickle.load(od)
-                with open(filename, 'w') as od:
-                    pickle.dump(data, od)
-                return res
-            else:
-                with open(filename, 'w') as od:
-                    pickle.dump(data, od)
-                return default
 
         def vm_metrics(vm):
             def cpu_usage():
