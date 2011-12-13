@@ -208,8 +208,13 @@ def deploy(ovf_settings, storage_pool):
     create_container(ovf_settings)
     
     print "Deploying..."
+
+    nameservers = ovf_settings.get("nameservers", None)
+    if not nameservers:
+        nameservers = [ovf_settings["nameserver"]]
+
+    execute("vzctl set %s %s --save" % (ovf_settings["vm_id"], ['--nameserver %s' % i for i in nameservers]))
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
-    execute("vzctl set %s --nameserver %s --save" % (ovf_settings["vm_id"], ovf_settings["nameserver"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
