@@ -32,7 +32,7 @@ def get_active_template_settings(vm_name, storage_pool):
     ovf_fnm = path.join(config.c("general", "storage-endpoint"), storage_pool, 
                        "openvz", "unpacked", get_template_name(vm_name) + ".ovf")
     if path.exists(ovf_fnm):
-        ovf_file = OvfFile()
+        ovf_file = OvfFile(ovf_fnm)
         return get_ovf_template_settings(ovf_file)
     else:
         return read_default_ovf_settings()
