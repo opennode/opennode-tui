@@ -3,9 +3,10 @@ import re
 
 from opennode.cli.utils import execute
 
+
 __all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',
            'add_nameserver', 'remove_nameserver', 'add_bridge_interface',
-           'remove_bridge_interface', 'list-bridge_interface']
+           'remove_bridge_interface', 'list_bridge_interface']
 
 def list_bridges():
     """Returns a list of existing bridge interfaces or None if none defined"""

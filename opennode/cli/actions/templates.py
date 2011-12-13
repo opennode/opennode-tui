@@ -15,8 +15,7 @@ from opennode.cli import config
 
 __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template',
-           'get_local_templates', 'sync_oms_template', 'is_fresh',
-           'prepare_storage_pool']
+           'get_local_templates', 'sync_oms_template', 'is_fresh']
 
 
 def _simple_download_hook(count, blockSize, totalSize):
@@ -198,4 +197,3 @@ def get_template_info(template_name, vm_type, storage_pool = c('general', 'defau
     # XXX handle modification to system params
     #errors = vm.adjust_setting_to_systems_resources(template_settings)
     return template_settings
-        
