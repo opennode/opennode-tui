@@ -1,12 +1,14 @@
 import re
 
+import commands
+import codes
 
 from opennode.cli.utils import execute
 
 
 __all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',
            'add_nameserver', 'remove_nameserver', 'add_bridge_interface',
-           'remove_bridge_interface', 'list_bridge_interface']
+           'remove_bridge_interface', 'list_bridge_interface', 'show_routing_table']
 
 def list_bridges():
     """Returns a list of existing bridge interfaces or None if none defined"""
@@ -64,3 +66,28 @@ def remove_nameserver(ns):
     with open('/tmp/resolv.conf', 'w') as dnsservers:
         dnsservers.writelines(filtered_entries)
 
+def show_routing_table(*args):
+    """Get server's routing table entries. 
+    It's different from the bundled func net module's method because
+    it doesn't attempt to resolve the hostname of the ip addresses.
+    """
+
+    (status, output) = commands.getstatusoutput("route -n")
+    if (status != 0):
+        raise codes.FuncException("Getting routing table failed")
+    lines = output.split("\n")
+    lines = lines[2:]
+    route_list = []
+    for line in lines:
+        route_dict = dict()
+        line = line.split()
+        route_dict["destination"] = line[0]
+        route_dict["router"] = line[1]
+        route_dict["netmask"] = line[2]
+        route_dict["flags"] = line[3]
+        route_dict["metrics"] = line[4]
+        route_dict["count"] = line[5]
+        route_dict["use"] = line[6]
+        route_dict["interface"] = line[7]
+        route_list.append(route_dict)
+    return route_list
