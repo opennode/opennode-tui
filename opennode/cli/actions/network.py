@@ -1,7 +1,5 @@
 import re
 
-import commands
-
 from opennode.cli.utils import execute
 
 
@@ -71,9 +69,7 @@ def show_routing_table(*args):
     it doesn't attempt to resolve the hostname of the ip addresses.
     """
 
-    (status, output) = commands.getstatusoutput("route -n")
-    if (status != 0):
-        raise Exception("Getting routing table failed")
+    output = execute("route -n")
     lines = output.split("\n")
     lines = lines[2:]
     route_list = []
