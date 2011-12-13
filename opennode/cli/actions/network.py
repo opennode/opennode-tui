@@ -1,11 +1,13 @@
 import re
+import socket
 
 from opennode.cli.utils import execute
 
 
 __all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',
            'add_nameserver', 'remove_nameserver', 'add_bridge_interface',
-           'remove_bridge_interface', 'list_bridge_interface', 'show_routing_table']
+           'remove_bridge_interface', 'list_bridge_interface', 'show_routing_table',
+           'validate_server_addr']
 
 def list_bridges():
     """Returns a list of existing bridge interfaces or None if none defined"""
@@ -86,3 +88,11 @@ def show_routing_table(*args):
         route_dict["interface"] = line[7]
         route_list.append(route_dict)
     return route_list
+
+def validate_server_addr(server, port):
+    """Validate server name and port of the OMS server. Return True/False"""
+    # make sure that we can find at least one way of connecting to the system
+    try:
+        return len(socket.getaddrinfo(server, port)) > 1
+    except socket.gaierror:
+        return False

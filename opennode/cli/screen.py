@@ -173,16 +173,18 @@ class OpenNodeTUI(object):
                  ('OMS server port', oms_entry_port)], 
                 buttons = [('Register', 'register'), ('Back to the OMS menu', 'oms_menu')])
         if command == 'oms_menu': 
-            self.display_oms()
+            return self.display_oms()
         elif command == 'register':
             server = oms_entry_server.value().strip()
             port = oms_entry_port.value().strip()
-            if actions.oms.validate_oms_server(server, port):
+            if actions.network.validate_server_addr(server, port):
+                self.screen.finish()
                 actions.oms.register_oms_server(server, port)
-                self.display_oms()
+                self.screen = SnackScreen()
+                return self.display_oms()
             else:
                 # XXX: error handling?
-                self.display_oms_register(error_msg = "Incorrect server data")
+                return self.display_oms_register(error_msg = "Incorrect server data")
 
     def display_oms_download(self):
         logic = { 'main': self.display_main_screen,
