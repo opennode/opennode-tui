@@ -1,7 +1,6 @@
 import re
 
 import commands
-import codes
 
 from opennode.cli.utils import execute
 
@@ -74,7 +73,7 @@ def show_routing_table(*args):
 
     (status, output) = commands.getstatusoutput("route -n")
     if (status != 0):
-        raise codes.FuncException("Getting routing table failed")
+        raise Exception("Getting routing table failed")
     lines = output.split("\n")
     lines = lines[2:]
     route_list = []
