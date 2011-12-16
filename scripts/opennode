@@ -4,12 +4,32 @@ from sys import argv
 from getopt import getopt, GetoptError
 
 from opennode.cli.actions import templates
+from opennode.cli import config
 
-ACTIONS = { 
-            0 : "GUI mode",
-            1 : "Update templates",
-            2 : "List templates"
-          }
+# default values
+operation = 'cli'
+template_type = 'openvz'
+template_name = object()
+storage_pool = config.c('general', 'default-storage-pool')
+repo_name = object()
+
+operations = {'list-templates': ('l', 'list-templates',
+                    'List local and remote templates in all storage pools'),
+              'import': ('i', 'import', 
+                    'Import template archive into a local storage pool.'),
+              'sync': ('s', 'sync-template',
+                    'Synchronize template with remote repository.'),
+              'help': ('h', 'help',
+                    'Display help text.')}
+
+parameters = {template_type: ('t', 'template-type',
+                    "Set template type. Supported values: 'openvz', 'kvm'"),
+              template_name: ('n', 'tempalte-name',
+                    'Set template name.'),
+              storage_pool: ('p', 'storage-pool', 
+                    'Set storage pool.'),
+              repo_name: ('r', 'repo-name',
+                    'Set repository name.')}
 
 def _help():
     print """
@@ -20,50 +40,55 @@ SYNOPSIS
     opennode [OPTIONS]
 
 OPTIONS
-    -l, --list-templates
-        List local and remote templates in all storage pools
-    -i --import [template-fnm]
-        Import specified template archive into the locale storage.
-    -t --template-type [type]
-        Specify template type. Supported values: 'openvz', 'kvm'. Default: 'openvz'
-    -h, --help
-        Display usage help
+    ACTIONS
+%s
+
+    PARAMETERS
+%s
 
 SEE ALSO:
     OpenNode web page:
     http://opennodecloud.com
-    """
+    """ % ("\n".join(["    -%s, --%s\n\t%s" %(s, l, d) for s, l, d in operations.values()]),
+           "\n".join(["    -%s, --%s [%s]\n\t%s" %(s, l, l, d) for s, l, d in parameters.values()])
+           )
     exit(2)
 
 if __name__ == '__main__':
     #Run OpenNode utility
 
     try:
-        options, args = getopt(argv[1:], 'lhi:t:', 
-                               ['list-templates','help', 'import', 'template-type'])
+        short_opts = ''.join(zip(*operations.values())[0]) + \
+                    ':'.join(zip(*parameters.values())[0]) + ':'
+        long_options = list(zip(*operations.values())[1]) + \
+                    ["%s=" %i for i in zip(*parameters.values())[1]]
+        options, args = getopt(argv[1:], short_opts, long_options)
     except GetoptError, err:
-        # print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
+        print str(err)
         _help()
-        exit(2)
 
-    action = 'cli'
-    vm_type = 'openvz'
-    template_fnm = None
-    
     for o, a in options:
-        if o in ("-l", "--list-templates"): action = 'lib_list'
-        elif o in ("-i", "--import"): 
-            action = 'import'
-            template_fnm = a
-        elif o in ("-t", "--template-type"): vm_type = a
-        elif o in ("-h", "--help"): _help()
+        for op in operations.keys():
+            if o.lstrip('-') in operations[op]:
+                operation = op
+        
+        for par in parameters.keys():
+            if o.lstrip('-') in parameters[par]:
+                par = a
     
-    if action == 'cli':
-        from opennode.cli import screen 
+    if operation == 'cli':
+        from opennode.cli import screen
+        print "running cli"
         tui = screen.OpenNodeTUI()
         tui.run()
-    elif action == 'lib_list':
+    elif operation == 'list-templates':
         templates.list_templates()
-    elif action == 'import':
-        templates.import_template(template_fnm, vm_type)
+    elif operation == 'import':
+        assert(template_name.__class__ == str)
+        templates.import_template(template_name, template_type, storage_pool)
+    elif operation == 'sync':
+        assert(repo_name.__class__ == str)
+        assert(template_name.__class__ == str)
+        templates.sync_template(repo_name, template_name, storage_pool)
+    elif operation == 'help':
+        _help()
