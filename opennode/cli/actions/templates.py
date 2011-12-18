@@ -123,7 +123,7 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
     basedir = os.path.join(c('general', 'storage-endpoint'), storage_pool, vm_type)
-    tmpl = tarfile.open(os.path.join(basedir, tmpl_name))
+    tmpl = tarfile.open(os.path.join(basedir, "%s.tar" %tmpl_name))
     unpacked_dir = os.path.join(basedir, 'unpacked')
     tmpl.extractall(unpacked_dir)
     # special case for openvz vm_type
