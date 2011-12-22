@@ -35,7 +35,8 @@ class OpenNodeTUI(object):
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
-                ('Network', 'net'),
+                # XXX disable till more sound functionality
+                #('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 ('OMS', 'oms')],
