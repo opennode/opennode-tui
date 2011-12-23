@@ -4,18 +4,21 @@ import tarfile
 import os
 import shutil
 import re
+import cPickle as pickle
 
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import c
-from opennode.cli.utils import delete, calculate_hash
+from opennode.cli.actions.utils import delete, calculate_hash, ConsoleProgressBar, \
+                                        execute_in_screen, execute
 from opennode.cli.actions import storage, vm as vm_ops
-from opennode.cli import config 
+from opennode.cli import config
 
 
 __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template',
-           'get_local_templates', 'sync_oms_template', 'is_fresh']
+           'get_local_templates', 'sync_oms_template', 'is_fresh', 
+           'is_syncing']
 
 
 def _simple_download_hook(count, blockSize, totalSize):
@@ -41,26 +44,34 @@ def get_template_list(remote_repo):
     tmpl_list.close()
     return templates
 
-def sync_storage_pool(storage_pool, remote_repo, templates, download_monitor = None):
+def sync_storage_pool(storage_pool, remote_repo, templates,
+                      sync_tasks_fnm=c('general', 'sync_task_list')):
     """Synchronize selected storage pool with the remote repo. Only selected templates 
-    will be persisted, all of the other templates shall be purged"""
+    will be persisted, all of the other templates shall be purged. 
+    Ignores purely local templates - templates with no matching name in remote repo."""
     vm_type = c(remote_repo, 'type')
     existing_templates = get_local_templates(vm_type, storage_pool)
     # synchronize selected templates
     if templates is None: templates = []
     purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
-    for tmpl in templates:
-        if tmpl in purely_local_tmpl: 
-            continue
-        sync_template(remote_repo, tmpl, storage_pool, download_monitor)
-        if tmpl in existing_templates:
-            existing_templates.remove(tmpl)
+    # might be not order preserving
+    for_update = set(templates) - set(purely_local_tmpl)
+    for_deletion = set(existing_templates) - for_update
+    
+    tasks = [(t, storage_pool, remote_repo) for t in for_update]
+    # XXX at the moment only a single sync process is allowed.
+    if os.path.exists(sync_tasks_fnm):
+        raise RuntimeError, "Synchronization task pool already defined."
+    set_templates_sync_list(tasks, sync_tasks_fnm)
     # delete existing, but not selected templates
-    for tmpl in existing_templates:
+    for tmpl in for_deletion:
         delete_template(storage_pool, vm_type, tmpl)
+    # XXX a wrong place for such a construction, not sure what is a correct place
+    cli_command = "from opennode.cli.actions import templates;"
+    cli_command += "templates.sync_templates_list('%s')" % sync_tasks_fnm
+    execute_in_screen('OPENNODE-SYNC', 'python -c "%s"' % cli_command)
 
-
-def sync_template(remote_repo, template, storage_pool, download_monitor = None):
+def sync_template(remote_repo, template, storage_pool):
     """Synchronizes local template (cache) with the remote one (master)"""
     url = c(remote_repo, 'url')
     vm_type = c(remote_repo, 'type')
@@ -71,14 +82,16 @@ def sync_template(remote_repo, template, storage_pool, download_monitor = None):
     if not is_fresh(localfile, remotefile):
         # for resilience
         storage.prepare_storage_pool(storage_pool)
-        if download_monitor is None:
-            download_hook = _simple_download_hook
-        else:
-            download_monitor.update_url(template)
-            download_hook = download_monitor.download_hook
-        urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile, download_hook)
-        urllib.urlretrieve("%s.tar.pfff" % remotefile, "%s.tar.pfff" % localfile,
-                           download_hook)
+        download_monitor = ConsoleProgressBar(template)
+        urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile,
+                           download_monitor.download_hook)
+        # XXX support more hash functions
+        for h in ['pfff']:
+            r_template_hash = "%s.tar.%s" % (remotefile, h)
+            l_template_hash = "%s.tar.%s" % (localfile, h)
+            download_monitor = ConsoleProgressBar(r_template_hash)
+            urllib.urlretrieve(r_template_hash, l_template_hash, 
+                                            download_monitor.download_hook)
         unpack_template(storage_pool, vm_type, localfile)
 
 def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
@@ -100,12 +113,13 @@ def import_template(template, vm_type, storage_pool = c('general', 'default-stor
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
     # get a list of files in the template
+    print "Deleting %s (%s) from %s..." % (template, vm_type, storage_pool)
     storage_endpoint = c('general', 'storage-endpoint')
-    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type, 
+    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type,
                                         template)
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
-        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type, 
+        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type,
                                         packed_file)
         if not os.path.isdir(fnm):
             delete(fnm)
@@ -134,13 +148,13 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
         assert len(tmpl_name) == 1
         vm.openvz.link_template(storage_pool, tmpl_name[0])
 
-def get_local_templates(vm_type, storage_pool = c('general', 'default-storage-pool')):
+def get_local_templates(vm_type, storage_pool=c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
                                 storage_pool, vm_type)) if tmpl.endswith('tar')]
 
-def sync_oms_template(storage_pool = c('general', 'default-storage-pool')):
+def sync_oms_template(storage_pool=c('general', 'default-storage-pool')):
     """Synchronize OMS template"""
     repo = c('opennode-oms-template', 'repo')
     tmpl = c('opennode-oms-template', 'template_name')
@@ -167,8 +181,8 @@ def list_templates():
     for vm_type in ["openvz", "kvm"]:
         print "%s local templates:" % vm_type.upper()
         for storage_pool in storage.list_pools():
-            print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"), 
-                                                 storage_pool, vm_type)  
+            print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"),
+                                                 storage_pool, vm_type)
             for tmpl in get_local_templates(storage_pool, vm_type):
                 print "\t\t", tmpl
             print
@@ -187,13 +201,46 @@ def get_purely_local_templates(storage_pool, vm_type, remote_repo):
     remote_templates = get_template_list(remote_repo)
     local_templates = get_local_templates(vm_type, storage_pool)
     return list(set(local_templates) - set(remote_templates))
-    
+
 def get_template_info(template_name, vm_type, storage_pool = c('general', 'default-storage-pool')):
     ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked", 
+                                        storage_pool, vm_type, "unpacked",
                                         template_name + ".ovf"))
     vm = vm_ops.get_module(vm_type)
     template_settings = vm.get_ovf_template_settings(ovf_file)
     # XXX handle modification to system params
     #errors = vm.adjust_setting_to_systems_resources(template_settings)
     return template_settings
+
+def get_templates_sync_list(sync_tasks_fnm=c('general', 'sync_task_list')):
+    """Return current template synchronisation list"""
+    with open(sync_tasks_fnm, 'r') as tf:
+        return pickle.load(tf)
+
+def set_templates_sync_list(tasks, sync_tasks_fnm=c('general', 'sync_task_list')):
+    """Set new template synchronisation list. Function should be handled with care,
+    as some retrieval might be in progress"""
+    with open(sync_tasks_fnm, 'w') as tf:
+        pickle.dump(tasks, tf)
+
+def sync_templates_list(sync_tasks_fnm=c('general', 'sync_task_list')):
+    """Sync a list of templates defined in a file. After synchronizing a template,
+    removes it from the list. NB: multiple copies of this function should be run
+    against the same task list file!"""
+    if os.path.exists(sync_tasks_fnm):
+        tasks = get_templates_sync_list(sync_tasks_fnm)
+        while tasks:
+            
+            # this doesn't make sense the first time, but for resilience we reread a list
+            # each time a template was downloaded
+            tasks = get_templates_sync_list(sync_tasks_fnm)
+            template, storage_pool, remote_repo = tasks[0]
+            # XXX a separate download hook for dumping progress to a file?
+            sync_template(remote_repo, template, storage_pool)
+            del tasks[0]
+            set_templates_sync_list(tasks, sync_tasks_fnm)
+        os.unlink(sync_tasks_fnm)
+
+def is_syncing():
+    """Return true if syncing in progress"""
+    return int(execute("screen -ls |grep OPENNODE-SYNC| wc -l")) == 1

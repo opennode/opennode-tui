@@ -216,23 +216,26 @@ class OpenNodeTUI(object):
 
     def display_template_manage(self):
         # XXX Ugly structure, needs refactoring
-        storage_pool = actions.storage.get_default_pool()
-        if storage_pool is None:
-            return display_info(self.screen, "Error", "Default storage pool is not defined!")
-        repos = actions.templates.get_template_repos()
-        if repos is None:
-            return self.display_templates()
-        chosen_repo = display_selection(self.screen, TITLE, repos, 'Please, select template repository from the list')
-        if chosen_repo is None:
-            return self.display_templates()
-        selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
-        if selected_list is None:
-            return self.display_templates()
-        
-        from opennode.cli.helpers import DownloadMonitor
-        dm = DownloadMonitor(self.screen, TITLE, len(selected_list))  
-        actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, dm)
-        self.screen.popWindow()
+        if actions.templates.is_syncing():
+            self.screen.finish()
+            actions.utils.attach_screen('OPENNODE-SYNC')
+            self.screen = SnackScreen()
+        else:
+            storage_pool = actions.storage.get_default_pool()
+            if storage_pool is None:
+                return display_info(self.screen, "Error", "Default storage pool is not defined!")
+            repos = actions.templates.get_template_repos()
+            if repos is None:
+                return self.display_templates()
+            chosen_repo = display_selection(self.screen, TITLE, repos, 'Please, select template repository from the list')
+            if chosen_repo is None:
+                return self.display_templates()
+            selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
+            if selected_list is None:
+                return self.display_templates()
+            self.screen.finish()
+            actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list)
+            self.screen = SnackScreen()
         self.display_templates()
 
     def display_select_template_from_repo(self, repo, storage_pool = c('general', 'default-storage-pool')): 
