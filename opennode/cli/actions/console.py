@@ -9,5 +9,5 @@ def run_openvz():
     #__run_shell('openvz:///system')
 
 def __run_shell(driver):
-    os.system('virsh -c ' + driver)
+    os.system('LC_ALL=C virsh -c ' + driver)
 
