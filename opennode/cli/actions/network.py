@@ -1,7 +1,7 @@
 import re
 import socket
 
-from opennode.cli.utils import execute
+from opennode.cli.actions.utils import execute
 
 
 __all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',

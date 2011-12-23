@@ -323,7 +323,7 @@ class VM(func_module.FuncModule):
     def metrics(self, conn):
         import random
         random.seed()
-        from opennode.cli.utils import execute
+        from opennode.cli.actions.utils import execute
 
         if conn.getType() != 'OpenVZ':
             return {}

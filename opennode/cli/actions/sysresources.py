@@ -2,7 +2,7 @@
 
 import re
 
-from opennode.cli.utils import execute
+from opennode.cli.actions.utils import execute
 
 def get_cpu_count():
     output = execute("cat /proc/cpuinfo | grep processor")

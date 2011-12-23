@@ -3,7 +3,7 @@ import os
 import re
 
 from opennode.cli.config import c, cs
-from opennode.cli.utils import del_folder, execute, mkdir_p
+from opennode.cli.actions.utils import del_folder, execute, mkdir_p
 
 
 __all__ = ['list_pools', 'set_default_pool', 'prepare_storage_pool']

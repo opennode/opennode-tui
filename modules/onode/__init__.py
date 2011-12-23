@@ -12,7 +12,7 @@ class OpenNode(func_module.FuncModule):
     description = "opennode module"
 
     def metrics(self):
-        from opennode.cli.utils import execute
+        from opennode.cli.actions.utils import execute
         from func.minion.modules.onode.common import roll_data
 
         def cpu_usage():

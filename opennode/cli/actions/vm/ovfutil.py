@@ -15,7 +15,7 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli import config
 from contextlib import closing
-from opennode.cli.utils import execute
+from opennode.cli.actions.utils import execute
 
 def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue

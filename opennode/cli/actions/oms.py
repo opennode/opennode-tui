@@ -1,7 +1,7 @@
 import ConfigParser
 import socket
 
-from opennode.cli.utils import execute
+from opennode.cli.actions.utils import execute
 from opennode.cli import config
 
 

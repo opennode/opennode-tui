@@ -11,7 +11,7 @@ from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
-from opennode.cli.utils import execute, get_file_size_bytes
+from opennode.cli.actions.utils import execute, get_file_size_bytes
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
