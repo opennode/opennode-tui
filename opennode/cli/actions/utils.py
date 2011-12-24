@@ -3,7 +3,7 @@ import commands
 import ConfigParser
 import shutil
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, \
-                        RotatingMarker, FormatLabel
+                        RotatingMarker
 
 class CommandException(Exception):
     pass
@@ -93,7 +93,6 @@ class ConsoleProgressBar(object):
         self.pbar.maxval = None
 
     def __init__(self, tmpl_name):
-        self.label = FormatLabel('')
         widgets = [tmpl_name, Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', 
                   ETA(), ' ', FileTransferSpeed()
                ]
