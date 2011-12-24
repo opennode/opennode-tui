@@ -39,7 +39,9 @@ class OpenNodeTUI(object):
                 #('Network', 'net'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
-                ('OMS', 'oms')],
+                # XXX disable till a new version of OMS is packaged as a template
+                #('OMS', 'oms')
+                ],
                 42)
 
         logic[result]()
@@ -75,7 +77,7 @@ class OpenNodeTUI(object):
         if pool is not None:
             actions.storage.set_default_pool(pool)
         return self.display_storage()
-    
+
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
         command, _ = EntryWindow(self.screen, TITLE, 'Please, enter a new storage pool name', 
@@ -90,7 +92,7 @@ class OpenNodeTUI(object):
                 return self.display_storage()
             actions.storage.add_pool(storage_pool)
             return self.display_storage()
-        
+
     def display_storage_delete(self):
         pool = self.display_select_storage_pool(default=None)
         if pool is not None:
@@ -100,7 +102,7 @@ class OpenNodeTUI(object):
                 # sorry, pool, time to go
                 actions.storage.delete_pool(pool)
         return self.display_storage()
-    
+
     def display_network(self):
         logic = {'main': self.display_main_screen,
                 'bridge': self.display_network_bridge,
@@ -256,10 +258,10 @@ class OpenNodeTUI(object):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             return display_info(self.screen, "Error", "Default storage pool is not defined!")
-        
+
         vm_type = display_vm_type_select(self.screen, TITLE)
         if vm_type is None: return self.display_main_screen()
-        
+
         # list all available images of the selected type
         vm = actions.vm.get_module(vm_type)
         instances = vm.get_available_instances()
@@ -267,36 +269,36 @@ class OpenNodeTUI(object):
             display_info(self.screen, TITLE, 
                 "No suitable VMs found. Only stopped VMs can be\nused for creating new templates!")
             return self.display_templates()
-        
+
         # pick an instance
         action, vm_name, new_templ_name = display_create_template(self.screen, TITLE, vm_type, instances)
         if action == 'back':
             return self.display_templates()
-        
+
         # extract active template settings
         template_settings = vm.get_active_template_settings(vm_name, storage_pool)
         template_settings["template_name"] = new_templ_name
         template_settings["vm_name"] = vm_name
-        
+
         if vm_type == "openvz":
             form = OpenvzTemplateForm(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmTemplateForm(self.screen, TITLE, template_settings)
         else:
             raise ValueError, "Vm '%s' is not supported" % template_settings["vm_type"]
-        
+
         # get user settings
         user_settings = self._display_template_create_settings(form, template_settings)
         if not user_settings:
             return self.display_main_screen()
         template_settings.update(user_settings)
         self.screen.finish()
-        
+
         # pack template
         vm.save_as_ovf(template_settings, storage_pool)
         self.screen = SnackScreen()
         return self.display_templates()
-    
+
     def _display_template_create_settings(self, form, template_settings):
         while 1:
             if not form.display():
@@ -310,20 +312,20 @@ class OpenNodeTUI(object):
                 key, msg = errors[0] 
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
-    
+
     def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
-        
+
         vm_type = display_vm_type_select(self.screen, TITLE) 
         if vm_type is None: return self.display_main_screen()
-        
+
         template = self.display_select_template_from_storage(storage_pool, vm_type)
         if template is None: 
             return self.display_vm_create()
-        
+
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
@@ -334,7 +336,7 @@ class OpenNodeTUI(object):
         if errors:
             display_info(self.screen, TITLE, "\n".join(errors), width=70, height=len(errors))
             return self.display_main_screen()
-        
+
         # get user input
         user_settings = self.display_template_settings(template_settings)
         if not user_settings:
@@ -366,15 +368,15 @@ class OpenNodeTUI(object):
                 key, msg = errors[0] 
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
-            
+
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
         self.__displayInfoScreen(msg, 70)
-    
+
     def assure_env_sanity(self):
         """Double check we have everything needed for running TUI"""
         actions.storage.prepare_storage_pool()
-    
+
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
