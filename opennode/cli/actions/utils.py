@@ -2,6 +2,9 @@ import os, errno
 import commands
 import ConfigParser
 import shutil
+import urllib
+import urlparse
+
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, \
                         RotatingMarker
 
@@ -49,6 +52,7 @@ def execute_in_screen(name, cmd):
 def attach_screen(name):
     """Attached to the named screen session (multi-screen mode)"""
     execute('screen -x -r %s' % name)
+
 
 class SimpleConfigParser(ConfigParser.ConfigParser):
     """ Parses configuration file without sections. """
@@ -107,3 +111,32 @@ class ConsoleProgressBar(object):
         
     def finish(self):
         self.pbar.finish()
+
+
+class BasicURLOpener(urllib.FancyURLopener):
+    """URL opener capable of basic HTTP authentication. """
+    def __init__(self, username=None, password=None):
+        urllib.FancyURLopener.__init__(self)
+        self.username = username
+        self.password = password
+
+    def prompt_user_passwd(self, host, realm):
+        return (self.username, self.password)
+
+
+def download(remote, local):
+    """Download a remote file to a local file, using optional username/password 
+    for basic HTTP authentication"""
+    url = urlparse.urlsplit(remote) 
+    opener = BasicURLOpener(url.username, url.password)
+    download_monitor = ConsoleProgressBar(url.path.split('/')[-1])
+    opener.retrieve(remote, local, download_monitor.download_hook)
+
+def urlopen(remote):
+    """Return a response to a remote URL. Supports username:password@url schema 
+    for remote URL"""
+    url = urlparse.urlsplit(remote) 
+    opener = BasicURLOpener(url.username, url.password)
+    return opener.open(remote)
+
+    

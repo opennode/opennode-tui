@@ -1,5 +1,3 @@
-import urllib
-import urllib2
 import tarfile
 import os
 import shutil
@@ -9,8 +7,8 @@ import cPickle as pickle
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import c
-from opennode.cli.actions.utils import delete, calculate_hash, ConsoleProgressBar, \
-                                        execute_in_screen, execute
+from opennode.cli.actions.utils import delete, calculate_hash, execute_in_screen, \
+                                execute, download, urlopen
 from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli import config
 
@@ -39,7 +37,7 @@ def get_template_repos():
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
     url = c(remote_repo, 'url')
-    tmpl_list = urllib2.urlopen("%s/templatelist.txt" % url)
+    tmpl_list = urlopen("%s/templatelist.txt" % url)
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
     return templates
@@ -56,7 +54,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
     # might be not order preserving
     for_update = set(templates) - set(purely_local_tmpl)
-    for_deletion = set(existing_templates) - for_update
+    for_deletion = set(existing_templates) - for_update - set(purely_local_tmpl)
     
     tasks = [(t, storage_pool, remote_repo) for t in for_update]
     # XXX at the moment only a single sync process is allowed.
@@ -82,16 +80,11 @@ def sync_template(remote_repo, template, storage_pool):
     if not is_fresh(localfile, remotefile):
         # for resilience
         storage.prepare_storage_pool(storage_pool)
-        download_monitor = ConsoleProgressBar(template)
-        urllib.urlretrieve("%s.tar" % remotefile, "%s.tar" % localfile,
-                           download_monitor.download_hook)
-        # XXX support more hash functions
+        download("%s.tar" % remotefile, "%s.tar" % localfile)
         for h in ['pfff']:
             r_template_hash = "%s.tar.%s" % (remotefile, h)
             l_template_hash = "%s.tar.%s" % (localfile, h)
-            download_monitor = ConsoleProgressBar(r_template_hash)
-            urllib.urlretrieve(r_template_hash, l_template_hash, 
-                                            download_monitor.download_hook)
+            download(r_template_hash, l_template_hash)
         unpack_template(storage_pool, vm_type, localfile)
 
 def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
@@ -163,7 +156,7 @@ def sync_oms_template(storage_pool=c('general', 'default-storage-pool')):
 def is_fresh(localfile, remotefile):
     """Checks whether local copy matches remote file"""
     # get remote hash
-    remote_hashfile = urllib2.urlopen("%s.tar.pfff" % remotefile)
+    remote_hashfile = urlopen("%s.tar.pfff" % remotefile)
     remote_hash = remote_hashfile.read()
     remote_hashfile.close()
     # get a local one
