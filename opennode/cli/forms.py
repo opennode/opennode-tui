@@ -69,6 +69,7 @@ class OpenvzForm(Form):
         self.nameserver = IpField("nameserver", settings["nameserver"])
         self.password = PasswordField("passwd", settings["passwd"], display_name="password")
         self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
+        self.ostemplate = StringField("ostemplate", settings["ostemplate"], display_name="OS template")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu, 
                                             self.vcpulimit, self.disk, self.hostname,
                                             self.ip_address, self.nameserver, 
@@ -98,6 +99,7 @@ class OpenvzForm(Form):
             (Textbox(20, 2, "Nameserver:", 0, 0), self.nameserver),
             (Textbox(20, 1, "Root password:", 0, 0), self.password),
             (Textbox(20, 2, "Root password x2:", 0, 0), self.password2),
+            (Textbox(20, 2, "OS Template:", 0, 0), self.ostemplate),
             separator,
             (button_save, button_exit)
         ]
@@ -125,6 +127,7 @@ class OpenvzTemplateForm(Form):
         self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
         self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
         self.disk = FloatField("disk", settings["disk"])
+        self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max, 
                                             self.vcpu, self.vcpu_min, self.vcpu_max, 
                                             self.disk])
@@ -142,6 +145,8 @@ class OpenvzTemplateForm(Form):
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
             separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (Textbox(20, 1, "OS template:", 0, 0), self.ostemplate),
             separator,
             (button_save, button_exit)
         ]

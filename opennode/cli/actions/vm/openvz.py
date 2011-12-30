@@ -66,6 +66,8 @@ def read_ovf_settings(ovf_file):
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
     
+    settings["ostemplate"] = ovfutil.get_ovf_os_type(ovf_file)
+    
     # TODO: apparently need to check disks also?
     return settings
 
@@ -166,18 +168,25 @@ def generate_nonubc_config(conf_filename, settings):
     # Parameters to read. Others will be generated using ovf settings.
     include_params = ["VE_ROOT", "VE_PRIVATE", "OSTEMPLATE","ORIGIN_SAMPLE"]
     config_dict = dict((k, v) for k, v in config_dict.iteritems() if k in include_params)
-    config_str = "\n".join("%s=%s" % (k, v) for k, v in config_dict.iteritems()) 
-    
+    config_str = "\n".join("%s=%s" % (k, v) for k, v in config_dict.iteritems())
+
     # set UUID if provided
-    if settings.get('uuid') is not None:
+    if settings.get('uuid'):
         config_str += "\n\n#UUID: %s" % settings.get('uuid')
     return config_str
 
 def create_container(ovf_settings):
     """ Creates OpenVZ container """
-    execute("vzctl create %s --ostemplate %s --config %s" % (ovf_settings["vm_id"], 
+    execute("vzctl create %s --ostemplate %s --config %s" % (ovf_settings["vm_id"],
                                                            ovf_settings["template_name"],
                                                            ovf_settings["vm_id"]))
+    # replace ostemplate with a provided value, as vzctl sets the filename 
+    # of the packaged template, which is in general not reliable
+    execute("sed -i 's/OSTEMPLATE=\"%s\"/OSTEMPLATE=\"%s\"/' %s" %(ovf_settings["template_name"],
+                                                           ovf_settings["ostemplate"],
+                                                           "/etc/vz/conf/%s.conf" % ovf_settings["vm_id"]
+                                                           )
+            )
     execute("chmod 755 /vz/private/%s" % ovf_settings["vm_id"])
     # unlink base config
     base_config = os.path.join('/etc/vz/conf/', "ve-%s.conf-sample" % ovf_settings["vm_id"]) 
@@ -189,7 +198,7 @@ def generate_config(ovf_settings):
     ubc_conf_str = generate_ubc_config(ovf_settings)
     non_ubc_conf_str = generate_nonubc_config(base_conf, ovf_settings) 
     openvz_ct_conf = "%s\n%s\n" % (ubc_conf_str, non_ubc_conf_str) # final configuration is ubc + non-ubc
-    
+
     # overwrite configuration
     target_conf_fnm = os.path.join('/etc/vz/conf/', "ve-%s.conf-sample" % ovf_settings["vm_id"]) 
     with open(target_conf_fnm, 'w') as conf_file:
@@ -309,6 +318,12 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
     instanceId = 0
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"], 
                                             info="OpenVZ OpenNode template")
+    # add OS section
+    ovf.createOperatingSystem(node=virtualSystem, 
+                              ident='operating_system', 
+                              info='Operating system type deployed in a template',
+                              description=vm_settings.get('ostemplate', 'linux'))
+
     hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem, 
                                 ident="virtual_hadrware", 
                                 info="Virtual hardware requirements for a virtual machine")
@@ -396,3 +411,8 @@ def get_diskspace(ctid):
 def get_uptime(ctid):
     """Get uptime in seconds"""
     return float(execute("vzctl exec %s \"awk '{print \$1}' /proc/uptime\"" % ctid))
+
+def detect_os(ctid):
+    """Detect OS name running in a VM"""
+    return execute("vzctl runscript %s `which detect-os`" % ctid)
+

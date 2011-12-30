@@ -66,6 +66,7 @@ class OpenNodeTUI(object):
                 'default': self.display_storage_default,
                 'add': self.display_storage_add,
                 'delete': self.display_storage_delete,
+                'shared': self.display_storge_shared,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage operation',
                   [('Select default storage pool', 'default'),('Add a storage pool', 'add'),
@@ -77,6 +78,11 @@ class OpenNodeTUI(object):
         if pool is not None:
             actions.storage.set_default_pool(pool)
         return self.display_storage()
+
+    def display_storge_shared(self):
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
+                  [('List bind mounts', 'default'),('Add a bind mount', 'add'),
+                    ('Delete a bind mount', 'delete'), ('Main menu', 'main')])
 
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
@@ -281,6 +287,7 @@ class OpenNodeTUI(object):
         template_settings["vm_name"] = vm_name
 
         if vm_type == "openvz":
+            template_settings['ostemplate'] = actions.vm.openvz.detect_os(vm_name)
             form = OpenvzTemplateForm(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmTemplateForm(self.screen, TITLE, template_settings)
