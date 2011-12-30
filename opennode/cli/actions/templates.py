@@ -54,8 +54,8 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
     # might be not order preserving
     for_update = set(templates) - set(purely_local_tmpl)
-    for_deletion = set(existing_templates) - for_update - set(purely_local_tmpl)
-    
+    for_deletion = set(existing_templates) - for_update - set(templates)
+
     tasks = [(t, storage_pool, remote_repo) for t in for_update]
     # XXX at the moment only a single sync process is allowed.
     if os.path.exists(sync_tasks_fnm):
