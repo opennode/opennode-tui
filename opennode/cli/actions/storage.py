@@ -40,7 +40,7 @@ def delete_pool(pool_name):
             set_default_pool('')
     except Exception, e:
         print "Failed to delete pool %s: %s" % (pool_name, e)
-        
+
 def add_pool(pool_name, careful=True):
     """Add a new pool_name"""
     if careful and filter(lambda p: p[0] == pool_name, list_pools()):
@@ -56,7 +56,7 @@ def add_pool(pool_name, careful=True):
         execute("virsh 'pool-autostart %s'" %pool_name)
     except Exception, e:
         print "Failed to create a new pool: %s" %e
-        
+
 def prepare_storage_pool(storage_pool=get_default_pool()):
     """Assures that storage pool has the correct folder structure"""
     # create structure
@@ -65,4 +65,4 @@ def prepare_storage_pool(storage_pool=get_default_pool()):
     mkdir_p("%s/images/" % storage_pool)
     mkdir_p("%s/openvz/unpacked" % storage_pool)
     mkdir_p("%s/kvm/unpacked" % storage_pool)
-        
+
