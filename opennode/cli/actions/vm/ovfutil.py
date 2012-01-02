@@ -8,7 +8,10 @@ def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
 
 def get_ovf_os_type(ovf_file):
-    os_section = ovf_file.document.getElementsByTagName("OperatingSystemSection")[0]
+    oss = ovf_file.document.getElementsByTagName("OperatingSystemSection")
+    if len(oss) == 0:
+        return 'redhat' # default supported linux
+    os_section = oss[0]
     for e in Ovf.getDict(os_section)['children']:
         if e['name'] == u'Description':
             return e['text']
