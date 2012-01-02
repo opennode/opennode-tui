@@ -124,8 +124,8 @@ def _get_openvz_ct_id_list():
     @return: List of OpenVZ containers on current machine
     @rtype: List
     """
-    conn = libvirt.open("openvz:///system")
-    return map(int, conn.listDefinedDomains() + conn.listDomainsID())
+    existing = [ctid.strip() for ctid in execute("vzlist --all -H -o ctid").splitlines()]
+    return map(int, existing)
 
 def _compute_diskspace_hard_limit(soft_limit):
     return soft_limit * 1.1 if soft_limit <= 10 else soft_limit + 1
