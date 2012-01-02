@@ -78,7 +78,6 @@ if __name__ == '__main__':
     
     if operation == 'cli':
         from opennode.cli import screen
-        print "running cli"
         tui = screen.OpenNodeTUI()
         tui.run()
     elif operation == 'list-templates':
