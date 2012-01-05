@@ -54,14 +54,15 @@ def read_ovf_settings(ovf_file):
     
     memory_settings = [
         ("memory_min", ovfutil.get_ovf_min_memory_gb(ovf_file)),
-        ("memory_normal", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
+        ("memory", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
         ("memory_max", ovfutil.get_ovf_max_memory_gb(ovf_file))]
     # set only those settings that are explicitly specified in the ovf file (non-null)
+
     settings.update(dict(filter(operator.itemgetter(1), memory_settings)))
     
     vcpu_settings = [
         ("vcpu_min", ovfutil.get_ovf_min_vcpu(ovf_file)),
-        ("vcpu_normal", ovfutil.get_ovf_normal_vcpu(ovf_file)),
+        ("vcpu", ovfutil.get_ovf_normal_vcpu(ovf_file)),
         ("vcpu_max", ovfutil.get_ovf_max_vcpu(ovf_file))]
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), vcpu_settings)))
@@ -76,21 +77,27 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     Adjusts maximum required resources to match available system resources. 
     NB! Minimum bound is not adjusted.
     """
+    
+    def adjusted(norm, minvalue, maxvalue, valtype):
+        if minvalue is None: minvalue = 0
+        if maxvalue is None: maxvalue = 10*30
+        return min(max(valtype(norm), valtype(minvalue)), valtype(maxvalue))
+    
     st = ovf_template_settings
-    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10**30))))
-    st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
+    st["memory_max"] = min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10**30)))
+    st["memory"] =  adjusted(st.get("memory"), st.get("memory_min"), st.get("memory_max"), float)
     
     st["swap_max"] = str(min(sysres.get_swap_size_gb(), float(st.get("swap_max", 10**30))))
-    st["swap"] = str(min(float(st["swap"]), float(st["swap_max"])))
+    st["swap"] = adjusted(st.get("swap"), st.get("swap_min"), st.get("swap_max"), float)
     
     st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10**10))))
-    st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
+    st["vcpu"] = adjusted(st.get("vcpu"), st.get("vcpu_min"), st.get("vcpu_max"), int)
     
-    st["vcpulimit_max"] = str(min(sysres.get_cpu_usage_limit(), int(st.get("vcpulimit_max", 100))))
-    st["vcpulimit"] = str(min(int(st["vcpulimit"]), int(st["vcpulimit_max"])))
-    
-    st["disk_max"] = str(min(sysres.get_disc_space_gb(), float(st.get("disk_max", 10**30))))
-    st["disk"] = str(min(float(st["disk"]), float(st["disk_max"])))
+    st["vcpulimit_max"] = min(sysres.get_cpu_usage_limit(), int(st.get("vcpulimit_max", 100)))
+    st["vcpulimit"] = adjusted(st.get("vcpulimit"), st.get("vcpulimit_min"), st.get("vcputlimit_max"), int)
+
+    st["disk_max"] = min(sysres.get_disc_space_gb(), float(st.get("disk_max", 10**30)))
+    st["disk"] = adjusted(st.get("disk"), st.get("disk_min"), st.get("disk_max"), float)
     
     # Checks if minimum required resources exceed maximum available resources.
     errors = []
@@ -283,7 +290,6 @@ def save_as_ovf(vm_settings, storage_pool):
         - generate ovf configuration file
         - pack ovf and container archive into tar.gz file  
     """
-
     dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % vm_settings["template_name"])

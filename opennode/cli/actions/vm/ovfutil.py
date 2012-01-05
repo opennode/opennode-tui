@@ -37,7 +37,7 @@ def _get_ovf_vcpu(ovf_file, bound):
     for resource in rasd:
         if (resource.has_key('rasd:ResourceType') and
                 resource['rasd:ResourceType'] == '3'):
-            _bound = resource.get('attr', {}).get('bound', 'normal')
+            _bound = resource.get('ovf:bound', 'normal')
             if _bound == bound:
                 vcpu = resource['rasd:VirtualQuantity']
                 break
@@ -132,7 +132,7 @@ def _get_ovf_memory_gb(ovf_file, bound):
                 resource['rasd:ResourceType'] == '4'):
             memoryQuantity = resource['rasd:VirtualQuantity']
             memoryUnits = resource['rasd:AllocationUnits']
-            _bound = resource.get('attr', {}).get('bound', 'normal')
+            _bound = resource.get('ovf:bound', 'normal')
             if _bound == bound:
                 if (memoryUnits.startswith('byte') or
                         memoryUnits.startswith('bit')):
