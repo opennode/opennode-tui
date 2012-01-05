@@ -214,7 +214,7 @@ class Field(Entry):
     
     def __init__(self, name, default, width, min_value=None, max_value=None, 
                  expected_type=None, password=0, display_name=None, required=True):
-        Entry.__init__(self, width, default, password=password)
+        Entry.__init__(self, width, "%s" % default, password=password)
         self.name, self.min_value, self.max_value = name, min_value, max_value  
         self.expected_type, self.required =  expected_type, required
         self.display_name = display_name or name
