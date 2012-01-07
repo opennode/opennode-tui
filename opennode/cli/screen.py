@@ -2,6 +2,7 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
+import re
 
 from ovf.OvfFile import OvfFile
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow
@@ -25,6 +26,7 @@ class OpenNodeTUI(object):
         logic = {'exit': self.menu_exit,
                  'console': self.display_console_menu,
                  'createvm': self.display_vm_create,
+                 'managevm': self.display_vm_manage,
                  'net': self.display_network,
                  'storage': self.display_storage,
                  'oms': self.display_oms,
@@ -37,6 +39,7 @@ class OpenNodeTUI(object):
                 ('Create VM', 'createvm'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
+                ('Manage VM', 'managevm'),
                 ('Storage', 'storage'),
                 ('Templates', 'templates'),
                 # XXX disable till a new version of OMS is packaged as a template
@@ -319,6 +322,21 @@ class OpenNodeTUI(object):
                 key, msg = errors[0] 
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
+
+    def display_vm_manage(self):
+        available_vms = []
+        for vmt in actions.vm.vm_types:
+            vm = actions.vm.get_module(vmt)
+            available_vms.extend([(vmid, "%s (%s)" % (name, vmt)) for name, vmid in \
+                                  vm.get_all_instances().items()])
+        val = display_selection(self.screen, TITLE, available_vms, 'Select VM to manage:',
+                                buttons=['Start', 'Stop', 'Edit', 'Back'])
+        if val is None:
+            return self.display_main_screen()
+        # self.screen.finish()
+        vm_type = re.search('(\(.+\))', val).group(0)[1:-1]
+        #XXX display a form based on vm_type and status
+        # warning if opertion unsupported
 
     def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
