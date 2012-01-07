@@ -85,7 +85,8 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     form_result = form.runOnce()
     return (bb.buttonPressed(form_result), str(base_tmpl.current()), entry_newname.value())
 
-def display_selection(screen, title, list_of_items, subtitle, default = None):
+def display_selection(screen, title, list_of_items, subtitle, default = None,
+                      buttons = ['Ok', 'Back']):
     """Display a list of items, return selected one or None, if nothing was selected"""
     #if len(list_of_items) == 1:
         # shortcut if there's only one item for choosing
@@ -98,7 +99,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None):
         height = 10
         scroll = 1 if len(list_of_items) > height else 0
         action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items, 
-                            ['Ok', 'Back'], scroll = scroll, height = height, default = default)
+                            buttons, scroll = scroll, height = height, default = default)
         if action != 'back':
             return selection
     else:
