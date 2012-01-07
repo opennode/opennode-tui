@@ -11,7 +11,7 @@ from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
-from opennode.cli.actions.utils import execute, get_file_size_bytes
+from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
@@ -174,6 +174,10 @@ def get_available_instances():
     conn = libvirt.open("qemu:///system")
     name_list = conn.listDefinedDomains()
     return dict(zip(name_list, name_list))
+
+def get_all_instances():
+    """Return all defined KVM VMs"""
+    return get_available_instances()
 
 def generate_libvirt_conf(settings):
     """

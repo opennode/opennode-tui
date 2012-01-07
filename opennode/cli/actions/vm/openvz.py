@@ -236,15 +236,20 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
     print "Template %s deployed successfully!" % ovf_settings["vm_id"]
     
-def get_available_instances():
+def get_available_instances(include_running = False):
     """Return deployed and stopped OpenVZ instances"""
-    vzcontainers = execute("vzlist -H -S -o ctid,hostname").split('\n')
+    include_flag = '-S' if not include_running else ''
+    vzcontainers = execute("vzlist -H %s -o ctid,hostname" % include_flag).split('\n')
     candidates = {}
     for cont in vzcontainers:
         if len(cont.strip()) == 0: break
         cid, hn = cont.strip().split(' ')
         candidates[int(cid)] = "%s (%s)" %(hn, cid)
     return candidates
+
+def get_all_instances():
+    """Return all OpenVZ instances"""
+    return get_available_instances(True)
 
 def get_template_name(ctid):
     """Return a name of the template used for creating specific container"""
