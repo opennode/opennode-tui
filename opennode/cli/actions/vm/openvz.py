@@ -470,3 +470,7 @@ def update_vm(settings):
     if settings.get("swap"):
         swap = float(settings.get("swap"))
         execute("vzctl set %s --swappages %sG --save" % (vm_id, swap))
+
+def get_uuid_by_ctid(ctid):
+    """Return UUID of the VM"""
+    return execute("grep \#UUID: /etc/vz/conf/%s.conf" % ctid).split(" ")[1]
