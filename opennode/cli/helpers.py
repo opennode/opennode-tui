@@ -100,8 +100,11 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
         scroll = 1 if len(list_of_items) > height else 0
         action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items, 
                             buttons, scroll = scroll, height = height, default = default)
-        if action != 'back':
-            return selection
+        if buttons == ['Ok', 'Back']:
+            if action != 'back':
+                return selection
+        else:
+            return (action, selection) # customized buttons
     else:
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
     return None

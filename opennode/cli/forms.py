@@ -209,6 +209,39 @@ class KvmTemplateForm(Form):
                                                   self.vcpu_max.value(), int))
         return not self.errors
 
+class OpenvzModificationForm(Form):
+    
+    def __init__(self, screen, title, settings):
+        self.memory = FloatField("memory", settings["memory"])
+        self.vcpu = IntegerField("vcpu", settings["vcpu"])
+        self.disk = FloatField("disk", settings["disk"])
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk])
+    
+    def display(self):
+        button_save, button_exit = Button("Update"), Button("Back")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+        rows = [
+            (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
+            separator,
+            (Textbox(20, 1, "Nr. of CPUs:", 0, 0), self.vcpu),
+            separator,
+            (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (button_save, button_exit)
+        ]
+        form = GridForm(self.screen, self.title, 2, len(rows))
+        for i, row in enumerate(rows): 
+            for j, cell in enumerate(row):
+                form.add(cell, j, i)
+        return form.runOnce() != button_exit
+    
+    def validate(self):
+        if Form.validate(self):
+            # TODO disallow decrease of disk size, which would break OS
+            pass 
+        return not self.errors
+
+
 class Field(Entry):
     errors = []
     

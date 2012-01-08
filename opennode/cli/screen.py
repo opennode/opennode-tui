@@ -11,7 +11,8 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
 from opennode.cli.config import c
-from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
+from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
+                                OpenvzModificationForm)
 
 VERSION = '2.0.0a'
 TITLE='OpenNode TUI v%s' % VERSION
@@ -298,7 +299,7 @@ class OpenNodeTUI(object):
             raise ValueError, "Vm '%s' is not supported" % template_settings["vm_type"]
 
         # get user settings
-        user_settings = self._display_template_create_settings(form, template_settings)
+        user_settings = self._display_custom_form(form, template_settings)
         if not user_settings:
             return self.display_main_screen()
         template_settings.update(user_settings)
@@ -309,7 +310,7 @@ class OpenNodeTUI(object):
         self.screen = SnackScreen()
         return self.display_templates()
 
-    def _display_template_create_settings(self, form, template_settings):
+    def _display_custom_form(self, form, template_settings):
         while 1:
             if not form.display():
                 return None
@@ -324,20 +325,34 @@ class OpenNodeTUI(object):
                 continue
 
     def display_vm_manage(self):
-        available_vms = []
-        for vmt in actions.vm.vm_types:
+        storage_pool = actions.storage.get_default_pool()
+        if storage_pool is None:
+            return display_info(self.screen, "Error", "Default storage pool is not defined!")
+        available_vms = {}
+        vms_labels = []
+        # TODO iterate over actions.vm.vm_types:
+        for vmt in ['openvz']: 
             vm = actions.vm.get_module(vmt)
-            available_vms.extend([(vmid, "%s (%s)" % (name, vmt)) for name, vmid in \
-                                  vm.get_all_instances().items()])
-        val = display_selection(self.screen, TITLE, available_vms, 'Select VM to manage:',
-                                buttons=['Start', 'Stop', 'Edit', 'Back'])
-        if val is None:
-            return self.display_main_screen()
-        # self.screen.finish()
-        vm_type = re.search('(\(.+\))', val).group(0)[1:-1]
-        #XXX display a form based on vm_type and status
-        # warning if opertion unsupported
+            available_vms.update(vm.get_all_instances())
 
+        vms_labels.extend([("%s (%s, %s) - %s" % (p["name"], vmid, p["vm_type"], p["status"]), 
+                                   "%s" %vmid) for vmid, p in available_vms.items()])
+        action, vm_id = display_selection(self.screen, TITLE, vms_labels, 'Pick VM for modification:',
+                                buttons=['Edit', 'Back'])
+        if action == 'back':
+            return self.display_main_screen()
+        if action is None or action == 'edit':
+            vm_type = available_vms[vm_id]["vm_type"]
+            vm = actions.vm.get_module(vm_type)
+            if vm_type == 'openvz':
+                form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+            # TODO KVM specific form
+            user_settings = self._display_custom_form(form, available_vms[vm_id])
+            if user_settings is None:
+                return self.display_vm_manage()
+            vm.update_vm(user_settings)
+            return self.display_vm_manage()
+            
     def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:

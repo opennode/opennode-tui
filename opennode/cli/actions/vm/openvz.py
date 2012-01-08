@@ -235,21 +235,41 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
     execute("vzctl start %s" % (ovf_settings["vm_id"]))
     print "Template %s deployed successfully!" % ovf_settings["vm_id"]
-    
-def get_available_instances(include_running = False):
-    """Return deployed and stopped OpenVZ instances"""
-    include_flag = '-S' if not include_running else ''
-    vzcontainers = execute("vzlist -H %s -o ctid,hostname" % include_flag).split('\n')
-    candidates = {}
+
+def query_openvz(include_running=False, fields='ctid,hostname'):
+    """Run a query agains OpenVZ"""
+    include_flag = '-S' if not include_running else '-a'
+    vzcontainers = execute("vzlist -H %s -o %s" % (include_flag, fields)).split('\n')
+    result = []
     for cont in vzcontainers:
         if len(cont.strip()) == 0: break
-        cid, hn = cont.strip().split(' ')
+        result.append([f for f in cont.strip().split(' ') if len(f) > 0])
+    return result
+
+def get_available_instances():
+    """Return deployed and stopped OpenVZ instances"""
+    resources = query_openvz(False, "ctid,hostname")
+    candidates = {}
+    for r in resources:
+        cid, hn = r
         candidates[int(cid)] = "%s (%s)" %(hn, cid)
     return candidates
 
 def get_all_instances():
-    """Return all OpenVZ instances"""
-    return get_available_instances(True)
+    """Return all OpenVZ instances and their parameters"""
+    resources = query_openvz(False, 
+                "ctid,hostname,status")
+    candidates = {}
+    for r in resources:
+        candidates[r[0]] = {"vm_id": r[0],
+                                 "name": r[1],
+                                 "status": r[2],
+                                 "memory": get_memory(r[0]) / 1024,
+                                 "disk": get_diskspace(r[0]) / 1024,
+                                 "vcpu": get_vcpu(r[0]),
+                                 "vm_type": "openvz"
+                                 }
+    return candidates
 
 def get_template_name(ctid):
     """Return a name of the template used for creating specific container"""
@@ -408,6 +428,10 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
         "OpenVZ CT template disks")
     return ovf
 
+def get_swap(ctid):
+    """Swap memory in MB"""
+    return int(execute("vzlist %s -H -o swappages.l" % ctid)) * 4 / 1024
+
 def get_memory(ctid):
     """Max memory in MB"""
     res = int(execute("vzlist %s -H -o privvmpages.l" % ctid)) * 4 / 1024
@@ -427,3 +451,22 @@ def detect_os(ctid):
     """Detect OS name running in a VM"""
     return execute("vzctl runscript %s `which detect-os`" % ctid)
 
+def get_vcpu(ctid):
+    """Return number of virtual CPUs as seen by the VM"""
+    return int(execute("grep CPUS= /etc/vz/conf/%s.conf | cut -d\"=\" -f2" % ctid).strip('"'))
+
+def update_vm(settings):
+    """Perform modifications to the VM virtual hardware"""
+    vm_id = settings["vm_id"]
+    if settings.get("disk"):
+        disk = float(settings["disk"])
+        execute("vzctl set %s --diskspace %sG --save" % (vm_id, disk))
+    if settings.get("vcpu"):
+        execute("vzctl set %s --cpus %s --save" % (vm_id, int(settings.get("vcpu"))))
+    if settings.get("memory"):
+        mem = int(float(settings.get("memory")) * 1024)
+        execute("vzctl set %s --physpages %s --save" % (vm_id, mem))
+        execute("vzctl set %s --privvmpages %s --save" % (vm_id, mem))
+    if settings.get("swap"):
+        swap = float(settings.get("swap"))
+        execute("vzctl set %s --swappages %sG --save" % (vm_id, swap))
