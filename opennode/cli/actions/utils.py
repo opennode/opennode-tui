@@ -4,6 +4,8 @@ import ConfigParser
 import shutil
 import urllib
 import urlparse
+import cPickle as pickle
+
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, \
                         RotatingMarker
@@ -139,4 +141,15 @@ def urlopen(remote):
     opener = BasicURLOpener(url.username, url.password)
     return opener.open(remote)
 
-    
+def roll_data(filename, data, default=None):
+    """Save data in a file. Return previous value of the data."""
+    if os.path.exists(filename):
+        with open(filename, 'r') as od:
+            res = pickle.load(od)
+        with open(filename, 'w') as od:
+            pickle.dump(data, od)
+        return res
+    else:
+        with open(filename, 'w') as od:
+            pickle.dump(data, od)
+        return default
