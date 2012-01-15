@@ -12,8 +12,7 @@ class OpenNode(func_module.FuncModule):
     description = "opennode module"
 
     def metrics(self):
-        from opennode.cli.actions.utils import execute
-        from func.minion.modules.onode.common import roll_data
+        from opennode.cli.actions.utils import execute, roll_data
 
         def cpu_usage():
             time_list_now = map(int, execute("head -n 1 /proc/stat").split(' ')[2:6])
