@@ -177,6 +177,7 @@ def get_available_instances():
 
 def get_all_instances():
     """Return all defined KVM VMs"""
+    # XXX broken function, neends aligning with screen.py:display_vm_manage
     return get_available_instances()
 
 def generate_libvirt_conf(settings):
