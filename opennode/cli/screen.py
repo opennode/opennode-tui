@@ -338,7 +338,7 @@ class OpenNodeTUI(object):
         vms_labels.extend([("%s (%s, %s) - %s" % (p["name"], vmid, p["vm_type"], p["status"]), 
                                    "%s" %vmid) for vmid, p in available_vms.items()])
         action, vm_id = display_selection(self.screen, TITLE, vms_labels, 'Pick VM for modification:',
-                                buttons=['Edit', 'Back'])
+                                buttons=['Edit', 'Start', 'Stop', 'Back'])
         if action == 'back':
             return self.display_main_screen()
         if action is None or action == 'edit':
@@ -346,6 +346,9 @@ class OpenNodeTUI(object):
             vm = actions.vm.get_module(vm_type)
             if vm_type == 'openvz':
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+            else:
+                display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment")
+                return self.display_vm_manage()
             # TODO KVM specific form
             user_settings = self._display_custom_form(form, available_vms[vm_id])
             if user_settings is None:
