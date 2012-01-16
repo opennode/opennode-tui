@@ -13,6 +13,9 @@ from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data
 from opennode.cli import config
 
+__all__ = ['list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
+           'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
+           'undeploy_vm', 'get_local_templates', 'metrics']
 
 vm_types = {
     'openvz': openvz,
@@ -310,6 +313,7 @@ def _vm_console_vnc(conn, uuid):
             return dict(type='vnc', port=port)
 
 vm_console_vnc = vm_method(_vm_console_vnc)
+
 
 def _vm_console_pty(conn, uuid):
     # python 2.6 etree library doesn't support xpath with predicate
