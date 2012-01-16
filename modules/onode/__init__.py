@@ -16,15 +16,18 @@ class OpenNode(func_module.FuncModule):
 
         def cpu_usage():
             time_list_now = map(int, execute("head -n 1 /proc/stat").split(' ')[2:6])
-            time_list_was = roll_data('/tmp/func-cpu-host', time_list_now, [0]*6)
-            deltas = [yi-xi for yi,xi in zip(time_list_now, time_list_was)]
+            time_list_was = roll_data('/tmp/func-cpu-host', time_list_now, [0] * 6)
+            deltas = [yi - xi for yi, xi in zip(time_list_now, time_list_was)]
 
             cpu_pct = 1 - (float(deltas[-1]) / sum(deltas))
             return cpu_pct
+
         def load():
             return float(execute("cat /proc/loadavg | awk '{print $1}'"))
+
         def memory_usage():
             return float(execute("free | tail -n 2 | head -n 1 |awk '{print $3 / 1024}'"))
+
         def network_usage():
             def get_netstats():
                 return [int(v) for v in execute("grep eth0 /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'").split(' ')]
@@ -34,6 +37,7 @@ class OpenNode(func_module.FuncModule):
 
             window = t2 - t1
             return ((rx2 - rx1) / window, (tx2 - tx1) / window)
+
         def diskspace_usage():
             return float(execute("df |grep ' /$' | head -n 1|awk '{print $3/1024}'"))
 

@@ -2,11 +2,11 @@ from func.minion.modules import func_module
 import os
 import netifaces
 
+
 class Host(func_module.FuncModule):
     version = "0.0.1"
     api_version = "0.0.1"
     description = "opennode host module"
-
 
     def interfaces(self):
         def number_of_set_bits(x):

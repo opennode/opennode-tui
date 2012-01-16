@@ -2,20 +2,20 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
-import re
 
 from ovf.OvfFile import OvfFile
+
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow
 
-from opennode.cli.helpers import (display_create_template, display_checkbox_selection, 
+from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
                                   display_selection, display_vm_type_select, display_info)
 from opennode.cli import actions
-from opennode.cli.config import c
+from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm)
 
 VERSION = '2.0.0a'
-TITLE='OpenNode TUI v%s' % VERSION
+TITLE = 'OpenNode TUI v%s' % VERSION
 
 
 class OpenNodeTUI(object):
@@ -55,8 +55,10 @@ class OpenNodeTUI(object):
                'kvm': actions.console.run_kvm,
                'ovz': actions.console.run_openvz,
                }
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Select a management console to use:',
-                  [('KVM', 'kvm'),('OpenVZ', 'ovz'), ('Main menu', 'main')])
+        result = ButtonChoiceWindow(self.screen, TITLE,
+                                    'Select a management console to use:',
+                                    [('KVM', 'kvm'), ('OpenVZ', 'ovz'),
+                                     ('Main menu', 'main')])
         if result != 'main':
             self.screen.finish()
             logic[result]()
@@ -73,8 +75,10 @@ class OpenNodeTUI(object):
                 'shared': self.display_storge_shared,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage operation',
-                  [('Select default storage pool', 'default'),('Add a storage pool', 'add'),
-                    ('Delete a storage pool', 'delete'), ('Main menu', 'main')])
+                  [('Select default storage pool', 'default'),
+                   ('Add a storage pool', 'add'),
+                   ('Delete a storage pool', 'delete'),
+                   ('Main menu', 'main')])
         logic[result]()
 
     def display_storage_default(self):
@@ -85,15 +89,16 @@ class OpenNodeTUI(object):
 
     def display_storge_shared(self):
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
-                  [('List bind mounts', 'default'),('Add a bind mount', 'add'),
+                  [('List bind mounts', 'default'), ('Add a bind mount', 'add'),
                     ('Delete a bind mount', 'delete'), ('Main menu', 'main')])
 
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
-        command, _ = EntryWindow(self.screen, TITLE, 'Please, enter a new storage pool name', 
-                [('Storage pool', storage_entry),], 
-                buttons = [('Add', 'add'), ('Back', 'storage')])
-        if command == 'storage': 
+        command, _ = EntryWindow(self.screen, TITLE,
+                                 'Please, enter a new storage pool name',
+                                 [('Storage pool', storage_entry)],
+                                 buttons=[('Add', 'add'), ('Back', 'storage')])
+        if command == 'storage':
             return self.display_storage()
         elif command == 'add':
             storage_pool = storage_entry.value().strip()
@@ -106,8 +111,10 @@ class OpenNodeTUI(object):
     def display_storage_delete(self):
         pool = self.display_select_storage_pool(default=None)
         if pool is not None:
-            result = ButtonChoiceWindow(self.screen, TITLE , 'Are you sure you want to delete "%s"?' %pool,
-                        [('Yes, delete the pool and all of its contents', 'yes'), ('No, not today.', 'no')])
+            result = ButtonChoiceWindow(self.screen, TITLE,
+                                        'Are you sure you want to delete "%s"?' % pool,
+                                        [('Yes, delete the pool and all of its contents', 'yes'),
+                                         ('No, not today.', 'no')])
             if result == 'yes':
                 # sorry, pool, time to go
                 actions.storage.delete_pool(pool)
@@ -119,8 +126,8 @@ class OpenNodeTUI(object):
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select network operation',
                   [('Bridge management', 'bridge'),
-                   #('Nameserver configuration', 'nameserver'), 
-                   #('Hostname modification', 'hostname'), 
+                   #('Nameserver configuration', 'nameserver'),
+                   #('Hostname modification', 'hostname'),
                     ('Main menu', 'main')])
         logic[result]()
 
@@ -131,14 +138,14 @@ class OpenNodeTUI(object):
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bridge operation',
                   [('Add new bridge', 'add'),
-                   ('Delete bridge', 'del'), 
+                   ('Delete bridge', 'del'),
                    ('Main menu', 'main')])
         logic[result]()
 
-    def display_network_bridge_add_update(self, bridge = None):
-        action, bridge = EntryWindow(self.screen, TITLE, 'Add new bridge', 
+    def display_network_bridge_add_update(self, bridge=None):
+        action, bridge = EntryWindow(self.screen, TITLE, 'Add new bridge',
                 ['Name', 'Hello', 'FD', 'STP'],
-                buttons = ['Create', 'Back'])
+                buttons=['Create', 'Back'])
         if action == 'create':
             actions.network.add_bridge(bridge[0])
             actions.network.configure_bridge(bridge[0], bridge[1], bridge[2], bridge[3])
@@ -151,29 +158,33 @@ class OpenNodeTUI(object):
             return self.display_network_bridge()
         chosen_bridge = display_selection(self.screen, TITLE, bridges, 'Please select the network bridge for modification:')
         if chosen_bridge is not None:
-            result = ButtonChoiceWindow(self.screen, TITLE , 'Are you sure you want to delete "%s"?' %chosen_bridge,
+            result = ButtonChoiceWindow(self.screen, TITLE,
+                                        'Are you sure you want to delete "%s"?' %
+                                        chosen_bridge,
                         [('Yes, delete the bridge.', 'yes'), ('No, not today.', 'no')])
             if result == 'yes':
                 # sorry, pool, time to go
                 actions.network.delete_bridge(chosen_bridge)
         return self.display_network_bridge()
 
-    def display_select_storage_pool(self, default = c('general', 'default-storage-pool')):
-        storage_pools = [("%s (%s)"  %(p[0], p[1]), p[0]) for p in actions.storage.list_pools()]
-        return display_selection(self.screen, TITLE, storage_pools, 'Select a storage pool to use:', default = default)
+    def display_select_storage_pool(self, default=config.c('general', 'default-storage-pool')):
+        storage_pools = [("%s (%s)" % (p[0], p[1]), p[0]) for p in actions.storage.list_pools()]
+        return display_selection(self.screen, TITLE, storage_pools,
+                                 'Select a storage pool to use:',
+                                 default=default)
 
     def display_oms(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
-        logic = { 'main': self.display_main_screen,
-                  'register': self.display_oms_register,
-                  'download': self.display_oms_download,
-                  'install': self.display_oms_install,
+        logic = {'main': self.display_main_screen,
+                 'register': self.display_oms_register,
+                 'download': self.display_oms_download,
+                 'install': self.display_oms_install,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE, 'OpenNode Management Service (OMS) operations',
-            [('Register with OMS', 'register'), ('Download OMS image','download'), 
+            [('Register with OMS', 'register'), ('Download OMS image', 'download'),
              ('Install OMS image', 'install'), ('Main menu', 'main')])
         logic[result]()
 
@@ -181,11 +192,14 @@ class OpenNodeTUI(object):
         oms_server, oms_port = actions.oms.get_oms_server()
         oms_entry_server = Entry(30, oms_server)
         oms_entry_port = Entry(30, oms_port)
-        command, oms_address = EntryWindow(self.screen, TITLE, 'Please, enter OMS address\n%s'%error_msg, 
+        command, oms_address = EntryWindow(self.screen, TITLE,
+                                           'Please, enter OMS address\n%s' %
+                                           error_msg,
                 [('OMS server address', oms_entry_server),
-                 ('OMS server port', oms_entry_port)], 
-                buttons = [('Register', 'register'), ('Back to the OMS menu', 'oms_menu')])
-        if command == 'oms_menu': 
+                 ('OMS server port', oms_entry_port)],
+                buttons=[('Register', 'register'), ('Back to the OMS menu',
+                                                    'oms_menu')])
+        if command == 'oms_menu':
             return self.display_oms()
         elif command == 'register':
             server = oms_entry_server.value().strip()
@@ -197,14 +211,15 @@ class OpenNodeTUI(object):
                 return self.display_oms()
             else:
                 # XXX: error handling?
-                return self.display_oms_register(error_msg = "Incorrect server data")
+                return self.display_oms_register(error_msg="Incorrect server data")
 
     def display_oms_download(self):
-        logic = { 'main': self.display_main_screen,
-                  'download': actions.templates.sync_oms_template,
+        logic = {'main': self.display_main_screen,
+                'download': actions.templates.sync_oms_template,
                 }
-        result = ButtonChoiceWindow(self.screen, TITLE , 'Would you like to download OMS template?',
-                        [('Yes', 'download'), ('No', 'main')])
+        result = ButtonChoiceWindow(self.screen, TITLE,
+                                    'Would you like to download OMS template?',
+                                    [('Yes', 'download'), ('No', 'main')])
         logic[result]()
 
     def display_oms_install(self):
@@ -216,14 +231,16 @@ class OpenNodeTUI(object):
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
-        
-        logic = { 'main': self.display_main_screen,
-                  'manage': self.display_template_manage,
-                  'create': self.display_template_create,
+
+        logic = {'main': self.display_main_screen,
+                 'manage': self.display_template_manage,
+                 'create': self.display_template_create,
                 }
-        result = ButtonChoiceWindow(self.screen, TITLE , 'Select a template action to perform',
-                        [('Manage template cache', 'manage'), ('Create a new template from VM', 'create'), 
-                         ('Main menu', 'main')])
+        result = ButtonChoiceWindow(self.screen, TITLE,
+                                    'Select a template action to perform',
+                                    [('Manage template cache', 'manage'),
+                                     ('Create a new template from VM', 'create'),
+                                     ('Main menu', 'main')])
         logic[result]()
 
     def display_template_manage(self):
@@ -250,13 +267,14 @@ class OpenNodeTUI(object):
             self.screen = SnackScreen()
         self.display_templates()
 
-    def display_select_template_from_repo(self, repo, storage_pool = c('general', 'default-storage-pool')): 
+    def display_select_template_from_repo(self, repo, storage_pool):
         remote_templates = actions.templates.get_template_list(repo)
-        local_templates = actions.templates.get_local_templates(c(repo, 'type'), storage_pool)
+        local_templates = actions.templates.get_local_templates(config.c(repo, 'type'),
+                                                                storage_pool)
         list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
         purely_local_templates = list(set(local_templates) - set(remote_templates))
         list_items.extend([('(l)' + tmpl, tmpl, True) for tmpl in purely_local_templates])
-        return display_checkbox_selection(self.screen, TITLE, list_items, 
+        return display_checkbox_selection(self.screen, TITLE, list_items,
                         'Please, select templates to keep in the storage pool (r - remote, l - local):')
 
     def display_select_template_from_storage(self, storage_pool, vm_type):
@@ -370,7 +388,7 @@ class OpenNodeTUI(object):
             return self.display_vm_create()
 
         # get ovf template settings
-        ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
+        ovf_file = OvfFile(os.path.join(config.c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked", 
                                         template + ".ovf"))
         vm = actions.vm.get_module(vm_type)

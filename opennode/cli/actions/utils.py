@@ -1,4 +1,5 @@
-import os, errno
+import os
+import errno
 import commands
 import ConfigParser
 import shutil
@@ -9,6 +10,7 @@ import cPickle as pickle
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, \
                         RotatingMarker
+
 
 class CommandException(Exception):
     pass
@@ -21,7 +23,8 @@ def mkdir_p(path):
     except OSError as exc: 
         if exc.errno != errno.EEXIST:
             raise
-        
+
+
 def delete(fnm):
     """Delete a filename, suppress exception on a missing file."""
     try:
@@ -29,28 +32,34 @@ def delete(fnm):
     except OSError:
         pass
 
+
 def del_folder(path):
     shutil.rmtree(path)
+
 
 def get_file_size_bytes(path):
     return int(os.stat(path)[6]) 
 
+
 def execute(cmd):
     """Run cmd in a shell, return output of the execution. Raise exception for non-0 return code"""
-    status, output = commands.getstatusoutput("LC_ALL=C %s" %cmd)
+    status, output = commands.getstatusoutput("LC_ALL=C %s" % cmd)
     if status != 0:
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'" 
-                               % (cmd, status, output))  
+                               % (cmd, status, output))
     return output
+
 
 def calculate_hash(target_file):
     """Hash contents of a file and write hashes out to a file"""
     execute("pfff -k 6996807 -B %s > %s.pfff" % (target_file, target_file))
 
+
 def execute_in_screen(name, cmd):
     """Create a named screen session and run command there"""
     execute('screen -S %s %s' % (name, cmd))
-    
+
+
 def attach_screen(name):
     """Attached to the named screen session (multi-screen mode)"""
     execute('screen -x -r %s' % name)
@@ -59,18 +68,18 @@ def attach_screen(name):
 class SimpleConfigParser(ConfigParser.ConfigParser):
     """ Parses configuration file without sections. """
     COMMENT_CHAR = '#'
-    OPTION_CHAR =  '='
-    
+    OPTION_CHAR = '='
+
     def __init__(self):
         ConfigParser.ConfigParser.__init__(self)
         self.options = {}
-    
+
     def get(self, key):
         return self.options[key]
-    
+
     def items(self):
         return self.options
-    
+
     def read(self, filename):
         with open(filename) as configfile:
             for line in configfile:
@@ -92,25 +101,25 @@ class SimpleConfigParser(ConfigParser.ConfigParser):
 class ConsoleProgressBar(object):
     """A progress bar compatible with urllib download hook"""
     pbar = None
-    
+
     def update_url(self, url):
         if self.pbar.start_time is not None and self.pbar.finished is False:
             self.finish()
         self.pbar.maxval = None
 
     def __init__(self, tmpl_name):
-        widgets = [tmpl_name, Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', 
-                  ETA(), ' ', FileTransferSpeed()
+        widgets = [tmpl_name, Percentage(), ' ', Bar(marker=RotatingMarker()),
+                   ' ', ETA(), ' ', FileTransferSpeed()
                ]
-        
+
         self.pbar = ProgressBar(widgets=widgets)
 
     def download_hook(self, count, blockSize, totalSize):
-        if self.pbar.maxval is None: 
+        if self.pbar.maxval is None:
             self.pbar.maxval = totalSize
             self.pbar.start()
         self.pbar.update(min(self.pbar.maxval, blockSize * count))
-        
+
     def finish(self):
         self.pbar.finish()
 
@@ -127,19 +136,21 @@ class BasicURLOpener(urllib.FancyURLopener):
 
 
 def download(remote, local):
-    """Download a remote file to a local file, using optional username/password 
+    """Download a remote file to a local file, using optional username/password
     for basic HTTP authentication"""
-    url = urlparse.urlsplit(remote) 
+    url = urlparse.urlsplit(remote)
     opener = BasicURLOpener(url.username, url.password)
     download_monitor = ConsoleProgressBar(url.path.split('/')[-1])
     opener.retrieve(remote, local, download_monitor.download_hook)
 
+
 def urlopen(remote):
-    """Return a response to a remote URL. Supports username:password@url schema 
+    """Return a response to a remote URL. Supports username:password@url schema
     for remote URL"""
-    url = urlparse.urlsplit(remote) 
+    url = urlparse.urlsplit(remote)
     opener = BasicURLOpener(url.username, url.password)
     return opener.open(remote)
+
 
 def roll_data(filename, data, default=None):
     """Save data in a file. Return previous value of the data."""

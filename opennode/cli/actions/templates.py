@@ -15,13 +15,15 @@ from opennode.cli import config
 
 __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template',
-           'get_local_templates', 'sync_oms_template', 'is_fresh', 
+           'get_local_templates', 'sync_oms_template', 'is_fresh',
            'is_syncing']
 
 
 def _simple_download_hook(count, blockSize, totalSize):
     """Simple download counter"""
-    print "% 3.1f%% of %d bytes\r" % (min(100, float(blockSize * count) / totalSize * 100), totalSize),
+    print "% 3.1f%% of %d bytes\r" % (min(100, float(blockSize * count) /
+                                          totalSize * 100), totalSize),
+
 
 def get_template_repos():
     """Return a formatted list of strings describing configured repositories"""
@@ -34,6 +36,7 @@ def get_template_repos():
         result.append(("%s (%s)" %(name, vm_type), group))
     return result
 
+
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
     url = c(remote_repo, 'url')
@@ -42,10 +45,11 @@ def get_template_list(remote_repo):
     tmpl_list.close()
     return templates
 
+
 def sync_storage_pool(storage_pool, remote_repo, templates,
                       sync_tasks_fnm=c('general', 'sync_task_list')):
-    """Synchronize selected storage pool with the remote repo. Only selected templates 
-    will be persisted, all of the other templates shall be purged. 
+    """Synchronize selected storage pool with the remote repo. Only selected templates
+    will be persisted, all of the other templates shall be purged.
     Ignores purely local templates - templates with no matching name in remote repo."""
     vm_type = c(remote_repo, 'type')
     existing_templates = get_local_templates(vm_type, storage_pool)
@@ -69,6 +73,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     cli_command += "templates.sync_templates_list('%s')" % sync_tasks_fnm
     execute_in_screen('OPENNODE-SYNC', 'python -c "%s"' % cli_command)
 
+
 def sync_template(remote_repo, template, storage_pool):
     """Synchronizes local template (cache) with the remote one (master)"""
     url = c(remote_repo, 'url')
@@ -87,6 +92,7 @@ def sync_template(remote_repo, template, storage_pool):
             download(r_template_hash, l_template_hash)
         unpack_template(storage_pool, vm_type, localfile)
 
+
 def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Import external template into ON storage pool"""
     if not os.path.exists(template):
@@ -102,6 +108,7 @@ def import_template(template, vm_type, storage_pool = c('general', 'default-stor
     calculate_hash(target_file)
     print "Unpacking..."
     unpack_template(storage_pool, vm_type, tmpl_name)
+
 
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
@@ -125,6 +132,7 @@ def delete_template(storage_pool, vm_type, template):
     if vm_type == 'openvz':
         delete("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
 
+
 def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
        Adds symlinks as needed by the VM template vm_type."""
@@ -141,17 +149,20 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
         assert len(tmpl_name) == 1
         vm.openvz.link_template(storage_pool, tmpl_name[0])
 
+
 def get_local_templates(vm_type, storage_pool=c('general', 'default-storage-pool')):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     storage_endpoint = c('general', 'storage-endpoint')
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
                                 storage_pool, vm_type)) if tmpl.endswith('tar')]
 
+
 def sync_oms_template(storage_pool=c('general', 'default-storage-pool')):
     """Synchronize OMS template"""
     repo = c('opennode-oms-template', 'repo')
     tmpl = c('opennode-oms-template', 'template_name')
     sync_template(repo, tmpl, storage_pool)
+
 
 def is_fresh(localfile, remotefile):
     """Checks whether local copy matches remote file"""
@@ -167,6 +178,7 @@ def is_fresh(localfile, remotefile):
         # no local hash found
         return False 
     return remote_hash == local_hash
+
 
 def list_templates():
     """ Prints all local and remote templates """
@@ -190,10 +202,12 @@ def list_templates():
             print "\t\t",  tmpl
         print
 
+
 def get_purely_local_templates(storage_pool, vm_type, remote_repo):
     remote_templates = get_template_list(remote_repo)
     local_templates = get_local_templates(vm_type, storage_pool)
     return list(set(local_templates) - set(remote_templates))
+
 
 def get_template_info(template_name, vm_type, storage_pool = c('general', 'default-storage-pool')):
     ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
@@ -205,16 +219,19 @@ def get_template_info(template_name, vm_type, storage_pool = c('general', 'defau
     #errors = vm.adjust_setting_to_systems_resources(template_settings)
     return template_settings
 
+
 def get_templates_sync_list(sync_tasks_fnm=c('general', 'sync_task_list')):
     """Return current template synchronisation list"""
     with open(sync_tasks_fnm, 'r') as tf:
         return pickle.load(tf)
+
 
 def set_templates_sync_list(tasks, sync_tasks_fnm=c('general', 'sync_task_list')):
     """Set new template synchronisation list. Function should be handled with care,
     as some retrieval might be in progress"""
     with open(sync_tasks_fnm, 'w') as tf:
         pickle.dump(tasks, tf)
+
 
 def sync_templates_list(sync_tasks_fnm=c('general', 'sync_task_list')):
     """Sync a list of templates defined in a file. After synchronizing a template,
@@ -233,6 +250,7 @@ def sync_templates_list(sync_tasks_fnm=c('general', 'sync_task_list')):
             del tasks[0]
             set_templates_sync_list(tasks, sync_tasks_fnm)
         os.unlink(sync_tasks_fnm)
+
 
 def is_syncing():
     """Return true if syncing in progress"""

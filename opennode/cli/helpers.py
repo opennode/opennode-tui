@@ -4,39 +4,41 @@ from snack import (Textbox, Entry, Button, Listbox, Grid, Scale, Form,
                    ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp,
                    ButtonChoiceWindow, ListboxChoiceWindow)
 
+
 class DownloadMonitor():
-    
-    def __init__(self, screen, title, item_count = 0):
+
+    def __init__(self, screen, title, item_count=0):
         self.screen = screen
         self.title = title
         self.current_item = 0
         self.item_count = item_count
-        
+
         g = Grid(1, 2)
         self.fnm_label = Textbox(40, 2, 'Downloading...', 0, 0)
-        self.scale = Scale(40, 100) 
-        self.scale.set(0) 
+        self.scale = Scale(40, 100)
+        self.scale.set(0)
         g.setField(self.fnm_label, 0, 1)
-        g.setField(self.scale, 0, 0) 
-        self.screen.gridWrappedWindow(g, title) 
-        self.f = Form() 
+        g.setField(self.scale, 0, 0)
+        self.screen.gridWrappedWindow(g, title)
+        self.f = Form()
         self.f.add(self.scale)
         self.f.add(self.fnm_label)
-                
+
     def update_url(self, fnm):
         self.current_item = self.current_item + 1
-        self.fnm_label.setText("(%s/%s): %s" % (self.current_item, self.item_count, fnm))
-    
+        self.fnm_label.setText("(%s/%s): %s" % (self.current_item,
+                                                self.item_count, fnm))
+
     def download_hook(self, count, blockSize, totalSize):
         donep = int(min(100, float(blockSize * count) / totalSize * 100))
-        self.scale.set(donep) 
-        self.f.draw() 
-        self.screen.refresh() 
-            
+        self.scale.set(donep)
+        self.f.draw()
+        self.screen.refresh()
 
-def create_select_checkbox(screen, title, text, items, buttons = ('Ok', 'Cancel'),
-            width = 40, scroll = 0, height = -1, help = None):
-    """Helper class for displaying a windows with a checkbox list. 
+
+def create_select_checkbox(screen, title, text, items, buttons=('Ok', 'Cancel'),
+            width=40, scroll=0, height=-1, help=None):
+    """Helper class for displaying a windows with a checkbox list.
     On exit, list of selected items is returned"""
     if (height == -1): height = len(items)
     if len(items) > height: scroll = 1
@@ -61,9 +63,11 @@ def create_select_checkbox(screen, title, text, items, buttons = ('Ok', 'Cancel'
     rc = g.runOnce()
     return (bb.buttonPressed(rc), cb.getSelection())
 
-def display_create_template(screen, title, vm_type, templates, help = None):
+def display_create_template(screen, title, vm_type, templates, help=None):
     """Helper class for displaying a form for creating a new VM template"""
-    label_base = Textbox(40, 2, 'Select %s VM to be used as a basis\n(only stopped VMs are allowed)' %vm_type, 0, 0)
+    label_base = Textbox(40, 2, 
+        'Select %s VM to be used as a basis\n(only stopped VMs are allowed)' % 
+        vm_type, 0, 0)
     
     base_tmpl = Listbox(7, 1, 0, 30, 1)
     for vm in templates.keys():
@@ -84,6 +88,7 @@ def display_create_template(screen, title, vm_type, templates, help = None):
     form.add(bb, 0, 6)
     form_result = form.runOnce()
     return (bb.buttonPressed(form_result), str(base_tmpl.current()), entry_newname.value())
+
 
 def display_selection(screen, title, list_of_items, subtitle, default = None,
                       buttons = ['Ok', 'Back']):
@@ -109,21 +114,28 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
     return None
 
+
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
-    if len(list_of_items) > 0:        
-        action, selection = create_select_checkbox(screen, title, subtitle, list_of_items, ['Ok', 'Back'], height = 10)
+    if len(list_of_items) > 0:
+        action, selection = create_select_checkbox(screen, title, subtitle,
+                                                   list_of_items,
+                                                   ['Ok', 'Back'],
+                                                   height = 10)
         if action != 'back':
             return selection
     else:
-        ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from', ['Back'])
+        ButtonChoiceWindow(screen, title,
+                           'Sorry, there are no items to choose from',
+                           ['Back'])
     return None
+
 
 def display_vm_type_select(screen, title):
     """Display selection menu for the template type"""
     types = ['kvm', 'openvz']
     return display_selection(screen, title, types, 'Select a VM type to use:')
 
-    
+
 def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
     """Display information message on information screen"""
     g = GridFormHelp(screen, title, help, 1, 2)

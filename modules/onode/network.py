@@ -2,6 +2,7 @@ from func.minion.modules import func_module
 import func.minion.modules.onode
 from func.minion.modules.onode.common import delegate_methods
 
+
 class Network(func_module.FuncModule):
     version = "0.0.1"
     api_version = "0.0.1"
