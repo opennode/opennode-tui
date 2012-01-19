@@ -13,7 +13,10 @@ from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, \
 
 
 class CommandException(Exception):
-    pass
+
+    def __init__(self, msg, code=None):
+        super(CommandException, self).__init__(msg)
+        self.code = code
 
 
 def mkdir_p(path):
@@ -38,15 +41,18 @@ def del_folder(path):
 
 
 def get_file_size_bytes(path):
-    return int(os.stat(path)[6]) 
+    return int(os.stat(path)[6])
 
 
 def execute(cmd):
-    """Run cmd in a shell, return output of the execution. Raise exception for non-0 return code"""
+    """
+    Run cmd in a shell, return output of the execution. Raise exception for
+    non-0 return code
+    """
     status, output = commands.getstatusoutput("LC_ALL=C %s" % cmd)
     if status != 0:
-        raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'" 
-                               % (cmd, status, output))
+        raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
+                               % (cmd, status, output), status)
     return output
 
 
