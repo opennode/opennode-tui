@@ -7,6 +7,8 @@ from hashlib import sha1
 import errno
 from contextlib import closing
 
+import libvirt
+
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
@@ -14,7 +16,7 @@ from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes, \
-                        calculate_hash
+                        calculate_hash, CommandException
 from opennode.cli.actions.vm.config_template import openvz_template
 
 
@@ -152,13 +154,11 @@ def _compute_diskspace_hard_limit(soft_limit):
 
 
 def generate_ubc_config(settings):
-    """ Generates UBC part of  configuration file for VZ container """
+    """ Generates UBC part of configuration file for VZ container """
     st = settings
     ubc_params = {
-        "physpages_barrier": st["memory"],
         "physpages_limit": st["memory"],
         
-        "swappages_barrier": st["swap"],
         "swappages_limit": st["swap"],
         
         "diskspace_soft": st["disk"],
@@ -461,9 +461,7 @@ def get_swap(ctid):
 
 def get_memory(ctid):
     """Max memory in MB"""
-    res = int(execute("vzlist %s -H -o privvmpages.l" % ctid)) * 4 / 1024
-    if res >= 2**31:
-        res = int(execute("vzlist %s -H -o physpages.l" % ctid)) * 4 / 1024
+    res = int(execute("vzlist %s -H -o physpages.l" % ctid)) * 4 / 1024
     return res
 
 
@@ -473,9 +471,11 @@ def get_diskspace(ctid):
 
 
 def get_uptime(ctid):
-    """Get uptime in seconds"""
-    return float(execute("vzctl exec %s \"awk '{print \$1}' /proc/uptime\"" % ctid))
-
+    """Get uptime in seconds. 0 if container is not running."""
+    try:
+        return float(execute("vzctl exec %s \"awk '{print \$1}' /proc/uptime\"" % ctid))
+    except:
+        return 0
 
 def detect_os(ctid):
     """Detect OS name running in a VM"""
@@ -484,26 +484,45 @@ def detect_os(ctid):
 
 def get_vcpu(ctid):
     """Return number of virtual CPUs as seen by the VM"""
-    return int(execute("grep CPUS= /etc/vz/conf/%s.conf | cut -d\"=\" -f2" % ctid).strip('"'))
+    return int(execute("vzlist %s -H -o cpus" % ctid))
 
 
 def update_vm(settings):
     """Perform modifications to the VM virtual hardware"""
-    vm_id = settings["vm_id"]
-    if settings.get("disk"):
-        disk = float(settings["disk"])
+    vm_id = get_ctid_by_uuid(settings["uuid"])
+    if settings.get("diskspace"):
+        disk = float(settings["diskspace"])
         execute("vzctl set %s --diskspace %sG --save" % (vm_id, disk))
     if settings.get("vcpu"):
         execute("vzctl set %s --cpus %s --save" % (vm_id, int(settings.get("vcpu"))))
     if settings.get("memory"):
-        mem = int(float(settings.get("memory")) * 1024)
-        execute("vzctl set %s --physpages %s --save" % (vm_id, mem))
-        execute("vzctl set %s --privvmpages %s --save" % (vm_id, mem))
+        mem = int(float(settings.get("memory")))
+        execute("vzctl set %s --ram %sG --save" % (vm_id, mem))
     if settings.get("swap"):
-        swap = float(settings.get("swap"))
-        execute("vzctl set %s --swappages %sG --save" % (vm_id, swap))
+        mem = int(float(settings.get("swap")))
+        execute("vzctl set %s --swap %sG --save" % (vm_id, mem))
 
 
 def get_uuid_by_ctid(ctid):
     """Return UUID of the VM"""
     return execute("grep \#UUID: /etc/vz/conf/%s.conf" % ctid).split(" ")[1]
+
+def get_ctid_by_uuid(uuid, backend='openvz:///system'):
+    """Return container ID with a given UUID"""
+    conn = libvirt.open(backend)
+    return conn.lookupByUUIDString(uuid).name()
+
+def shutdown_vm(uuid):
+    """Shutdown VM with a given UUID"""
+    ctid = get_ctid_by_uuid(uuid)
+    try:
+        execute("vzctl --quiet stop %s" % ctid)
+    except CommandException as e:
+        if e.code == 13056:  # sometimes umount fails
+            for i in range(5):
+                try:
+                    execute("vzctl --quiet umount %s" % ctid)
+                except CommandException:
+                    import time
+                    time.sleep(3)
+    

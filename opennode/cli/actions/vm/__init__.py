@@ -1,3 +1,4 @@
+import sys
 import os
 from functools import wraps
 import time
@@ -10,10 +11,10 @@ import libvirt
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.actions.utils import roll_data
+from opennode.cli.actions.utils import roll_data, execute
 from opennode.cli import config
 
-__all__ = ['list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
+__all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
            'undeploy_vm', 'get_local_templates', 'metrics']
 
@@ -41,6 +42,14 @@ def vm_method(fun):
 
 def backends():
     return config.c('general', 'backends').split(',')
+
+
+def backend_hname(uri):
+    """Return human-friendly name of the backend from the libvirt URI"""
+    names = {'openvz:///system': 'openvz',
+             'qemu:///system': 'kvm',
+             'xen:///system': 'xen'}
+    return names[uri]
 
 
 def autodetected_backends():
@@ -155,11 +164,21 @@ def _render_vm(conn, vm):
             return {'/': openvz.get_diskspace(vm.name())}
         return {'/': 0}
 
+    def vm_swap(vm):
+        if conn.getType() == 'OpenVZ':
+            return openvz.get_swap(vm.name())
+        # XXX use libvirt
+        return 0
+
     return {"uuid": get_uuid(vm), "name": vm_name(vm), "memory": vm_memory(vm),
             "uptime": vm_uptime(vm, STATE_MAP[info[0]]),
             "diskspace": vm_diskspace(vm),
             "template": vm_template_name(vm), "state": STATE_MAP[info[0]],
             "run_state": RUN_STATE_MAP[info[0]],
+            "vm_uri": conn.getURI(),
+            "vm_type": conn.getType().lower(),
+            "swap": vm_swap(vm),
+            "vcpu": vm.info()[3],
             'consoles': [i for i in [_vm_console_vnc(conn, get_uuid(vm)),
                                      _vm_console_pty(conn, get_uuid(vm))] if i],
             'interfaces': _vm_interfaces(conn, get_uuid(vm))}
@@ -167,12 +186,8 @@ def _render_vm(conn, vm):
 
 def _list_vms(conn):
     online = []
-    try:
-        online += [_render_vm(conn, vm) for vm in (conn.lookupByID(i) for i \
-                                                    in conn.listDomainsID())]
-    except libvirt.libvirtError:
-        # listDomainsID raises an exception if 0 online machines are available
-        pass
+    online += [_render_vm(conn, vm) for vm in (conn.lookupByID(i) for i \
+                                                    in _get_running_vm_ids(conn))]
     offline = [_render_vm(conn, vm) for vm in (conn.lookupByName(i) for i \
                                                in conn.listDefinedDomains())]
     return online + offline
@@ -227,8 +242,12 @@ def start_vm(conn, uuid):
 
 @vm_method
 def shutdown_vm(conn, uuid):
-    dom = conn.lookupByUUIDString(uuid)
-    dom.shutdown()
+    # XXX hack for OpenVZ because of a bad libvirt driver
+    if conn.getType() == 'OpenVZ':
+        openvz.shutdown_vm(uuid)
+    else:
+        dom = conn.lookupByUUIDString(uuid)
+        dom.shutdown()
 
 
 @vm_method
@@ -294,8 +313,9 @@ def undeploy_vm(conn, uuid):
 def get_local_templates(conn):
     vm_type = conn.getType().lower()
     tmpls = []
-    from opennode.cli.actions.templates import get_template_info
-    for tmpl_name in get_local_templates(vm_type):
+    from opennode.cli.actions.templates import get_template_info, \
+                get_local_templates as local_templates
+    for tmpl_name in local_templates(vm_type):
         tmpl_data = get_template_info(tmpl_name, vm_type)
         tmpl_data['template_name'] = tmpl_name
         tmpls.append(tmpl_data)
@@ -408,8 +428,10 @@ def metrics(conn):
                     memory_usage=memory_usage(),
                     network_usage=max(network_usage()),
                     diskspace_usage=diskspace_usage())
-
-    return dict((get_uuid(vm), vm_metrics(vm)) for vm in (conn.lookupByID(i) for i in conn.listDomainsID()))
+    try:
+        return dict((get_uuid(vm), vm_metrics(vm)) for vm in (conn.lookupByID(i) for i in conn.listDomainsID()))
+    except libvirt.libvirtError:
+        return {}
 
 
 def get_module(vm_type):
@@ -448,3 +470,14 @@ def _deploy_vm(vm_parameters, logger=None):
         raise  Exception("got errors %s" % (errors,))
 
     vm.deploy(template_settings, storage_pool)
+
+
+def _get_running_vm_ids(conn):
+    # XXX a workaround for libvirt's listDomainsID function throwing error _and_
+    # screwing up snack screen if 0 openvz VMs available and no other backends present
+    if conn.getType() == 'OpenVZ' and \
+        'missing' == execute("vzlist -H > /dev/null 2>&1; if [  $? -eq 1 ]; then echo missing; fi"):
+        return []
+    else:
+        return conn.listDomainsID()
+
