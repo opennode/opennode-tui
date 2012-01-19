@@ -218,16 +218,21 @@ class KvmTemplateForm(Form):
 class OpenvzModificationForm(Form):
 
     def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"])
+        self.memory = FloatField("memory", float(settings["memory"]) / 1024)
+        self.swap = FloatField("swap", float(settings["swap"]) / 1024)
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
-        self.disk = FloatField("disk", settings["disk"])
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk])
+        self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
+                               / 1024)
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
+                                            self.swap])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
+            separator,
+            (Textbox(20, 1, "Swap size (GB):", 0, 0), self.swap),
             separator,
             (Textbox(20, 1, "Nr. of CPUs:", 0, 0), self.vcpu),
             separator,

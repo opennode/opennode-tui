@@ -348,30 +348,52 @@ class OpenNodeTUI(object):
             return display_info(self.screen, "Error", "Default storage pool is not defined!")
         available_vms = {}
         vms_labels = []
-        # TODO iterate over actions.vm.vm_types:
-        for vmt in ['openvz']: 
-            vm = actions.vm.get_module(vmt)
-            available_vms.update(vm.get_all_instances())
-
-        vms_labels.extend([("%s (%s, %s) - %s" % (p["name"], vmid, p["vm_type"], p["status"]), 
-                                   "%s" %vmid) for vmid, p in available_vms.items()])
-        action, vm_id = display_selection(self.screen, TITLE, vms_labels, 'Pick VM for modification:',
-                                buttons=['Edit', 'Start', 'Stop', 'Back'])
+        for vmt in actions.vm.backends():
+            vms = actions.vm.list_vms(vmt)
+            for vm in vms:
+                available_vms[vm["uuid"]] = vm
+                vms_labels.append(("%s (%s)" % (vm["name"], vm["state"]), vm["uuid"]))
+        res = display_selection(self.screen, TITLE, vms_labels,
+                                          'Pick VM for modification:',
+                                buttons=['Back', 'Edit', 'Start', 'Stop'])
+        if res is None:
+            return self.display_main_screen()
+        else:
+            action, vm_id = res
         if action == 'back':
             return self.display_main_screen()
+        if action == 'stop':
+            if available_vms[vm_id]["state"] != "active":
+                display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
+            else:
+                actions.vm.shutdown_vm(available_vms[vm_id]["vm_uri"], vm_id)
+            return self.display_vm_manage()
+        if action == 'start':
+            if available_vms[vm_id]["state"] != "inactive":
+                display_info(self.screen, TITLE, "Cannot start already running VMs!")
+            else:
+                actions.vm.start_vm(available_vms[vm_id]["vm_uri"], vm_id)
+            return self.display_vm_manage()
         if action is None or action == 'edit':
             vm_type = available_vms[vm_id]["vm_type"]
             vm = actions.vm.get_module(vm_type)
             if vm_type == 'openvz':
+                #self.screen.finish()
+                #print available_vms[vm_id]
+                #return
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
-                display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment")
+                display_info(self.screen, TITLE,
+                    "At the moment only OpenVZ VMs can be edited supported at the moment")
                 return self.display_vm_manage()
             # TODO KVM specific form
             user_settings = self._display_custom_form(form, available_vms[vm_id])
             if user_settings is None:
                 return self.display_vm_manage()
             vm.update_vm(user_settings)
+            if available_vms[vm_id]["state"] == "inactive":
+                display_info(self.screen, TITLE,
+                    "Note that for some settings to propagate you need to (re)start VM!")
             return self.display_vm_manage()
             
     def display_vm_create(self):

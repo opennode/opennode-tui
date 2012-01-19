@@ -1,5 +1,7 @@
 import types
 
+from opennode.cli import actions
+
 from snack import (Textbox, Entry, Button, Listbox, Grid, Scale, Form,
                    ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp,
                    ButtonChoiceWindow, ListboxChoiceWindow)
@@ -132,7 +134,7 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
 
 def display_vm_type_select(screen, title):
     """Display selection menu for the template type"""
-    types = ['kvm', 'openvz']
+    types = [actions.vm.backend_hname(t) for t in actions.vm.backends()]
     return display_selection(screen, title, types, 'Select a VM type to use:')
 
 
