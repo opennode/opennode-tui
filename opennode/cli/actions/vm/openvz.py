@@ -507,6 +507,7 @@ def get_uuid_by_ctid(ctid):
     """Return UUID of the VM"""
     return execute("grep \#UUID: /etc/vz/conf/%s.conf" % ctid).split(" ")[1]
 
+
 def get_ctid_by_uuid(uuid, backend='openvz:///system'):
     """Return container ID with a given UUID"""
     conn = libvirt.open(backend)
