@@ -21,6 +21,7 @@ __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown
 vm_types = {
     'openvz': openvz,
     'kvm': kvm,
+    'qemu': kvm,  # synonym for kvm in our case
 }
 
 _connections = {}

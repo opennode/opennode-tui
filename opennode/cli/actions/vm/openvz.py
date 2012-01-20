@@ -517,12 +517,12 @@ def shutdown_vm(uuid):
     """Shutdown VM with a given UUID"""
     ctid = get_ctid_by_uuid(uuid)
     try:
-        execute("vzctl --quiet stop %s" % ctid)
+        print execute("vzctl stop %s" % ctid)
     except CommandException as e:
         if e.code == 13056:  # sometimes umount fails
             for i in range(5):
                 try:
-                    execute("vzctl --quiet umount %s" % ctid)
+                    print execute("vzctl umount %s" % ctid)
                 except CommandException:
                     import time
                     time.sleep(3)

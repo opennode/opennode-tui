@@ -352,7 +352,8 @@ class OpenNodeTUI(object):
             vms = actions.vm.list_vms(vmt)
             for vm in vms:
                 available_vms[vm["uuid"]] = vm
-                vms_labels.append(("%s (%s)" % (vm["name"], vm["state"]), vm["uuid"]))
+                vms_labels.append(("%s (%s) - %s" % (vm["name"], vm["state"],
+                                                     vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                           'Pick VM for modification:',
                                 buttons=['Back', 'Edit', 'Start', 'Stop'])
@@ -366,13 +367,17 @@ class OpenNodeTUI(object):
             if available_vms[vm_id]["state"] != "active":
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
             else:
+                self.screen.finish()
                 actions.vm.shutdown_vm(available_vms[vm_id]["vm_uri"], vm_id)
+                self.screen = SnackScreen()
             return self.display_vm_manage()
         if action == 'start':
             if available_vms[vm_id]["state"] != "inactive":
                 display_info(self.screen, TITLE, "Cannot start already running VMs!")
             else:
+                self.screen.finish()
                 actions.vm.start_vm(available_vms[vm_id]["vm_uri"], vm_id)
+                self.screen = SnackScreen()
             return self.display_vm_manage()
         if action is None or action == 'edit':
             vm_type = available_vms[vm_id]["vm_type"]
