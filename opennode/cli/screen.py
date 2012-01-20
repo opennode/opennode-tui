@@ -389,7 +389,7 @@ class OpenNodeTUI(object):
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,
-                    "At the moment only OpenVZ VMs can be edited supported at the moment")
+                    "At the moment only OpenVZ VMs\nediting is supported.")
                 return self.display_vm_manage()
             # TODO KVM specific form
             user_settings = self._display_custom_form(form, available_vms[vm_id])
