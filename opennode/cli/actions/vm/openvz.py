@@ -251,7 +251,12 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
-    execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    if ovf_settings.get("startvm", 0) == 1:
+        execute("vzctl start %s" % (ovf_settings["vm_id"]))
+    
+    if ovf_settings.get("onboot", 0) == 1:
+        execute("vzctl set %s --onboot yes --save" % (ovf_settings["vm_id"]))
+
     print "Template %s deployed successfully!" % ovf_settings["vm_id"]
 
 
@@ -470,6 +475,13 @@ def get_diskspace(ctid):
     return float(execute("vzlist %s -H -o diskspace.h" % ctid))  / 1024
 
 
+def get_onboot(ctid):
+    """Return onboot parameter of a specified CT"""
+    encoding = {"yes": 1,
+                "no": 0}
+    return encoding[execute("vzlist %s -H -o onboot" % ctid).strip()]
+
+
 def get_uptime(ctid):
     """Get uptime in seconds. 0 if container is not running."""
     try:
@@ -501,6 +513,11 @@ def update_vm(settings):
     if settings.get("swap"):
         mem = int(float(settings.get("swap")))
         execute("vzctl set %s --swap %sG --save" % (vm_id, mem))
+    if "onboot" in settings:
+        vals = {0: "no",
+                1: "yes"}
+        execute("vzctl set %s --onboot %s --save" % (vm_id,
+                                                     vals[settings["onboot"]]))
 
 
 def get_uuid_by_ctid(ctid):

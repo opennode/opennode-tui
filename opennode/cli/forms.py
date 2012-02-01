@@ -2,7 +2,7 @@
 
 import operator
 
-from snack import Entry, Textbox, Button, GridForm
+from snack import Entry, Textbox, Button, GridForm, Checkbox
 import socket
 
 
@@ -65,16 +65,19 @@ class OpenvzForm(Form):
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
         self.hostname = StringField("hostname", settings.get("hostname", ""))
-        self.ip_address = IpField("ip_address", settings["ip_address"], display_name="ip address")
+        self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
         self.nameserver = IpField("nameserver", settings["nameserver"])
         self.password = PasswordField("passwd", settings["passwd"], display_name="password")
         self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
         self.ostemplate = StringField("ostemplate", settings["ostemplate"], display_name="OS template")
+        self.startvm = CheckboxField("startvm", settings.get("startvm", 0), display_name="Start VM")
+        self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
                                             self.vcpulimit, self.disk, self.hostname,
                                             self.ip_address, self.nameserver,
                                             self.password, self.password2,
-                                            self.ostemplate])
+                                            self.ostemplate, self.startvm,
+                                            self.onboot])
 
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
@@ -101,6 +104,7 @@ class OpenvzForm(Form):
             (Textbox(20, 1, "Root password:", 0, 0), self.password),
             (Textbox(20, 2, "Root password x2:", 0, 0), self.password2),
             (Textbox(20, 2, "OS Template:", 0, 0), self.ostemplate),
+            (self.startvm, self.onboot),
             separator,
             (button_save, button_exit)
         ]
@@ -132,7 +136,7 @@ class OpenvzTemplateForm(Form):
         Form.__init__(self, screen, title, [self.memory, self.memory_min,
                                             self.memory_max, self.vcpu,
                                             self.vcpu_min, self.vcpu_max,
-                                            self.disk])
+                                            self.disk, self.ostemplate])
 
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
@@ -224,8 +228,9 @@ class OpenvzModificationForm(Form):
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
+        self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
-                                            self.swap])
+                                            self.swap, self.onboot])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -238,6 +243,8 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "Nr. of CPUs:", 0, 0), self.vcpu),
             separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (Textbox(20, 1, "", 0, 0), self.onboot),
             separator,
             (button_save, button_exit)
         ]
@@ -252,6 +259,17 @@ class OpenvzModificationForm(Form):
             # TODO disallow decrease of disk size, which would break OS
             pass
         return not self.errors
+
+
+class CheckboxField(Checkbox):
+
+    def __init__(self, name, default, display_name=None):
+        self.name = name
+        self.display_name = display_name or name
+        Checkbox.__init__(self, "%s" % self.display_name, int(default))
+
+    def validate(self):
+        return True
 
 
 class Field(Entry):

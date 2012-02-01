@@ -383,9 +383,8 @@ class OpenNodeTUI(object):
             vm_type = available_vms[vm_id]["vm_type"]
             vm = actions.vm.get_module(vm_type)
             if vm_type == 'openvz':
-                #self.screen.finish()
-                #print available_vms[vm_id]
-                #return
+                available_vms[vm_id]['onboot'] = actions.vm.openvz. \
+                                get_onboot(actions.vm.openvz.get_ctid_by_uuid(vm_id))
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,
@@ -398,7 +397,7 @@ class OpenNodeTUI(object):
             vm.update_vm(user_settings)
             if available_vms[vm_id]["state"] == "inactive":
                 display_info(self.screen, TITLE,
-                    "Note that for some settings to propagate you need to (re)start VM!")
+                    "Note that for some settings to propagate you\nneed to (re)start the VM!")
             return self.display_vm_manage()
             
     def display_vm_create(self):
