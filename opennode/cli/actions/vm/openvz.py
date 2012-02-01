@@ -256,7 +256,7 @@ def deploy(ovf_settings, storage_pool):
 
 
 def query_openvz(include_running=False, fields='ctid,hostname'):
-    """Run a query agains OpenVZ"""
+    """Run a query against OpenVZ"""
     include_flag = '-S' if not include_running else '-a'
     vzcontainers = execute("vzlist -H %s -o %s" % (include_flag, fields)).split('\n')
     result = []

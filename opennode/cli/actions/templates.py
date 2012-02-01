@@ -33,7 +33,7 @@ def get_template_repos():
         group = "%s-repo" % r.strip()
         name = c(group, 'name')
         vm_type = c(group, 'type')
-        result.append(("%s (%s)" %(name, vm_type), group))
+        result.append(("%s (%s)" % (name, vm_type), group))
     return result
 
 
