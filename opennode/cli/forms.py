@@ -73,7 +73,8 @@ class OpenvzForm(Form):
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
                                             self.vcpulimit, self.disk, self.hostname,
                                             self.ip_address, self.nameserver,
-                                            self.password, self.password2])
+                                            self.password, self.password2,
+                                            self.ostemplate])
 
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
