@@ -1,5 +1,5 @@
 OpenNode Textual User Interface (TUI)
--------------------------------
+-------------------------------------
 
 Opennode TUI contains a library of typical actions performed on Opennode node
 and a ncurses based based user interface.
