@@ -78,6 +78,7 @@ class OpenvzForm(Form):
                                             self.password, self.password2,
                                             self.ostemplate, self.startvm,
                                             self.onboot])
+        self.settings = settings  # save passed parameters for convenience
 
     def display(self):
         button_save, button_exit = Button("Save VM settings"), Button("Main menu")
@@ -89,6 +90,9 @@ class OpenvzForm(Form):
             (Textbox(20, 1, "VSwap size (GB):", 0, 0), self.swap),
             (Textbox(20, 1, "VSwap min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.swap.min_value, self.swap.max_value), 0, 0)),
+            (Textbox(20, 1, "Current CPU usage:", 0, 0),
+             Textbox(20, 1, "%s out of %s" % (self.settings['cpuutilization'][0],
+                                         self.settings['cpuutilization'][1]), 0, 0)),
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "CPU number min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.vcpu.min_value, self.vcpu.max_value), 0, 0)),

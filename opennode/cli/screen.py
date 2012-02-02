@@ -435,9 +435,10 @@ class OpenNodeTUI(object):
         return self.display_main_screen()
 
     def display_template_settings(self, template_settings):
-        """ Display configuration details of new VM """
+        """ Display configuration details of a new VM """
         vm_type = template_settings["vm_type"]
         if vm_type == "openvz":
+            template_settings["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
             form = OpenvzForm(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmForm(self.screen, TITLE, template_settings)
