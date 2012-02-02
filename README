@@ -1,16 +1,36 @@
-OpenNode CLI utilities
-----------------------
+OpenNode Textual User Interface (TUI)
+-------------------------------
+
+Opennode TUI contains a library of typical actions performed on Opennode node
+and a ncurses based based user interface.
+
+Actions are wrapped as Fedora func modules and can be called remotely.
 
 Installation
 ============
 
-1) yum install python-devel  gcc gcc-c++ autoconf automake
+A preferred method of installation by installing RPM packages. The latest RPMs can be downloaded
+from the Opennode repository: http://www.opennodecloud.com/CentOS/6/opennode-test/x86_64/RPMS/
 
-2) pip install -r requirements.txt
+For development, do the following:
 
-3) yum install newt-python
+ 1. yum install python-devel gcc gcc-c++ autoconf automake newt-python
+ 2. pip install -r requirements.txt
+ 3. git clone git@github.com:opennode/opennode-tui.git
 
 Running
 =======
-1. Make sure opennode module is on the PYTHONPATH, e.g. PYTHONPATH=`pwd`:$PYTHONPATH
-2. ''scripts/opennode''
+ 1. Make sure scripts/ are on the PATH.
+ 2. Due to a number of reasons a common way for updating environment is by running a sync script. Example script is simple-sync.sh
+ 3. Run 'scripts/opennode'
+
+
+License
+=======
+
+TUI specific code is licensed under Apache License v2. Libraries used in TUI can be more restrictive.
+
+Contact
+=======
+
+Please report bugs to Github issues or to info@opennodecloud.com.
