@@ -530,6 +530,7 @@ def get_ctid_by_uuid(uuid, backend='openvz:///system'):
     conn = libvirt.open(backend)
     return conn.lookupByUUIDString(uuid).name()
 
+
 def shutdown_vm(uuid):
     """Shutdown VM with a given UUID"""
     ctid = get_ctid_by_uuid(uuid)
@@ -543,4 +544,8 @@ def shutdown_vm(uuid):
                 except CommandException:
                     import time
                     time.sleep(3)
-    
+
+
+def get_vzcpucheck():
+    """Return CPU utilization of the node. (used, total)"""
+    return tuple([int(v.strip()) for v in execute('vzcpucheck|cut -f 2 -d ":"').split("\n")])
