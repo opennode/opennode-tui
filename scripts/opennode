@@ -15,7 +15,7 @@ repo_name = object()
 
 operations = {'list-templates': ('l', 'list-templates',
                     'List local and remote templates in all storage pools'),
-              'import': ('i', 'import', 
+              'import': ('i', 'import',
                     'Import template archive into a local storage pool.'),
               'sync': ('s', 'sync-template',
                     'Synchronize template with remote repository.'),
@@ -26,10 +26,11 @@ parameters = {template_type: ('t', 'template-type',
                     "Set template type. Supported values: 'openvz', 'kvm'"),
               template_name: ('n', 'tempalte-name',
                     'Set template name.'),
-              storage_pool: ('p', 'storage-pool', 
+              storage_pool: ('p', 'storage-pool',
                     'Set storage pool.'),
               repo_name: ('r', 'repo-name',
                     'Set repository name.')}
+
 
 def _help():
     print """
@@ -49,8 +50,8 @@ OPTIONS
 SEE ALSO:
     OpenNode web page:
     http://opennodecloud.com
-    """ % ("\n".join(["    -%s, --%s\n\t%s" %(s, l, d) for s, l, d in operations.values()]),
-           "\n".join(["    -%s, --%s [%s]\n\t%s" %(s, l, l, d) for s, l, d in parameters.values()])
+    """ % ("\n".join(["    -%s, --%s\n\t%s" % (s, l, d) for s, l, d in operations.values()]),
+           "\n".join(["    -%s, --%s [%s]\n\t%s" % (s, l, l, d) for s, l, d in parameters.values()])
            )
     exit(2)
 
@@ -61,7 +62,7 @@ if __name__ == '__main__':
         short_opts = ''.join(zip(*operations.values())[0]) + \
                     ':'.join(zip(*parameters.values())[0]) + ':'
         long_options = list(zip(*operations.values())[1]) + \
-                    ["%s=" %i for i in zip(*parameters.values())[1]]
+                    ["%s=" % i for i in zip(*parameters.values())[1]]
         options, args = getopt(argv[1:], short_opts, long_options)
     except GetoptError, err:
         print str(err)
@@ -71,11 +72,11 @@ if __name__ == '__main__':
         for op in operations.keys():
             if o.lstrip('-') in operations[op]:
                 operation = op
-        
+
         for par in parameters.keys():
             if o.lstrip('-') in parameters[par]:
                 par = a
-    
+
     if operation == 'cli':
         from opennode.cli import screen
         tui = screen.OpenNodeTUI()
