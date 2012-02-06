@@ -1,5 +1,4 @@
 import ConfigParser
-import socket
 
 from opennode.cli.actions.utils import execute
 from opennode.cli import config
@@ -15,9 +14,10 @@ def get_oms_server():
         oms_server_port = minion_config.get('main', 'certmaster_port')
         return (oms_server, oms_server_port)
     except ConfigParser.NoOptionError:
-        return ('', '') 
+        return ('', '')
 
-def set_oms_server(server, port = 51235):
+
+def set_oms_server(server, port=51235):
     """Write OMS server address and port to the configuration file"""
     minion_conf_file = config.c('general', 'minion-conf')
     minion_config = ConfigParser.RawConfigParser()
@@ -27,8 +27,8 @@ def set_oms_server(server, port = 51235):
     with open(minion_conf_file, 'w') as conf:
         minion_config.write(conf)
 
+
 def register_oms_server(server, port):
     """Register with a new OMS server:port."""
     set_oms_server(server, port)
     execute('service funcd restart')
-
