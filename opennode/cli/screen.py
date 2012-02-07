@@ -27,28 +27,42 @@ class OpenNodeTUI(object):
         logic = {'exit': self.menu_exit,
                  'console': self.display_console_menu,
                  'createvm': self.display_vm_create,
-                 'managevm': self.display_vm_manage,
-                 'net': self.display_network,
-                 'storage': self.display_storage,
+                 'manage': self.display_manage,
                  'oms': self.display_oms,
-                 'templates': self.display_templates
                  }
 
         result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI', \
                 [('Exit', 'exit'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
+                ('Manage', 'manage'),
                 # XXX disable till more sound functionality
-                #('Network', 'net'),
-                ('Manage VM', 'managevm'),
-                ('Storage', 'storage'),
-                ('Templates', 'templates'),
-                # XXX disable till a new version of OMS is packaged as a template
                 #('OMS', 'oms')
                 ],
                 42)
 
-        logic[result]()
+        return logic[result]()
+
+    def display_manage(self):
+        logic = {'back': self.display_main_screen,
+                 'managevm': self.display_vm_manage,
+                 'net': self.display_network,
+                 'storage': self.display_storage,
+                 'templates': self.display_templates
+                 }
+
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select management object', \
+                [('Back', 'back'),
+                # XXX disable till more sound functionality
+                #('Network', 'net'),
+                ('VMs', 'managevm'),
+                ('Storage', 'storage'),
+                ('Templates', 'templates'),
+                #('Monitoring', 'monitoring'),
+                ],
+                42)
+
+        return logic[result]()
 
     def display_console_menu(self):
         logic = {
@@ -68,17 +82,17 @@ class OpenNodeTUI(object):
             return self.display_main_screen()
 
     def display_storage(self):
-        logic = {'main': self.display_main_screen,
+        logic = {'back': self.display_manage,
                 'default': self.display_storage_default,
                 'add': self.display_storage_add,
                 'delete': self.display_storage_delete,
                 'shared': self.display_storge_shared,
                }
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage operation',
-                  [('Select default storage pool', 'default'),
-                   ('Add a storage pool', 'add'),
-                   ('Delete a storage pool', 'delete'),
-                   ('Main menu', 'main')])
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage pool operation',
+                  [('Select default', 'default'),
+                   ('Add', 'add'),
+                   ('Delete', 'delete'),
+                   ('Back', 'back')])
         logic[result]()
 
     def display_storage_default(self):
@@ -232,7 +246,7 @@ class OpenNodeTUI(object):
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
 
-        logic = {'main': self.display_main_screen,
+        logic = {'back': self.display_manage,
                  'manage': self.display_template_manage,
                  'create': self.display_template_create,
                 }
@@ -240,7 +254,7 @@ class OpenNodeTUI(object):
                                     'Select a template action to perform',
                                     [('Manage template cache', 'manage'),
                                      ('Create a new template from VM', 'create'),
-                                     ('Main menu', 'main')])
+                                     ('Back', 'back')])
         logic[result]()
 
     def display_template_manage(self):
@@ -358,11 +372,11 @@ class OpenNodeTUI(object):
                                           'Pick VM for modification:',
                                 buttons=['Back', 'Edit', 'Start', 'Stop'])
         if res is None:
-            return self.display_main_screen()
+            return self.display_manage()
         else:
             action, vm_id = res
         if action == 'back':
-            return self.display_main_screen()
+            return self.display_manage()
         if action == 'stop':
             if available_vms[vm_id]["state"] != "active":
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
@@ -399,23 +413,24 @@ class OpenNodeTUI(object):
                 display_info(self.screen, TITLE,
                     "Note that for some settings to propagate you\nneed to (re)start the VM!")
             return self.display_vm_manage()
-            
+
     def display_vm_create(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
 
-        vm_type = display_vm_type_select(self.screen, TITLE) 
-        if vm_type is None: return self.display_main_screen()
+        vm_type = display_vm_type_select(self.screen, TITLE)
+        if vm_type is None:
+            return self.display_main_screen()
 
         template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None: 
+        if template is None:
             return self.display_vm_create()
 
         # get ovf template settings
         ovf_file = OvfFile(os.path.join(config.c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked", 
+                                        storage_pool, vm_type, "unpacked",
                                         template + ".ovf"))
         vm = actions.vm.get_module(vm_type)
         template_settings = vm.get_ovf_template_settings(ovf_file)
@@ -443,7 +458,7 @@ class OpenNodeTUI(object):
         elif vm_type == "kvm":
             form = KvmForm(self.screen, TITLE, template_settings)
         else:
-            raise ValueError, "Unsupported vm type '%s'" %  vm_type
+            raise ValueError("Unsupported vm type '%s'" % vm_type)
         while 1:
             if not form.display():
                 return None
@@ -453,7 +468,7 @@ class OpenNodeTUI(object):
                 return settings
             else:
                 errors = form.errors
-                key, msg = errors[0] 
+                key, msg = errors[0]
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
 
