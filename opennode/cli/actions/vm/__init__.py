@@ -400,8 +400,10 @@ def metrics(conn):
             time_list_now = map(int, execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
             time_list_was = roll_data('/tmp/func-cpu-%s' % vm.ID(), time_list_now, [0] * 6)
             deltas = [yi - xi for yi, xi in zip(time_list_now, time_list_was)]
-
-            cpu_pct = 1 - (float(deltas[-1]) / sum(deltas))
+            try:
+                cpu_pct = 1 - (float(deltas[-1]) / sum(deltas))
+            except ZeroDivisionError:
+                cpu_pct = 0
             return cpu_pct
 
         def load():

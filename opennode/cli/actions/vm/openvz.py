@@ -472,7 +472,7 @@ def get_memory(ctid):
 
 def get_diskspace(ctid):
     """Max disk space in MB"""
-    return float(execute("vzlist %s -H -o diskspace.h" % ctid))  / 1024
+    return float(execute("vzlist %s -H -o diskspace.h" % ctid)) / 1024
 
 
 def get_onboot(ctid):
@@ -488,6 +488,7 @@ def get_uptime(ctid):
         return float(execute("vzctl exec %s \"awk '{print \$1}' /proc/uptime\"" % ctid))
     except:
         return 0
+
 
 def detect_os(ctid):
     """Detect OS name running in a VM"""
