@@ -1,4 +1,5 @@
 import types
+import re
 
 from opennode.cli import actions
 
@@ -65,6 +66,7 @@ def create_select_checkbox(screen, title, text, items, buttons=('Ok', 'Cancel'),
     rc = g.runOnce()
     return (bb.buttonPressed(rc), cb.getSelection())
 
+
 def display_create_template(screen, title, vm_type, templates, help=None):
     """Helper class for displaying a form for creating a new VM template"""
     label_base = Textbox(40, 2, 
@@ -89,7 +91,10 @@ def display_create_template(screen, title, vm_type, templates, help=None):
     form.add(spacer2, 0, 5)
     form.add(bb, 0, 6)
     form_result = form.runOnce()
-    return (bb.buttonPressed(form_result), str(base_tmpl.current()), entry_newname.value())
+    tmpl_name = entry_newname.value()
+    # remove whitespaces from the template name
+    tmpl_name = re.sub(r'\s', '', tmpl_name)
+    return (bb.buttonPressed(form_result), str(base_tmpl.current()), tmpl_name)
 
 
 def display_selection(screen, title, list_of_items, subtitle, default = None,

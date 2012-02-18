@@ -1,6 +1,7 @@
 """ Forms for OpenNode Terminal User Interface """
 
 import operator
+import re
 
 from snack import Entry, Textbox, Button, GridForm, Checkbox
 import socket
@@ -311,6 +312,12 @@ class StringField(Field):
     def __init__(self, name, default, required=True, width=20, display_name=None):
         Field.__init__(self, name, default, width, display_name=display_name, required=required)
 
+    def validate(self):
+        if Field.validate(self):
+            if re.search(r"\s", self.value()):
+                self.errors = [(self.name, "%s should not include white spaces. Got: '%s'"
+                                            % (self.name.capitalize(), self.value()))]
+
 
 class IpField(Field):
     def __init__(self, name, default, required=True, width=20, display_name=None):
@@ -321,7 +328,7 @@ class IpField(Field):
             try:
                 socket.inet_aton(self.value())
             except socket.error:
-                self.errors = [(self.name, "%s format not correct. Got: '%s'"
+                self.errors = [(self.name, "%s format is not correct. Got: '%s'"
                                             % (self.name.capitalize(), self.value()))]
         return True
 
