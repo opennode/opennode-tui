@@ -39,7 +39,7 @@ class OpenNode(func_module.FuncModule):
             return ((rx2 - rx1) / window, (tx2 - tx1) / window)
 
         def diskspace_usage():
-            return float(execute("df |grep ' /$' | head -n 1|awk '{print $3/1024}'"))
+            return float(execute("df |grep ' /$' | head -n 1 | awk '{print $2/1024}'"))
 
         return dict(cpu_usage=cpu_usage(),
                     load=load(),
