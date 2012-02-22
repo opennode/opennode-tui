@@ -424,7 +424,7 @@ def metrics(conn):
             return ((rx2 - rx1) / window, (tx2 - tx1) / window)
 
         def diskspace_usage():
-            return float(execute("vzctl exec %s \"df |tail -n 2 | head -n 1|awk '{print \$3/1024}'\"" % vm.ID()))
+            return float(execute("vzctl exec %s \"df -P |grep ' /\$' | head -n 1 | awk '{print \$3/1024}'\"" % vm.ID()))
 
         return dict(cpu_usage=cpu_usage(),
                     load=load(),
