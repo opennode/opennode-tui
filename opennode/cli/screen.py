@@ -428,10 +428,16 @@ class OpenNodeTUI(object):
         if template is None:
             return self.display_vm_create()
 
-        # get ovf template settings
-        ovf_file = OvfFile(os.path.join(config.c("general", "storage-endpoint"),
+        # get ovf template setting
+        try:
+            path = os.path.join(config.c("general", "storage-endpoint"),
                                         storage_pool, vm_type, "unpacked",
-                                        template + ".ovf"))
+                                        template + ".ovf")
+            ovf_file = OvfFile(path)
+        except IOError as (errno, _):
+            if errno == 2:  # ovf file not found
+                display_info(self.screen, "ERROR", "Template OVF file is missing:\n%s" % path)
+                return self.display_main_screen()
         vm = actions.vm.get_module(vm_type)
         template_settings = vm.get_ovf_template_settings(ovf_file)
         errors = vm.adjust_setting_to_systems_resources(template_settings)
