@@ -7,7 +7,7 @@ from opennode.cli.actions.utils import execute
 __all__ = ['list_bridges', 'add_bridge', 'configure_bridge', 'delete_bridge',
            'add_nameserver', 'remove_nameserver', 'add_bridge_interface',
            'remove_bridge_interface', 'list_bridge_interface',
-           'show_routing_table', 'validate_server_addr']
+           'show_routing_table', 'validate_server_addr', 'list_nameservers']
 
 
 def list_bridges():
@@ -49,6 +49,17 @@ def remove_bridge_interface(bridge, interface):
 
 def list_bridge_interface(bridge):
     execute("brctl show | tail -n+2 | awk '{print $4}'")
+
+
+def list_nameservers():
+    """Append a nameserver entry to /etc/resolv.conf"""
+    with open('/etc/resolv.conf', 'r') as dnsservers:
+        entries = dnsservers.readlines()
+        dns = []
+        for entry in entries:
+            if re.match("\s*nameserver", entry) is not None:
+                dns.append(entry.split()[1])
+        return dns
 
 
 def add_nameserver(ns):

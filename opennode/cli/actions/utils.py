@@ -19,6 +19,12 @@ class CommandException(Exception):
         self.code = code
 
 
+class TemplateException(Exception):
+
+    def __init__(self, msg):
+        super(TemplateException, self).__init__(msg)
+
+
 def mkdir_p(path):
     """Emulates mkdir -p. http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python"""
     try:

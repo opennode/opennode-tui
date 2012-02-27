@@ -18,6 +18,7 @@ __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
            'undeploy_vm', 'get_local_templates', 'metrics']
 
+
 vm_types = {
     'openvz': openvz,
     'kvm': kvm,

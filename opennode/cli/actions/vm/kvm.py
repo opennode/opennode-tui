@@ -12,15 +12,9 @@ from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli import config
-from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash
+from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
-
-
-class TemplateException(Exception):
-
-    def __init__(self, msg):
-        super(TemplateException, self).__init__(msg)
 
 
 def get_ovf_template_settings(ovf_file):
