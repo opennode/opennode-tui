@@ -1,7 +1,7 @@
 OpenNode Textual User Interface (TUI)
 -------------------------------------
 
-Opennode TUI contains a library of typical actions performed on Opennode node and a ncurses-based user interface for typical operations.
+Opennode TUI contains a library of typical actions performed on OpenNode node and a ncurses-based user interface for typical operations.
 
 Actions are wrapped as Fedora func modules and can be called remotely.
 
