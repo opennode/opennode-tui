@@ -7,6 +7,7 @@ import tarfile
 from contextlib import closing
 
 import libvirt
+
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
@@ -15,12 +16,20 @@ from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_h
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
+
+class TemplateException(Exception):
+
+    def __init__(self, msg):
+        super(TemplateException, self).__init__(msg)
+
+
 def get_ovf_template_settings(ovf_file):
     """ Parses ovf file and creates a dictionary of settings """
     settings = read_default_ovf_settings()
     read_ovf_settings(settings, ovf_file)
     settings["template_name"] = path.basename(ovf_file.path)
     return settings
+
 
 def get_active_template_settings(vm_name, storage_pool):
     """ Reads libvirt configuration of the specified kvm instance """
@@ -41,7 +50,7 @@ def get_active_template_settings(vm_name, storage_pool):
     settings["max_vcpu"] = vcpu_count
 
     memory_count = domain_dom.getElementsByTagName("memory")[0].firstChild.nodeValue
-    settings["memory"] = str(round(float(memory_count) / 1024 ** 2, 3)) # memory in Gb
+    settings["memory"] = str(round(float(memory_count) / 1024 ** 2, 3))  # memory in Gb
     settings["min_memory"] = str(round(float(memory_count) / 1024 ** 2, 3))
     settings["max_memory"] = str(round(float(memory_count) / 1024 ** 2, 3))
 
@@ -54,8 +63,9 @@ def get_active_template_settings(vm_name, storage_pool):
         if interface_dom.getAttribute("type") == "bridge":
             mac_address = interface_dom.getElementsByTagName("mac")[0].getAttribute("address")
             bridge_name = interface_dom.getElementsByTagName("source")[0].getAttribute("bridge")
-            settings["interfaces"].append({"type" : "bridge", "source_bridge" : bridge_name, "mac_address" : mac_address})
+            settings["interfaces"].append({"type": "bridge", "source_bridge": bridge_name, "mac_address": mac_address})
     return settings
+
 
 def get_libvirt_conf_xml(vm_name):
     conn = libvirt.open("qemu:///system")
@@ -63,12 +73,13 @@ def get_libvirt_conf_xml(vm_name):
     document = xml.dom.minidom.parseString(vm.XMLDesc(0))
     return document
 
+
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
     settings = {
-        "serial": {"type" : "pty", "target_port" : 0},
-        "console": {"type" : "pty", "target_port" : 0},
-        "graphics": {"type" : "vnc", "port" : -1, "autoport" : "yes", "keymap" : "us"},
+        "serial": {"type": "pty", "target_port": 0},
+        "console": {"type": "pty", "target_port": 0},
+        "graphics": {"type": "vnc", "port": -1, "autoport": "yes", "keymap": "us"},
         "interfaces": [],
         "features": [],
         "disks": []
@@ -77,6 +88,7 @@ def read_default_ovf_settings():
     if not os.path.exists(settings.get("emulator", "")):
         settings["emulator"] = "/usr/bin/kvm"
     return settings
+
 
 def read_ovf_settings(settings, ovf_file):
     """
@@ -88,9 +100,9 @@ def read_ovf_settings(settings, ovf_file):
 
     sys_type, sys_arch = ovfutil.get_vm_type(ovf_file).split("-")
     if sys_type != "kvm":
-        raise Exception, "The chosen template '%s' cannot run on KVM hypervisor." % sys_type
+        raise TemplateException("The chosen template '%s' cannot run on KVM hypervisor." % sys_type)
     if sys_arch not in ["x86_64", "i686"]:
-        raise Exception, "Template architecture '%s' is not supported." % sys_arch
+        raise TemplateException("Template architecture '%s' is not supported." % sys_arch)
     settings["arch"] = sys_arch
 
     memory_settings = [
@@ -109,11 +121,12 @@ def read_ovf_settings(settings, ovf_file):
 
     network_list = ovfutil.get_networks(ovf_file)
     for network in network_list:
-        settings["interfaces"].append({"type" : "bridge", "source_bridge": network["sourceName"]})
+        settings["interfaces"].append({"type": "bridge", "source_bridge": network["sourceName"]})
 
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
     return settings
+
 
 def deploy(settings, storage_pool):
     print "Copying KVM template disks (this may take a while)..."
@@ -126,6 +139,7 @@ def deploy(settings, storage_pool):
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
     print "Done!"
+
 
 def prepare_file_system(settings, storage_pool):
     """
@@ -147,16 +161,17 @@ def prepare_file_system(settings, storage_pool):
             disk_deploy_path = disk["source_dev"]
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
 
+
 def adjust_setting_to_systems_resources(ovf_template_settings):
     """
     Adjusts maximum required resources to match available system resources.
     NB! Minimum bound is not adjusted.
     """
     st = ovf_template_settings
-    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10**30))))
+    st["memory_max"] = str(min(sysres.get_ram_size_gb(), float(st.get("memory_max", 10 ** 30))))
     st["memory"] = str(min(float(st["memory"]), float(st["memory_max"])))
 
-    st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10**10))))
+    st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10 ** 10))))
     st["vcpu"] = str(min(int(st["vcpu"]), int(st["vcpu_max"])))
 
     # Checks if minimum required resources exceed maximum available resources
@@ -169,16 +184,19 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
                       (st["vcpu_min"], st["vcpu_max"]))
     return errors
 
+
 def get_available_instances():
     """Return a list of defined KVM VMs"""
     conn = libvirt.open("qemu:///system")
     name_list = conn.listDefinedDomains()
     return dict(zip(name_list, name_list))
 
+
 def get_all_instances():
     """Return all defined KVM VMs"""
     # XXX broken function, neends aligning with screen.py:display_vm_manage
     return get_available_instances()
+
 
 def generate_libvirt_conf(settings):
     """
@@ -198,7 +216,7 @@ def generate_libvirt_conf(settings):
     domain_dom.appendChild(name_dom)
 
     memory_dom = libvirt_conf_dom.createElement("memory")
-    memory_value = libvirt_conf_dom.createTextNode(str(int(float(settings["memory"]) * 1024**2)))  # Gb -> Kb
+    memory_value = libvirt_conf_dom.createTextNode(str(int(float(settings["memory"]) * 1024 ** 2)))  # Gb -> Kb
     memory_dom.appendChild(memory_value)
     domain_dom.appendChild(memory_dom)
 
@@ -336,6 +354,7 @@ def generate_libvirt_conf(settings):
 
     return libvirt_conf_dom
 
+
 def save_as_ovf(vm_settings, storage_pool, unpack=True):
     """
     Creates ovf template archive for the specified VM.
@@ -362,7 +381,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
 
     # pack container archive and ovf file
     print "Archiving..."
-    arch_location =  path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
+    arch_location = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
     ovf_archive_fnm = path.join(arch_location, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
@@ -374,9 +393,10 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
         os.remove(ovf_fnm)
         for disk in vm_settings["disks"]:
             os.remove(disk["new_path"])
-    
+
     calculate_hash(ovf_archive_fnm)
     print "Done! Template saved at %s" % ovf_archive_fnm
+
 
 def _prepare_disks(vm_settings, target_dir):
     """
@@ -402,18 +422,19 @@ def _prepare_disks(vm_settings, target_dir):
                 source_dev = source_dom.getAttribute("dev")
                 execute("qemu-img convert -f raw -O qcow2 %s %s" % (source_dev, new_path))
             disk_dict = {
-                "file_size" : str(get_file_size_bytes(new_path)),
-                "filename" : filename,
-                "new_path" : new_path,
-                "file_id" : "diskfile%d" % (disk_num),
-                "disk_id" : "vmdisk%d.img" % (disk_num),
-                "disk_capacity" : str(get_kvm_disk_capacity_bytes(new_path))
+                "file_size": str(get_file_size_bytes(new_path)),
+                "filename": filename,
+                "new_path": new_path,
+                "file_id": "diskfile%d" % (disk_num),
+                "disk_id": "vmdisk%d.img" % (disk_num),
+                "disk_capacity": str(get_kvm_disk_capacity_bytes(new_path))
             }
             disk_list.append(disk_dict)
     return disk_list
 
+
 def get_kvm_disk_capacity_bytes(path):
-    print "Getting capacity of the kvm disk '%s'" %path
+    print "Getting capacity of the kvm disk '%s'" % path
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
@@ -422,6 +443,7 @@ def get_kvm_disk_capacity_bytes(path):
         used, available = int(row_elements[3]), int(row_elements[4])
         capacity += used + available
     return capacity * 1024
+
 
 def _generate_ovf_file(vm_settings):
     """
@@ -432,7 +454,7 @@ def _generate_ovf_file(vm_settings):
     """
     ovf = OvfFile()
     ovf.createEnvelope()
-    ovf.envelope.setAttribute("xmlns:opennodens","http://opennode.activesys.org/schema/ovf/opennodens/1")
+    ovf.envelope.setAttribute("xmlns:opennodens", "http://opennodecloud.com/schema/ovf/opennodens/1")
 
     instanceId = 0
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"],
@@ -502,7 +524,7 @@ def _generate_ovf_file(vm_settings):
     ovf_disk_list = []
     for disk in vm_settings["disks"]:
         ref_file = OvfReferencedFile(path=disk["new_path"], href=disk["filename"],
-                                     file_id=disk["file_id"], size = disk["file_size"])
+                                     file_id=disk["file_id"], size=disk["file_size"])
         ovf.addReferencedFile(ref_file)
         ovf_disk_list.append({
             "diskId": disk["disk_id"],
@@ -519,7 +541,7 @@ def _generate_ovf_file(vm_settings):
     # Add OpenNode section to Virtual System node
     doc = xml.dom.minidom.Document()
     on_section = doc.createElement("opennodens:OpenNodeSection")
-    on_section.setAttribute("ovf:required","false")
+    on_section.setAttribute("ovf:required", "false")
     virtualSystem.appendChild(on_section)
 
     info_dom = doc.createElement("Info")
