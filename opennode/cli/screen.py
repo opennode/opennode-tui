@@ -37,7 +37,7 @@ class OpenNodeTUI(object):
                 ('Create VM', 'createvm'),
                 ('Manage', 'manage'),
                 # XXX disable till more sound functionality
-                #('OMS', 'oms')
+                ('OMS (beta)', 'oms')
                 ],
                 42)
 
@@ -202,17 +202,15 @@ class OpenNodeTUI(object):
              ('Install OMS image', 'install'), ('Main menu', 'main')])
         logic[result]()
 
-    def display_oms_register(self, error_msg=''):
+    def display_oms_register(self, msg='Please, enter OMS address and port'):
         oms_server, oms_port = actions.oms.get_oms_server()
         oms_entry_server = Entry(30, oms_server)
         oms_entry_port = Entry(30, oms_port)
-        command, oms_address = EntryWindow(self.screen, TITLE,
-                                           'Please, enter OMS address\n%s' %
-                                           error_msg,
-                [('OMS server address', oms_entry_server),
-                 ('OMS server port', oms_entry_port)],
-                buttons=[('Register', 'register'), ('Back to the OMS menu',
-                                                    'oms_menu')])
+        command, oms_address = EntryWindow(self.screen, TITLE, msg,
+                                [('OMS server address', oms_entry_server),
+                                 ('OMS server port', oms_entry_port)],
+                                buttons=[('Register', 'register'),
+                                         ('Back', 'oms_menu')])
         if command == 'oms_menu':
             return self.display_oms()
         elif command == 'register':
@@ -225,10 +223,10 @@ class OpenNodeTUI(object):
                 return self.display_oms()
             else:
                 # XXX: error handling?
-                return self.display_oms_register(error_msg="Incorrect server data")
+                return self.display_oms_register("Error: Cannot resolve OMS address/port")
 
     def display_oms_download(self):
-        logic = {'main': self.display_main_screen,
+        logic = {'main': self.display_oms,
                 'download': actions.templates.sync_oms_template,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE,
@@ -237,8 +235,10 @@ class OpenNodeTUI(object):
         logic[result]()
 
     def display_oms_install(self):
-        display_info(self.screen, "Error", "Not yet implemented....")
-        return self.display_oms()
+        vm_type = 'openvz'
+        template = config.c('opennode-oms-template', 'template_name')
+        callback = self.display_oms
+        return self.display_vm_create(callback, vm_type, template)
 
     def display_templates(self):
         storage_pool = actions.storage.get_default_pool()
@@ -302,13 +302,14 @@ class OpenNodeTUI(object):
             return display_info(self.screen, "Error", "Default storage pool is not defined!")
 
         vm_type = display_vm_type_select(self.screen, TITLE)
-        if vm_type is None: return self.display_main_screen()
+        if vm_type is None:
+            return self.display_main_screen()
 
         # list all available images of the selected type
         vm = actions.vm.get_module(vm_type)
         instances = vm.get_available_instances()
         if len(instances) == 0:
-            display_info(self.screen, TITLE, 
+            display_info(self.screen, TITLE,
                 "No suitable VMs found. Only stopped VMs can be\nused for creating new templates!")
             return self.display_templates()
 
@@ -328,7 +329,7 @@ class OpenNodeTUI(object):
         elif vm_type == "kvm":
             form = KvmTemplateForm(self.screen, TITLE, template_settings)
         else:
-            raise ValueError, "Vm '%s' is not supported" % template_settings["vm_type"]
+            raise ValueError("VM type '%s' is not supported" % template_settings["vm_type"])
 
         # get user settings
         user_settings = self._display_custom_form(form, template_settings)
@@ -414,46 +415,50 @@ class OpenNodeTUI(object):
                     "Note that for some settings to propagate you\nneed to (re)start the VM!")
             return self.display_vm_manage()
 
-    def display_vm_create(self):
+    def display_vm_create(self, callback=None, vm_type=None, template=None):
+        if callback is None:
+            callback = self.display_main_screen
+
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
-            return self.display_main_screen()
+            return callback()
 
-        vm_type = display_vm_type_select(self.screen, TITLE)
-        if vm_type is None:
-            return self.display_main_screen()
+        chosen_vm_type = vm_type if vm_type is not None else display_vm_type_select(self.screen, TITLE)
+        if chosen_vm_type is None:
+            return callback()
 
-        template = self.display_select_template_from_storage(storage_pool, vm_type)
-        if template is None:
-            return self.display_vm_create()
+        chosen_template = template if template is not None else self.display_select_template_from_storage(storage_pool,
+                                                                                                          chosen_vm_type)
+        if chosen_template is None:
+            return callback()
 
         # get ovf template setting
         try:
             path = os.path.join(config.c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked",
-                                        template + ".ovf")
+                                        storage_pool, chosen_vm_type, "unpacked",
+                                        chosen_template + ".ovf")
             ovf_file = OvfFile(path)
         except IOError as (errno, _):
             if errno == 2:  # ovf file not found
                 display_info(self.screen, "ERROR", "Template OVF file is missing:\n%s" % path)
-                return self.display_main_screen()
-        vm = actions.vm.get_module(vm_type)
+                return callback()
+        vm = actions.vm.get_module(chosen_vm_type)
         template_settings = vm.get_ovf_template_settings(ovf_file)
         errors = vm.adjust_setting_to_systems_resources(template_settings)
         if errors:
             display_info(self.screen, TITLE, "\n".join(errors), width=70, height=len(errors))
-            return self.display_main_screen()
+            return callback()
 
         # get user input
         user_settings = self.display_template_settings(template_settings)
         if not user_settings:
-            return self.display_main_screen()
+            return callback()
         # deploy
         self.screen.finish()
         vm.deploy(user_settings, storage_pool)
         self.screen = SnackScreen()
-        return self.display_main_screen()
+        return callback()
 
     def display_template_settings(self, template_settings):
         """ Display configuration details of a new VM """
