@@ -457,7 +457,9 @@ def _deploy_vm(vm_parameters, logger=None):
     template = vm_parameters['template_name']
 
     if not template:
-        logger("Cannot deploy because template is '%s'" % (template))
+        if logger:
+            logger("Cannot deploy because template is '%s'" % (template))
+        raise Exception("Cannot deploy because template is '%s'" % (template))
         return
 
     ovf_file = OvfFile(os.path.join(config.c("general", "storage-endpoint"),
@@ -470,7 +472,8 @@ def _deploy_vm(vm_parameters, logger=None):
 
     errors = vm.adjust_setting_to_systems_resources(template_settings)
     if errors:
-        logger("Got %s" % (errors,))
+        if logger:
+            logger("Got %s" % (errors,))
         raise  Exception("got errors %s" % (errors,))
 
     vm.deploy(template_settings, storage_pool)
