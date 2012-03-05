@@ -14,7 +14,7 @@ from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm)
 from opennode.cli.actions.network import validate_server_addr
-from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh
+from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh, TemplateException
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -281,7 +281,19 @@ class OpenNodeTUI(object):
             if selected_list is None:
                 return self.display_templates()
             self.screen.finish()
-            actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list)
+            try:
+                actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list)
+            except TemplateException:
+                # here comes hack
+                self.screen = SnackScreen()
+                cleanup = ButtonChoiceWindow(self.screen, 'Existing task pool',
+                                               "A task pool is already defined. It could mean\nthat the previous " +
+                                               "synchronisation crashed, or that there is one working already.\n\n" +
+                                               "Would you like to force synchronisation?",
+                                                      ['Yes', 'No'])
+                self.screen.finish()
+                if cleanup == 'yes':
+                    actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, force=True)
             self.screen = SnackScreen()
         self.display_templates()
 

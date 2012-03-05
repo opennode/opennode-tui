@@ -8,7 +8,7 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import c
 from opennode.cli.actions.utils import delete, calculate_hash, execute_in_screen, \
-                                execute, download, urlopen
+                                execute, download, urlopen, TemplateException
 from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli import config
 
@@ -47,7 +47,7 @@ def get_template_list(remote_repo):
 
 
 def sync_storage_pool(storage_pool, remote_repo, templates,
-                      sync_tasks_fnm=c('general', 'sync_task_list')):
+                      sync_tasks_fnm=c('general', 'sync_task_list'), force=False):
     """Synchronize selected storage pool with the remote repo. Only selected templates
     will be persisted, all of the other templates shall be purged.
     Ignores purely local templates - templates with no matching name in remote repo."""
@@ -63,7 +63,8 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     tasks = [(t, storage_pool, remote_repo) for t in for_update]
     # XXX at the moment only a single sync process is allowed.
     if os.path.exists(sync_tasks_fnm):
-        raise RuntimeError, "Synchronization task pool already defined."
+        if not force:
+            raise TemplateException("Synchronization task pool already defined.")
     set_templates_sync_list(tasks, sync_tasks_fnm)
     # delete existing, but not selected templates
     for tmpl in for_deletion:
