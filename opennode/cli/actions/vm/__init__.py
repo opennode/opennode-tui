@@ -487,4 +487,3 @@ def _get_running_vm_ids(conn):
         return []
     else:
         return conn.listDomainsID()
-

@@ -176,3 +176,18 @@ def roll_data(filename, data, default=None):
         with open(filename, 'w') as od:
             pickle.dump(data, od)
         return default
+
+
+def test_passwordless_ssh(remote_host, port=22):
+    """Test passwordless ssh connection from the current host to the specified remote host"""
+    try:
+        execute("ssh -q -oProtocol=2 -oBatchMode=yes -oStrictHostKeyChecking=no -p %s root@%s /bin/true" %
+                                                                                            (port, remote_host))
+        return True
+    except CommandException:
+        return False
+
+
+def setup_passwordless_ssh(remote_host):
+    """Execute a script for setting up a passwordless login to the target host"""
+    execute("ssh-keyput root@%s" % remote_host)

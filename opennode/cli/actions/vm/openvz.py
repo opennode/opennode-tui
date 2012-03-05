@@ -16,7 +16,7 @@ from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes, \
-                        calculate_hash, CommandException, TemplateException
+                        calculate_hash, CommandException, TemplateException, test_passwordless_ssh
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 
@@ -555,3 +555,21 @@ def shutdown_vm(uuid):
 def get_vzcpucheck():
     """Return CPU utilization of the node. (used, total)"""
     return tuple([int(v.strip()) for v in execute('vzcpucheck|cut -f 2 -d ":"').split("\n")])
+
+
+def migrate(uid, target_host):
+    """Migrate given container to a target_host"""
+    if not test_passwordless_ssh(target_host):
+        raise CommandException("Public key ssh connection with the target host could not be established")
+    # is ctid present on the target host?
+    ctid = get_ctid_by_uuid(uid)
+    try:
+        execute("ssh %s vzlist %s" % (target_host, ctid))
+        raise CommandException("Target host '%s' already has a defined CTID '%s'" % (target_host, ctid))
+    except CommandException as ce:
+        if ce.code == 256:
+            pass
+        else:
+            raise ce
+    print "Initiating migration..."
+    print execute("vzmigrate %s %s" % (target_host, ctid))

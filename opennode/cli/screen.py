@@ -13,6 +13,8 @@ from opennode.cli import actions
 from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm)
+from opennode.cli.actions.network import validate_server_addr
+from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -226,13 +228,15 @@ class OpenNodeTUI(object):
                 return self.display_oms_register("Error: Cannot resolve OMS address/port")
 
     def display_oms_download(self):
-        logic = {'main': self.display_oms,
-                'download': actions.templates.sync_oms_template,
-                }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Would you like to download OMS template?',
                                     [('Yes', 'download'), ('No', 'main')])
-        logic[result]()
+        if result == 'download':
+            self.screen.finish()
+            actions.templates.sync_oms_template()
+            self.screen = SnackScreen()
+            display_info(self.screen, "Done", "Finished downloading OMS VM!")
+        return self.display_oms()
 
     def display_oms_install(self):
         vm_type = 'openvz'
@@ -371,13 +375,45 @@ class OpenNodeTUI(object):
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                           'Pick VM for modification:',
-                                buttons=['Back', 'Edit', 'Start', 'Stop'])
+                                buttons=['Back', 'Edit', 'Start', 'Stop', 'Migrate'])
         if res is None:
             return self.display_manage()
         else:
             action, vm_id = res
         if action == 'back':
             return self.display_manage()
+        if action == 'migrate':
+            vm_type = available_vms[vm_id]["vm_type"]
+            if vm_type != 'openvz':
+                display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
+            else:
+                action, target_host = EntryWindow(self.screen, TITLE, 'Select target host',
+                                                                    ['Hostname/IP'],
+                                                                    buttons=['Migrate', 'Back'])
+                target_host = target_host[0]
+                if action == 'back':
+                    return self.display_vm_manage()
+                if not validate_server_addr(target_host, 22):
+                    display_info(self.screen, "Error", "The target you've defined could not be resolved.")
+                    return self.display_vm_manage()
+                vm = actions.vm.get_module(vm_type)
+                if not test_passwordless_ssh(target_host):
+                    setup_keys = ButtonChoiceWindow(self.screen, 'Passwordless SSH',
+                                               'Would you like to setup passwordless SSH to %s' % target_host,
+                                                      ['Yes', 'No'])
+                    if setup_keys == 'yes':
+                        self.screen.finish()
+                        setup_passwordless_ssh(target_host)
+                        print "Passwordles ssh should be working now."
+                        self.screen = SnackScreen()
+                    else:
+                        return self.display_vm_manage()
+
+                self.screen.finish()
+                vm.migrate(vm_id, target_host)
+                self.screen = SnackScreen()
+
+            return self.display_vm_manage()
         if action == 'stop':
             if available_vms[vm_id]["state"] != "active":
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
