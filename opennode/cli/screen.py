@@ -12,7 +12,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
 from opennode.cli import actions
 from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                OpenvzModificationForm)
+                                OpenvzModificationForm, OpenVZMigrationForm)
 from opennode.cli.actions.network import validate_server_addr
 from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh, TemplateException
 
@@ -373,6 +373,38 @@ class OpenNodeTUI(object):
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
 
+    def _perform_openvz_migration(self, vm_type, vm_id):
+        migration_form = OpenVZMigrationForm(self.screen, TITLE)
+        while 1:
+            if not migration_form.display():
+                return self.display_vm_manage()
+            if migration_form.validate():
+                break
+            else:
+                errors = migration_form.errors
+                key, msg = errors[0]
+                display_info(self.screen, TITLE, msg, width=75)
+        target_host = migration_form.data['target host']
+        live = migration_form.data['live'] == 1
+        vm = actions.vm.get_module(vm_type)
+
+        if not test_passwordless_ssh(target_host):
+            setup_keys = ButtonChoiceWindow(self.screen, 'Passwordless SSH',
+                                       'Would you like to setup passwordless SSH to %s?' % target_host,
+                                              ['Yes', 'No'])
+            if setup_keys == 'yes':
+                self.screen.finish()
+                setup_passwordless_ssh(target_host)
+                print "Passwordles ssh should be working now."
+                self.screen = SnackScreen()
+            else:
+                return self.display_vm_manage()
+
+        self.screen.finish()
+        vm.migrate(vm_id, target_host, live=live)
+        self.screen = SnackScreen()
+        return self.display_vm_manage()
+
     def display_vm_manage(self):
         storage_pool = actions.storage.get_default_pool()
         if storage_pool is None:
@@ -399,33 +431,7 @@ class OpenNodeTUI(object):
             if vm_type != 'openvz':
                 display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
             else:
-                action, target_host = EntryWindow(self.screen, TITLE, 'Select target host',
-                                                                    ['Hostname/IP'],
-                                                                    buttons=['Migrate', 'Back'])
-                target_host = target_host[0]
-                if action == 'back':
-                    return self.display_vm_manage()
-                if not validate_server_addr(target_host, 22):
-                    display_info(self.screen, "Error", "The target you've defined could not be resolved.")
-                    return self.display_vm_manage()
-                vm = actions.vm.get_module(vm_type)
-                if not test_passwordless_ssh(target_host):
-                    setup_keys = ButtonChoiceWindow(self.screen, 'Passwordless SSH',
-                                               'Would you like to setup passwordless SSH to %s' % target_host,
-                                                      ['Yes', 'No'])
-                    if setup_keys == 'yes':
-                        self.screen.finish()
-                        setup_passwordless_ssh(target_host)
-                        print "Passwordles ssh should be working now."
-                        self.screen = SnackScreen()
-                    else:
-                        return self.display_vm_manage()
-
-                self.screen.finish()
-                vm.migrate(vm_id, target_host)
-                self.screen = SnackScreen()
-
-            return self.display_vm_manage()
+                return self._perform_openvz_migration(vm_type, vm_id)
         if action == 'stop':
             if available_vms[vm_id]["state"] != "active":
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")

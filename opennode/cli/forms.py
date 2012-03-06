@@ -266,6 +266,37 @@ class OpenvzModificationForm(Form):
         return not self.errors
 
 
+class OpenVZMigrationForm(Form):
+
+    def __init__(self, screen, title):
+        self.target = HostnameField("target host", '')
+        self.live = CheckboxField("live", default=0, display_name='(risky)')
+        Form.__init__(self, screen, title, [self.target, self.live])
+
+    def display(self):
+        button_save, button_exit = Button("Migrate"), Button("Back")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+        rows = [
+            (Textbox(20, 1, "Hostname/IP:", 0, 0), self.target),
+            separator,
+            (Textbox(20, 1, "Live migration:", 0, 0), self.live),
+            separator,
+            (button_save, button_exit)
+        ]
+        form = GridForm(self.screen, self.title, 2, len(rows))
+        for i, row in enumerate(rows):
+            for j, cell in enumerate(row):
+                form.add(cell, j, i)
+        return form.runOnce() != button_exit
+
+    def validate(self):
+        if Form.validate(self):
+            pass
+        return not self.errors
+
+
+# ------------- Field widgets --------------
+
 class CheckboxField(Checkbox):
 
     def __init__(self, name, default, display_name=None):
@@ -330,6 +361,23 @@ class IpField(Field):
             except socket.error:
                 self.errors = [(self.name, "%s format is not correct. Got: '%s'"
                                             % (self.name.capitalize(), self.value()))]
+                return False
+        return True
+
+
+class HostnameField(Field):
+    def __init__(self, name, default, required=True, width=20, display_name=None, port=22):
+        Field.__init__(self, name, default, width, display_name=display_name, required=required)
+        self.port = port
+
+    def validate(self):
+        if Field.validate(self):
+            try:
+                socket.getaddrinfo(self.value(), self.port)
+            except socket.error:
+                self.errors = [(self.name, "%s %s:%s' is unreachable.'"
+                                            % (self.name.capitalize(), self.value(), self.port))]
+                return False
         return True
 
 
