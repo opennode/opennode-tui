@@ -16,7 +16,7 @@ from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes, \
-                        calculate_hash, CommandException, TemplateException, test_passwordless_ssh
+                        calculate_hash, CommandException, TemplateException, test_passwordless_ssh, execute2
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 
@@ -573,4 +573,5 @@ def migrate(uid, target_host, live=False):
             raise ce
     print "Initiating migration to %s..." % target_host
     live_trigger = '--online' if live else ''
-    print execute("vzmigrate %s %s %s" % (live_trigger, target_host, ctid))
+    for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
+        print line

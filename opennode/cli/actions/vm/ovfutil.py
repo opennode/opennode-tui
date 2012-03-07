@@ -1,4 +1,4 @@
-""" 
+"""
 @note: open-ovf api: http://gitorious.org/open-ovf/
 """
 
