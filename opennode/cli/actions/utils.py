@@ -1,6 +1,8 @@
 import os
 import errno
 import commands
+import subprocess
+import shlex
 import ConfigParser
 import shutil
 import urllib
@@ -60,6 +62,17 @@ def execute(cmd):
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
                                % (cmd, status, output), status)
     return output
+
+
+def execute2(cmd):
+    args = shlex.split(cmd)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while(True):
+        retcode = p.poll()  # returns None while subprocess is running
+        line = p.stdout.readline()
+        yield line
+        if(retcode is not None):
+            break
 
 
 def calculate_hash(target_file):
