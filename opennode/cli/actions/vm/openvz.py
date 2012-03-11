@@ -514,10 +514,10 @@ def update_vm(settings):
     if settings.get("vcpu"):
         execute("vzctl set %s --cpus %s --save" % (vm_id, int(settings.get("vcpu"))))
     if settings.get("memory"):
-        mem = int(float(settings.get("memory")))
+        mem = float(settings.get("memory"))
         execute("vzctl set %s --ram %sG --save" % (vm_id, mem))
     if settings.get("swap"):
-        mem = int(float(settings.get("swap")))
+        mem = float(settings.get("swap"))
         execute("vzctl set %s --swap %sG --save" % (vm_id, mem))
     if "onboot" in settings:
         vals = {0: "no",
