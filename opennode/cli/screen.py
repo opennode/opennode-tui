@@ -425,12 +425,14 @@ class OpenNodeTUI(object):
             action, vm_id = res
         if action == 'back':
             return self.display_manage()
+
         if action == 'migrate':
             vm_type = available_vms[vm_id]["vm_type"]
             if vm_type != 'openvz':
                 display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
             else:
                 return self._perform_openvz_migration(vm_type, vm_id)
+
         if action == 'stop':
             if available_vms[vm_id]['state'] != 'active':
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
@@ -439,6 +441,7 @@ class OpenNodeTUI(object):
                 actions.vm.shutdown_vm(available_vms[vm_id]["vm_uri"], vm_id)
                 self.screen = SnackScreen()
             return self.display_vm_manage()
+
         if action == 'start':
             if available_vms[vm_id]['state'] != 'inactive':
                 display_info(self.screen, TITLE, "Cannot start already running VMs!")
@@ -447,6 +450,7 @@ class OpenNodeTUI(object):
                 actions.vm.start_vm(available_vms[vm_id]['vm_uri'], vm_id)
                 self.screen = SnackScreen()
             return self.display_vm_manage()
+
         if action == 'delete':
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         "Are you sure you want to delete VM '%s'" % available_vms[vm_id]['name'],
@@ -457,6 +461,7 @@ class OpenNodeTUI(object):
                 actions.vm.undeploy_vm(available_vms[vm_id]['vm_uri'], vm_id)
                 self.screen = SnackScreen()
             return self.display_vm_manage()
+
         if action is None or action == 'edit':
             vm_type = available_vms[vm_id]['vm_type']
             vm = actions.vm.get_module(vm_type)
