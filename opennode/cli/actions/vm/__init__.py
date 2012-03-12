@@ -386,9 +386,6 @@ vm_interfaces = vm_method(_vm_interfaces)
 
 @vm_method
 def metrics(conn):
-    import random
-    random.seed()
-    from opennode.cli.actions.utils import execute
 
     if conn.getType() != 'OpenVZ':
         return {}
