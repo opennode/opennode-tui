@@ -13,6 +13,7 @@ class OpenNode(func_module.FuncModule):
 
     def metrics(self):
         from opennode.cli.actions.utils import execute, roll_data
+        from opennode.cli import config
 
         def cpu_usage():
             time_list_now = map(int, execute("head -n 1 /proc/stat").split(' ')[2:6])
@@ -32,13 +33,17 @@ class OpenNode(func_module.FuncModule):
 
         def network_usage():
             def get_netstats():
-                return [int(v) for v in execute("grep eth0 /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'").split(' ')]
+                iface = config.c('general', 'main')
+                return [int(v) for v in \
+                        execute("grep %s /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
+            try:
+                t2, (rx2, tx2) = time.time(), get_netstats()
+                t1, rx1, tx1 = roll_data("/tmp/func-network-host", (t2, rx2, tx2), (0, 0, 0))
 
-            t2, (rx2, tx2) = time.time(), get_netstats()
-            t1, rx1, tx1 = roll_data("/tmp/func-network-host", (t2, rx2, tx2), (0, 0, 0))
-
-            window = t2 - t1
-            return ((rx2 - rx1) / window, (tx2 - tx1) / window)
+                window = t2 - t1
+                return ((rx2 - rx1) / window, (tx2 - tx1) / window)
+            except ValueError:
+                return (0, 0)  # better this way
 
         def diskspace_usage():
             return float(execute("df -P |grep ' /$' | head -n 1 | awk '{print $3/1024}'"))

@@ -13,7 +13,6 @@ from opennode.cli import actions
 from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
-from opennode.cli.actions.network import validate_server_addr
 from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh, TemplateException
 
 VERSION = '2.0.0a'
@@ -369,7 +368,7 @@ class OpenNodeTUI(object):
                 return settings
             else:
                 errors = form.errors
-                key, msg = errors[0] 
+                key, msg = errors[0]
                 display_info(self.screen, TITLE, msg, width=75)
                 continue
 
