@@ -33,7 +33,7 @@ class OpenNode(func_module.FuncModule):
 
         def network_usage():
             def get_netstats():
-                iface = config.c('general', 'main')
+                iface = config.c('general', 'main_iface')
                 return [int(v) for v in \
                         execute("grep %s /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
             try:
