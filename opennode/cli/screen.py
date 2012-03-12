@@ -388,8 +388,8 @@ class OpenNodeTUI(object):
         vm = actions.vm.get_module(vm_type)
 
         if not test_passwordless_ssh(target_host):
-            setup_keys = ButtonChoiceWindow(self.screen, 'Passwordless SSH',
-                                       'Would you like to setup passwordless SSH to %s?' % target_host,
+            setup_keys = ButtonChoiceWindow(self.screen, "Passwordless SSH",
+                                       "Would you like to setup passwordless SSH to %s?" % target_host,
                                               ['Yes', 'No'])
             if setup_keys == 'yes':
                 self.screen.finish()
@@ -417,8 +417,8 @@ class OpenNodeTUI(object):
                 vms_labels.append(("%s (%s) - %s" % (vm["name"], vm["run_state"],
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
-                                          'Pick VM for modification:',
-                                buttons=['Back', 'Edit', 'Start', 'Stop', 'Migrate'])
+                                          "Pick VM for modification:",
+                                buttons=['Back', 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
         if res is None:
             return self.display_manage()
         else:
@@ -432,7 +432,7 @@ class OpenNodeTUI(object):
             else:
                 return self._perform_openvz_migration(vm_type, vm_id)
         if action == 'stop':
-            if available_vms[vm_id]["state"] != "active":
+            if available_vms[vm_id]['state'] != 'active':
                 display_info(self.screen, TITLE, "Cannot stop inactive VMs!")
             else:
                 self.screen.finish()
@@ -440,15 +440,25 @@ class OpenNodeTUI(object):
                 self.screen = SnackScreen()
             return self.display_vm_manage()
         if action == 'start':
-            if available_vms[vm_id]["state"] != "inactive":
+            if available_vms[vm_id]['state'] != 'inactive':
                 display_info(self.screen, TITLE, "Cannot start already running VMs!")
             else:
                 self.screen.finish()
-                actions.vm.start_vm(available_vms[vm_id]["vm_uri"], vm_id)
+                actions.vm.start_vm(available_vms[vm_id]['vm_uri'], vm_id)
+                self.screen = SnackScreen()
+            return self.display_vm_manage()
+        if action == 'delete':
+            result = ButtonChoiceWindow(self.screen, TITLE,
+                                        "Are you sure you want to delete VM '%s'" % available_vms[vm_id]['name'],
+                                        [('Yes, do that.', 'yes'),
+                                         ('No, not today.', 'no')])
+            if result == 'yes':
+                self.screen.finish()
+                actions.vm.undeploy_vm(available_vms[vm_id]['vm_uri'], vm_id)
                 self.screen = SnackScreen()
             return self.display_vm_manage()
         if action is None or action == 'edit':
-            vm_type = available_vms[vm_id]["vm_type"]
+            vm_type = available_vms[vm_id]['vm_type']
             vm = actions.vm.get_module(vm_type)
             if vm_type == 'openvz':
                 available_vms[vm_id]['onboot'] = actions.vm.openvz. \
