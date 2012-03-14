@@ -164,7 +164,7 @@ def _render_vm(conn, vm):
     def vm_diskspace(vm):
         if conn.getType() == 'OpenVZ':
             return {'/': openvz.get_diskspace(vm.name())}
-        return {'/': 0}
+        return {'/': 0.0}
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
