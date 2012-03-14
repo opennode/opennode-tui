@@ -444,7 +444,7 @@ class OpenNodeTUI(object):
 
         if action == 'start':
             if available_vms[vm_id]['state'] != 'inactive':
-                display_info(self.screen, TITLE, "Cannot start already running VMs!")
+                display_info(self.screen, TITLE, "Cannot start already running VM!")
             else:
                 self.screen.finish()
                 actions.vm.start_vm(available_vms[vm_id]['vm_uri'], vm_id)
@@ -452,14 +452,18 @@ class OpenNodeTUI(object):
             return self.display_vm_manage()
 
         if action == 'delete':
-            result = ButtonChoiceWindow(self.screen, TITLE,
+            if available_vms[vm_id]['state'] != 'inactive':
+                display_info(self.screen, TITLE, "Cannot delete running VM!")
+            else:
+                result = ButtonChoiceWindow(self.screen, TITLE,
                                         "Are you sure you want to delete VM '%s'" % available_vms[vm_id]['name'],
                                         [('Yes, do that.', 'yes'),
                                          ('No, not today.', 'no')])
-            if result == 'yes':
-                self.screen.finish()
-                actions.vm.undeploy_vm(available_vms[vm_id]['vm_uri'], vm_id)
-                self.screen = SnackScreen()
+
+                if result == 'yes':
+                    self.screen.finish()
+                    actions.vm.undeploy_vm(available_vms[vm_id]['vm_uri'], vm_id)
+                    self.screen = SnackScreen()
             return self.display_vm_manage()
 
         if action is None or action == 'edit':
