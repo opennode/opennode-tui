@@ -179,15 +179,18 @@ def urlopen(remote):
 
 def roll_data(filename, data, default=None):
     """Save data in a file. Return previous value of the data."""
-    if os.path.exists(filename):
-        with open(filename, 'r') as od:
-            res = pickle.load(od)
-        with open(filename, 'w') as od:
-            pickle.dump(data, od)
-        return res
-    else:
-        with open(filename, 'w') as od:
-            pickle.dump(data, od)
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'r') as od:
+                res = pickle.load(od)
+            with open(filename, 'w') as od:
+                pickle.dump(data, od)
+            return res
+        else:
+            with open(filename, 'w') as od:
+                pickle.dump(data, od)
+            return default
+    except EOFError:
         return default
 
 
