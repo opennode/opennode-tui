@@ -231,11 +231,12 @@ class OpenvzModificationForm(Form):
         self.memory = FloatField("memory", float(settings["memory"]) / 1024)
         self.swap = FloatField("swap", float(settings["swap"]) / 1024)
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
+        self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
-                                            self.swap, self.onboot])
+                                            self.swap, self.onboot, self.bootorder])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -250,6 +251,8 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
             separator,
             (Textbox(20, 1, "", 0, 0), self.onboot),
+            separator,
+            (Textbox(20, 1, "Boot order:", 0, 0), self.bootorder),
             separator,
             (button_save, button_exit)
         ]

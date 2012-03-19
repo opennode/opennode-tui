@@ -52,7 +52,7 @@ class OpenNodeTUI(object):
                  'templates': self.display_templates
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Select management object', \
+        result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today?',
                 [('Back', 'back'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
@@ -472,6 +472,8 @@ class OpenNodeTUI(object):
             if vm_type == 'openvz':
                 available_vms[vm_id]['onboot'] = actions.vm.openvz. \
                                 get_onboot(actions.vm.openvz.get_ctid_by_uuid(vm_id))
+                available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
+                                get_bootorder(actions.vm.openvz.get_ctid_by_uuid(vm_id))
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,

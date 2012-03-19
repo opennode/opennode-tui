@@ -487,6 +487,12 @@ def get_onboot(ctid):
     return encoding[execute("vzlist %s -H -o onboot" % ctid).strip()]
 
 
+def get_bootorder(ctid):
+    """Return the boot order of the container or None, if it's not defined"""
+    order = execute("vzlist %s -H -o bootorder" % ctid).strip()
+    return int(order) if order.isdigit() else ''
+
+
 def get_uptime(ctid):
     """Get uptime in seconds. 0 if container is not running."""
     try:
@@ -524,6 +530,9 @@ def update_vm(settings):
                 1: "yes"}
         execute("vzctl set %s --onboot %s --save" % (vm_id,
                                                      vals[settings["onboot"]]))
+    if settings.get("bootorder"):
+        order = int(settings.get("bootorder"))
+        execute("vzctl set %s --bootorder %s --save" % (vm_id, order))
 
 
 def get_uuid_by_ctid(ctid):
