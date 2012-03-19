@@ -51,7 +51,7 @@ class Host(func_module.FuncModule):
 
             default_name = config.c('general', 'main_iface') if config.has_option('general', 'main_iface') else 'vmbr0'
             if name == default_name:
-                res['default'] = True
+                res['primary'] = True
 
             return res
 
