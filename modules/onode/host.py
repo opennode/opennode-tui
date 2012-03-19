@@ -1,7 +1,10 @@
 from func.minion.modules import func_module
+
 import os
 import netifaces
+
 from opennode.cli.actions.utils import execute
+from opennode.cli import config
 
 
 class Host(func_module.FuncModule):
@@ -45,6 +48,10 @@ class Host(func_module.FuncModule):
                     l = l << 8 | int(b)
                 prefix = number_of_set_bits(l)
                 res['ip'] = '%s/%s' % (ip, prefix)
+
+            default_name = config.c('general', 'main_iface') if config.has_option('general', 'main_iface') else 'vmbr0'
+            if name == default_name:
+                res['default'] = True
 
             return res
 

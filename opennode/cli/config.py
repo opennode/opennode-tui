@@ -44,3 +44,10 @@ def clist(group, conf_type='global'):
     conf = ConfigParser.RawConfigParser()
     conf.read(_resolve_conf_name(conf_type))
     return conf.items(group)
+
+
+def has_option(group, field, conf_type='global'):
+    """Return whether an option is available for that section"""
+    conf = ConfigParser.RawConfigParser()
+    conf.read(_resolve_conf_name(conf_type))
+    return conf.has_option(group, field)
