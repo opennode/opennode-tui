@@ -15,6 +15,7 @@ from ovf.OvfReferencedFile import OvfReferencedFile
 from opennode.cli import config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
+from opennode.cli.actions import oms
 from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes, \
                         calculate_hash, CommandException, TemplateException, test_passwordless_ssh, execute2
 from opennode.cli.actions.vm.config_template import openvz_template
@@ -257,6 +258,10 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
+
+    if ovf_settings.get('appliance_type') == 'oms':
+        oms.configure_oms_vm(ovf_settings["vm_id"], ovf_settings["hostname"])
+
     if ovf_settings.get("startvm", 0) == 1:
         execute("vzctl start %s" % (ovf_settings["vm_id"]))
 

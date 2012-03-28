@@ -32,3 +32,11 @@ def register_oms_server(server, port):
     """Register with a new OMS server:port."""
     set_oms_server(server, port)
     execute('service funcd restart')
+
+
+## OMS VM specific ##
+def configure_oms_vm(ctid, hostname):
+    """Adjust configuration of the VM hosting OMS"""
+    base = "/vz/root/%s/" % ctid
+    # set a hostname to be used as a binding interface
+    execute("sed -i 's/^listen_addr.*/listen_addr = %s/' %s/etc/certmaster/certmaster.conf" % (hostname, base))

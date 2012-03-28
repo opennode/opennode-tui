@@ -241,7 +241,8 @@ class OpenNodeTUI(object):
         vm_type = 'openvz'
         template = config.c('opennode-oms-template', 'template_name')
         callback = self.display_oms
-        return self.display_vm_create(callback, vm_type, template)
+        oms_flag = {'appliance_type': 'oms'}
+        return self.display_vm_create(callback, vm_type, template, custom_settings=oms_flag)
 
     def display_templates(self):
         storage_pool = actions.storage.get_default_pool()
@@ -489,7 +490,7 @@ class OpenNodeTUI(object):
                     "Note that for some settings to propagate you\nneed to (re)start the VM!")
             return self.display_vm_manage()
 
-    def display_vm_create(self, callback=None, vm_type=None, template=None):
+    def display_vm_create(self, callback=None, vm_type=None, template=None, custom_settings=None):
         if callback is None:
             callback = self.display_main_screen
 
@@ -530,6 +531,8 @@ class OpenNodeTUI(object):
             return callback()
         # deploy
         self.screen.finish()
+        if custom_settings:
+            user_settings.update(custom_settings)
         vm.deploy(user_settings, storage_pool)
         self.screen = SnackScreen()
         return callback()
