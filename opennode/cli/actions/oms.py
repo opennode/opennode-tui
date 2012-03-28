@@ -37,6 +37,6 @@ def register_oms_server(server, port):
 ## OMS VM specific ##
 def configure_oms_vm(ctid, hostname):
     """Adjust configuration of the VM hosting OMS"""
-    base = "/vz/root/%s/" % ctid
+    base = "/vz/private/%s/" % ctid
     # set a hostname to be used as a binding interface
     execute("sed -i 's/^listen_addr.*/listen_addr = %s/' %s/etc/certmaster/certmaster.conf" % (hostname, base))
