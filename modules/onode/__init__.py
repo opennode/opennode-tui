@@ -35,7 +35,7 @@ class OpenNode(func_module.FuncModule):
             def get_netstats():
                 iface = config.c('general', 'main_iface')
                 return [int(v) for v in \
-                        execute("grep %s /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
+                        execute("grep %s: /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
             try:
                 t2, (rx2, tx2) = time.time(), get_netstats()
                 t1, rx1, tx1 = roll_data("/tmp/func-network-host", (t2, rx2, tx2), (0, 0, 0))
