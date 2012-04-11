@@ -471,10 +471,13 @@ class OpenNodeTUI(object):
             vm_type = available_vms[vm_id]['vm_type']
             vm = actions.vm.get_module(vm_type)
             if vm_type == 'openvz':
+                ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
                 available_vms[vm_id]['onboot'] = actions.vm.openvz. \
-                                get_onboot(actions.vm.openvz.get_ctid_by_uuid(vm_id))
+                                get_onboot(ctid)
                 available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
-                                get_bootorder(actions.vm.openvz.get_ctid_by_uuid(vm_id))
+                                get_bootorder(ctid)
+                available_vms[vm_id]["vcpulimit"] = actions.vm.openvz.get_cpulimit(ctid)
+                available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,

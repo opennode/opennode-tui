@@ -508,6 +508,11 @@ def get_uptime(ctid):
         return 0
 
 
+def get_cpulimit(ctid):
+    """Max disk space in MB"""
+    return int(execute("vzlist %s -H -o cpulimit" % ctid))
+
+
 def detect_os(ctid):
     """Detect OS name running in a VM"""
     return execute("vzctl runscript %s `which detect-os`" % ctid)
@@ -540,6 +545,10 @@ def update_vm(settings):
     if settings.get("bootorder"):
         order = int(settings.get("bootorder"))
         execute("vzctl set %s --bootorder %s --save" % (vm_id, order))
+
+    if settings.get("vcpulimit"):
+        vcpulimit = int(settings.get("vcpulimit"))
+        execute("vzctl set %s --cpulimit %s --save" % (vm_id, vcpulimit))
 
 
 def get_uuid_by_ctid(ctid):

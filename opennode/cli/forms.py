@@ -91,9 +91,6 @@ class OpenvzForm(Form):
             (Textbox(20, 1, "VSwap size (GB):", 0, 0), self.swap),
             (Textbox(20, 1, "VSwap min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.swap.min_value, self.swap.max_value), 0, 0)),
-            (Textbox(20, 1, "Current CPU usage:", 0, 0),
-             Textbox(20, 1, "%s out of %s" % (self.settings['cpuutilization'][0],
-                                         self.settings['cpuutilization'][1]), 0, 0)),
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "CPU number min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.vcpu.min_value, self.vcpu.max_value), 0, 0)),
@@ -228,15 +225,17 @@ class KvmTemplateForm(Form):
 class OpenvzModificationForm(Form):
 
     def __init__(self, screen, title, settings):
+        self.settings = settings
         self.memory = FloatField("memory", float(settings["memory"]) / 1024)
         self.swap = FloatField("swap", float(settings["swap"]) / 1024)
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
+        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
-                                            self.swap, self.onboot, self.bootorder])
+                                            self.swap, self.onboot, self.bootorder, self.vcpulimit])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -247,6 +246,8 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "Swap size (GB):", 0, 0), self.swap),
             separator,
             (Textbox(20, 1, "Nr. of CPUs:", 0, 0), self.vcpu),
+            separator,
+            (Textbox(20, 1, "CPU usage limit (%):", 0, 0), self.vcpulimit),
             separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
             separator,
