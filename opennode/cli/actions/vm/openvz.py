@@ -20,6 +20,8 @@ from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_siz
                         calculate_hash, CommandException, TemplateException, test_passwordless_ssh, execute2
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
+import shutil
+import stat
 
 
 def get_ovf_template_settings(ovf_file):
@@ -223,6 +225,23 @@ def create_container(ovf_settings):
     os.unlink(base_config)
 
 
+def setup_scripts(vm_settings, storage_pool):
+    """Setup action scripts for the CT"""
+    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
+    unpacked_dir = path.join(dest_dir, "unpacked")
+    ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
+    dest_folder = '/etc/vz/conf/%s' % vm_settings['vm_id']
+    try:
+        with closing(tarfile.open(ct_scripts_fnm, "r:gz")) as tar:
+            for f in tar:
+                target_script = '%s.%s' % (dest_folder, f.name)
+                shutil.copyfileobj(tar.extractfile(f), open(target_script, 'w'))
+                os.chmod(target_script, 0755)
+    except tarfile.ReadError:
+        print "No action scripts in the template."
+        pass
+
+
 def generate_config(ovf_settings):
     """ Generates  ubc and non-ubc configuration """
     base_conf = os.path.join('/etc/vz/conf', "ve-vswap-256m.conf-sample")
@@ -249,7 +268,6 @@ def deploy(ovf_settings, storage_pool):
     create_container(ovf_settings)
 
     print "Deploying..."
-
     nameservers = ovf_settings.get("nameservers", None)
     if not nameservers:
         nameservers = [ovf_settings["nameserver"]]
@@ -258,6 +276,9 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
+
+    print "Setting up action scripts..."
+    setup_scripts(ovf_settings, storage_pool)
 
     if ovf_settings.get('appliance_type') == 'oms':
         oms.configure_oms_vm(ovf_settings["vm_id"], ovf_settings["hostname"])
@@ -366,6 +387,15 @@ def save_as_ovf(vm_settings, storage_pool):
         for f in os.listdir(ct_source_dir):
             tar.add(path.join(ct_source_dir, f), arcname=f)
 
+    # Archive action scripts if they are present
+    print "Adding action scripts..."
+    ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
+    with closing(tarfile.open(ct_scripts_fnm, "w:gz")) as tar:
+        for script_type in ['premount', 'mount', 'start', 'stop', 'umount', 'postumount']:
+            script_fnm = "/etc/vz/conf/%s.%s" % (vm_settings["vm_name"], script_type)
+            if os.path.exists(script_fnm):
+                tar.add(script_fnm, arcname=script_type)
+
     # generate and save ovf configuration file
     print "Generating ovf file..."
     ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
@@ -379,6 +409,7 @@ def save_as_ovf(vm_settings, storage_pool):
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
+        tar.add(ct_scripts_fnm, arcname=path.basename(ct_scripts_fnm))
 
     calculate_hash(ovf_archive_fnm)
     print "Done! Saved template at %s" % ovf_archive_fnm
