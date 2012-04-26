@@ -237,7 +237,7 @@ def setup_scripts(vm_settings, storage_pool):
                 target_script = '%s.%s' % (dest_folder, f.name)
                 shutil.copyfileobj(tar.extractfile(f), open(target_script, 'w'))
                 os.chmod(target_script, 0755)
-    except tarfile.ReadError:
+    except:
         print "No action scripts in the template."
         pass
 
