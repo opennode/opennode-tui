@@ -34,6 +34,10 @@ def vm_method(fun):
         conn = _connection(backend)
 
         try:
+            # strip async func specific junk args (ON-429)
+            if args:
+                if isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
+                    args = args[:-1]
             return fun(conn, *args, **kwargs)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
