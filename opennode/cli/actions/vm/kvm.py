@@ -73,7 +73,7 @@ def read_default_ovf_settings():
     settings = {
         "serial": {"type": "pty", "target_port": 0},
         "console": {"type": "pty", "target_port": 0},
-        "graphics": {"type": "vnc", "port": -1, "autoport": "yes", "keymap": "us"},
+        "graphics": {"type": "vnc", "port": -1, "autoport": "yes", "keymap": config.c("vnc", "keymap", "kvm")},
         "interfaces": [],
         "features": [],
         "disks": []
@@ -271,6 +271,10 @@ def generate_libvirt_conf(settings):
             disk_dom.setAttribute("type", disk["type"])
             disk_dom.setAttribute("device", disk["device"])
             devices_dom.appendChild(disk_dom)
+            driver_dom = libvirt_conf_dom.createElement("driver")
+            driver_dom.setAttribute("name", "qemu")
+            driver_dom.setAttribute("type", disk.get('template_format', 'qcow2'))
+            disk_dom.appendChild(driver_dom)
             disk_source_dom = libvirt_conf_dom.createElement("source")
             image_path = path.join(config.c("general", "storage-endpoint"), config.c("general", "default-storage-pool"), "images")
             disk_source_dom.setAttribute("file", path.join(image_path,
