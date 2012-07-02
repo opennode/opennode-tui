@@ -209,6 +209,11 @@ def generate_libvirt_conf(settings):
     name_dom.appendChild(name_value)
     domain_dom.appendChild(name_dom)
 
+    uuid_dom = libvirt_conf_dom.createElement("uuid")
+    uuid_value = libvirt_conf_dom.createTextNode(settings["uuid"])
+    uuid_dom.appendChild(uuid_value)
+    domain_dom.appendChild(uuid_dom)
+
     memory_dom = libvirt_conf_dom.createElement("memory")
     memory_value = libvirt_conf_dom.createTextNode(str(int(float(settings["memory"]) * 1024 ** 2)))  # Gb -> Kb
     memory_dom.appendChild(memory_value)
