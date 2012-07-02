@@ -471,6 +471,10 @@ def _deploy_vm(vm_parameters, logger=None):
 
     template_settings.update(vm_parameters)
 
+    for disk in template_settings["disks"]:
+        if disk["deploy_type"] == "file":
+            disk["source_file"] = '%s.%s' % (template_settings["uuid"], disk.get('template_format', 'qcow2'))
+
     errors = vm.adjust_setting_to_systems_resources(template_settings)
     if errors:
         if logger:
