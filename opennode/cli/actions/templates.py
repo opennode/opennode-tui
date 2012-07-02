@@ -13,7 +13,7 @@ from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli import config
 
 
-__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
+__all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template',
            'get_local_templates', 'sync_oms_template', 'is_fresh',
            'is_syncing']
@@ -34,6 +34,18 @@ def get_template_repos():
         name = c(group, 'name')
         vm_type = c(group, 'type')
         result.append(("%s (%s)" % (name, vm_type), group))
+    return result
+
+
+def get_template_repos_info():
+    """Return a formatted list of strings describing configured repositories"""
+    repo_groups = c('general', 'repo-groups').split(',')
+    result = []
+    for r in repo_groups:
+        group = "%s-repo" % r.strip()
+        name = c(group, 'name')
+        vm_type = c(group, 'type')
+        result.append(dict(name=name, vm_type=vm_type, group=group))
     return result
 
 
