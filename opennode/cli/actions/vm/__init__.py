@@ -318,6 +318,9 @@ def undeploy_vm(conn, uuid):
 @vm_method
 def get_local_templates(conn):
     vm_type = conn.getType().lower()
+    # workaround for ON-433: we equate qemu and kvm backends
+    if vm_type == 'qemu':
+        vm_type = 'kvm'
     tmpls = []
     from opennode.cli.actions.templates import get_template_info, \
                 get_local_templates as local_templates
