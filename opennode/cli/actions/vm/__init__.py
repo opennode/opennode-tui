@@ -476,7 +476,8 @@ def _deploy_vm(vm_parameters, logger=None):
 
     for disk in settings.get("disks", []):
         if disk["deploy_type"] == "file":
-            disk["source_file"] = '%s.%s' % (settings["uuid"], disk.get('template_format', 'qcow2'))
+            volume_name = disk.get("source_file") or "disk"
+            disk["source_file"] = '%s--%s.%s' % (volume_name, settings["uuid"], disk.get('template_format', 'qcow2'))
 
     errors = vm.adjust_setting_to_systems_resources(settings)
     if errors:
