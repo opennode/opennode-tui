@@ -470,21 +470,21 @@ def _deploy_vm(vm_parameters, logger=None):
                                     storage_pool, vm_type, "unpacked",
                                     template + ".ovf"))
     vm = actions.vm.get_module(vm_type)
-    template_settings = vm.get_ovf_template_settings(ovf_file)
+    settings = vm.get_ovf_template_settings(ovf_file)
 
-    template_settings.update(vm_parameters)
+    settings.update(vm_parameters)
 
-    for disk in template_settings.get("disks", []):
+    for disk in settings.get("disks", []):
         if disk["deploy_type"] == "file":
-            disk["source_file"] = '%s.%s' % (template_settings["uuid"], disk.get('template_format', 'qcow2'))
+            disk["source_file"] = '%s.%s' % (settings["uuid"], disk.get('template_format', 'qcow2'))
 
-    errors = vm.adjust_setting_to_systems_resources(template_settings)
+    errors = vm.adjust_setting_to_systems_resources(settings)
     if errors:
         if logger:
             logger("Got %s" % (errors,))
         raise  Exception("got errors %s" % (errors,))
 
-    vm.deploy(template_settings, storage_pool)
+    vm.deploy(settings, storage_pool)
 
 
 def _get_running_vm_ids(conn):
