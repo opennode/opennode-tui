@@ -2,6 +2,7 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
+from uuid import uuid4
 
 from ovf.OvfFile import OvfFile
 
@@ -536,6 +537,8 @@ class OpenNodeTUI(object):
         self.screen.finish()
         if custom_settings:
             user_settings.update(custom_settings)
+        # set uuid of the image
+        user_settings['uuid'] = str(uuid4())
         vm.deploy(user_settings, storage_pool)
         self.screen = SnackScreen()
         return callback()
