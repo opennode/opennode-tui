@@ -193,10 +193,10 @@ def _render_vm(conn, vm):
 
 def _list_vms(conn):
     online = []
-    online += [_render_vm(conn, vm) for vm in (conn.lookupByID(i) for i \
-                                                    in _get_running_vm_ids(conn))]
-    offline = [_render_vm(conn, vm) for vm in (conn.lookupByName(i) for i \
-                                               in conn.listDefinedDomains())]
+    online += [_render_vm(conn, vm) for vm in
+               (conn.lookupByID(i) for i in _get_running_vm_ids(conn))]
+    offline = [_render_vm(conn, vm) for vm in
+               (conn.lookupByName(i) for i in conn.listDefinedDomains())]
     return online + offline
 
 

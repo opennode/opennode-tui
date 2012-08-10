@@ -540,7 +540,7 @@ def get_uptime(ctid):
 
 
 def get_cpulimit(ctid):
-    """Max disk space in MB"""
+    """Max CPU usage limit"""
     return int(execute("vzlist %s -H -o cpulimit" % ctid))
 
 
