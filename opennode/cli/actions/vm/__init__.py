@@ -498,3 +498,19 @@ def _get_running_vm_ids(conn):
         return []
     else:
         return conn.listDomainsID()
+
+
+@vm_method
+def update_vm(conn, uuid, param, value):
+    def unknown_param(*args):
+        raise Exception('Unsupported parameter: %s' % param)
+
+    def not_implemented(*args):
+        raise NotImplementedError
+
+    dom = conn.lookupByUUIDString(uuid)
+    action_map = {'num_cores': dom.setVcpus,
+                  'memory': dom.setMemory,
+                  'cpu_limit': not_implemented,
+                  'swap_size': not_implemented}
+    action_map.get(param, unknown_param)(value)
