@@ -470,7 +470,7 @@ class OpenNodeTUI(object):
 
         if action is None or action == 'edit':
             vm_type = available_vms[vm_id]['vm_type']
-            vm = actions.vm.get_module(vm_type)
+
             if vm_type == 'openvz':
                 ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
                 available_vms[vm_id]['onboot'] = actions.vm.openvz. \
@@ -484,14 +484,19 @@ class OpenNodeTUI(object):
                 display_info(self.screen, TITLE,
                     "Editing of '%s' VMs is not currently supported." % vm_type)
                 return self.display_vm_manage()
+
             # TODO KVM specific form
             user_settings = self._display_custom_form(form, available_vms[vm_id])
+
             if user_settings is None:
                 return self.display_vm_manage()
-            vm.update_vm(user_settings)
+
+            actions.vm.update_vm(vm_id, user_settings)
+
             if available_vms[vm_id]["state"] == "inactive":
                 display_info(self.screen, TITLE,
                     "Note that for some settings to propagate you\nneed to (re)start the VM!")
+
             return self.display_vm_manage()
 
     def display_vm_create(self, callback=None, vm_type=None, template=None, custom_settings=None):
@@ -507,8 +512,8 @@ class OpenNodeTUI(object):
         if chosen_vm_type is None:
             return callback()
 
-        chosen_template = template if template is not None else self.display_select_template_from_storage(storage_pool,
-                                                                                                          chosen_vm_type)
+        chosen_template = (template if template is not None
+                           else self.display_select_template_from_storage(storage_pool, chosen_vm_type))
         if chosen_template is None:
             return callback()
 

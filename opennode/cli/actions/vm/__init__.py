@@ -14,7 +14,7 @@ from opennode.cli import config
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
-           'undeploy_vm', 'get_local_templates', 'metrics']
+           'undeploy_vm', 'get_local_templates', 'metrics', 'update_vm']
 
 
 vm_types = {
@@ -72,7 +72,6 @@ def autodetected_backends():
 def _connection(backend):
     bs = backends()
     if bs and (backend not in bs and not backend.startswith('test://')):
-        raise Exception("unsupported backend %s. Available backends: %s" % (backend, bs))
 
     conn = libvirt.open(backend)
 
@@ -501,7 +500,12 @@ def _get_running_vm_ids(conn):
 
 
 @vm_method
-def update_vm(conn, uuid, settings):
+def update_vm(conn, uuid, *args):
+    settings = {'cpu_limit': float(args[0]),
+                'memory': int(args[1]),
+                'num_cores': int(args[2]),
+                'swap_size': int(args[3])}
+
     def unknown_param(*args):
         raise Exception('Updating of one of the parameters is not supported by libvirt: %s' % settings)
 
