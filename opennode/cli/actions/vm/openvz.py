@@ -21,7 +21,6 @@ from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_siz
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 import shutil
-import stat
 
 
 def get_ovf_template_settings(ovf_file):

@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from certmaster.config import BaseConfig, ListOption
 from func.minion.modules import func_module
 from func.minion.modules.onode.common import delegate_methods
 
