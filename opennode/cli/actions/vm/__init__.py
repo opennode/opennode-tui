@@ -501,16 +501,23 @@ def _get_running_vm_ids(conn):
 
 
 @vm_method
-def update_vm(conn, uuid, param, value):
+def update_vm(conn, uuid, settings):
     def unknown_param(*args):
-        raise Exception('Unsupported parameter: %s' % param)
+        raise Exception('Updating of one of the parameters is not supported by libvirt: %s' % settings)
 
-    def not_implemented(*args):
-        raise NotImplementedError
+    if conn.getType() == 'OpenVZ':
+        param_name_map = {'cpu_limit': 'vcpulimit',
+                          'swap_size': 'swap',
+                          'num_cores': 'vcpu'}
+        openvz_settings = {'uuid': uuid}
+        openvz_settings.update(dict((param_name_map.get(key, key), value) for key, value in settings.iteritems()))
+        openvz.update_vm(openvz_settings)
+        return
 
     dom = conn.lookupByUUIDString(uuid)
+
     action_map = {'num_cores': dom.setVcpus,
-                  'memory': dom.setMemory,
-                  'cpu_limit': not_implemented,
-                  'swap_size': not_implemented}
-    action_map.get(param, unknown_param)(value)
+                  'memory': dom.setMemory}
+
+    for key, value in settings.iteritems():
+        action_map.get(key, unknown_param)(value)
