@@ -259,7 +259,7 @@ def shutdown_vm(conn, uuid):
 @vm_method
 def destroy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.undefine()
+    dom.destroy()
 
 
 @vm_method
