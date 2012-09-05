@@ -71,7 +71,7 @@ def autodetected_backends():
 def _connection(backend):
     bs = backends()
     if bs and (backend not in bs and not backend.startswith('test://')):
-        raise Exception("unsupported backend %s" % backend)
+        raise Exception("unsupported backend %s. Available backends: %s" % (backend, bs))
 
     conn = libvirt.open(backend)
 
@@ -259,7 +259,7 @@ def shutdown_vm(conn, uuid):
 @vm_method
 def destroy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.destroy()
+    dom.undefine()
 
 
 @vm_method
