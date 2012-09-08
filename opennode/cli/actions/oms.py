@@ -30,6 +30,8 @@ def set_oms_server(server, port=51235):
 
 def register_oms_server(server, port):
     """Register with a new OMS server:port."""
+    # cleanup of the previous func cert
+    execute('rm -fv /etc/pki/certmaster/`hostname -f`.*')
     set_oms_server(server, port)
     execute('service funcd restart')
 
