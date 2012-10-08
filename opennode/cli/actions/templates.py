@@ -109,7 +109,7 @@ def sync_template(remote_repo, template, storage_pool):
 def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
     """Import external template into ON storage pool"""
     if not os.path.exists(template):
-        raise RuntimeError("Template not found: " % template)
+        raise RuntimeError("Template not found: %s" % template)
     if not template.endswith('tar'):
         raise RuntimeError("Expecting a file ending with .tar for a template")
     storage_endpoint = c('general', 'storage-endpoint')
@@ -120,7 +120,7 @@ def import_template(template, vm_type, storage_pool = c('general', 'default-stor
     shutil.copyfile(template, target_file)
     calculate_hash(target_file)
     print "Unpacking..."
-    unpack_template(storage_pool, vm_type, tmpl_name)
+    unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.tar'))
 
 
 def delete_template(storage_pool, vm_type, template):

@@ -22,13 +22,13 @@ operations = {'list-templates': ('l', 'list-templates',
               'help': ('h', 'help',
                     'Display help text.')}
 
-parameters = {template_type: ('t', 'template-type',
+parameters = {'template_type': ('t', 'template-type',
                     "Set template type. Supported values: 'openvz', 'kvm'"),
-              template_name: ('n', 'tempalte-name',
+              'template_name': ('n', 'template-name',
                     'Set template name.'),
-              storage_pool: ('p', 'storage-pool',
+              'storage_pool': ('p', 'storage-pool',
                     'Set storage pool.'),
-              repo_name: ('r', 'repo-name',
+              'repo_name': ('r', 'repo-name',
                     'Set repository name.')}
 
 
@@ -68,6 +68,9 @@ if __name__ == '__main__':
         print str(err)
         _help()
 
+    user_input = {'template_type': template_type,
+                  'storage_pool': storage_pool}
+
     for o, a in options:
         for op in operations.keys():
             if o.lstrip('-') in operations[op]:
@@ -75,7 +78,7 @@ if __name__ == '__main__':
 
         for par in parameters.keys():
             if o.lstrip('-') in parameters[par]:
-                par = a
+                user_input[par] = a
 
     if operation == 'cli':
         from opennode.cli import screen
@@ -84,11 +87,11 @@ if __name__ == '__main__':
     elif operation == 'list-templates':
         templates.list_templates()
     elif operation == 'import':
-        assert(template_name.__class__ == str)
-        templates.import_template(template_name, template_type, storage_pool)
+        assert('template_name' in user_input)
+        templates.import_template(user_input['template_name'], user_input['template_type'], user_input['storage_pool'])
     elif operation == 'sync':
-        assert(repo_name.__class__ == str)
-        assert(template_name.__class__ == str)
-        templates.sync_template(repo_name, template_name, storage_pool)
+        assert('repo_name' in user_input)
+        assert('template_name' in user_input)
+        templates.sync_template(user_input['repo_name'], user_input['template_name'], user_input['storage_pool'])
     elif operation == 'help':
         _help()
