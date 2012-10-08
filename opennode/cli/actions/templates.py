@@ -200,8 +200,8 @@ def list_templates():
         print "%s local templates:" % vm_type.upper()
         for storage_pool in storage.list_pools():
             print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"),
-                                                 storage_pool, vm_type)
-            for tmpl in get_local_templates(storage_pool, vm_type):
+                                                 storage_pool[0], vm_type)
+            for tmpl in get_local_templates(vm_type, storage_pool[0]):
                 print "\t\t", tmpl
             print
     # remote templates
