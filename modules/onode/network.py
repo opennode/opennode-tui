@@ -1,5 +1,4 @@
 from func.minion.modules import func_module
-import func.minion.modules.onode
 from func.minion.modules.onode.common import delegate_methods
 
 
