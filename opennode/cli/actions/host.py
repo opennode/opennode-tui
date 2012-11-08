@@ -6,11 +6,11 @@ from opennode.cli.actions.utils import execute
 from opennode.cli import config
 
 
-def uptime(self):
+def uptime():
     return execute("awk '{print $1}' /proc/uptime")
 
 
-def interfaces(self):
+def interfaces():
     def number_of_set_bits(x):
         x -= (x >> 1) & 0x55555555
         x = ((x >> 2) & 0x33333333) + (x & 0x33333333)
@@ -44,7 +44,8 @@ def interfaces(self):
             prefix = number_of_set_bits(l)
             res['ip'] = '%s/%s' % (ip, prefix)
 
-        default_name = config.c('general', 'main_iface') if config.has_option('general', 'main_iface') else 'vmbr0'
+        default_name = (config.c('general', 'main_iface')
+                        if config.has_option('general', 'main_iface') else 'vmbr0')
         if name == default_name:
             res['primary'] = True
 
@@ -52,7 +53,8 @@ def interfaces(self):
 
     return [details(i) for i in netifaces.interfaces()]
 
-def disk_usage(self, partition=None):
+
+def disk_usage(partition=None):
     """
     Returns the results of df -PT
     """
@@ -79,5 +81,3 @@ def disk_usage(self, partition=None):
                           'fstype':str(fstype),
                           'percentage':int(percentage[:-1])}
     return results
-
-
