@@ -1,5 +1,7 @@
 from opennode.cli.actions import oms, console, host, templates, storage, vm, sysresources, network
 
+def hardware_info():
+    {}
 
 # Salt hack: make actions module flat
 def _extract_callables(mod, package, level):
