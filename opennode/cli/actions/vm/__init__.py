@@ -1,12 +1,10 @@
-import sys
-import os
 from functools import wraps
-import time
-import urlparse
 from uuid import UUID
 from xml.etree import ElementTree
-
 import libvirt
+import os
+import time
+import urlparse
 
 from ovf.OvfFile import OvfFile
 
@@ -35,10 +33,13 @@ def vm_method(fun):
 
         try:
             # strip async func specific junk args (ON-429)
-            if args:
-                if isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                    args = args[:-1]
-            return fun(conn, *args, **kwargs)
+            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
+                args = args[:-1]
+            # try without keyword arguments when function fails with typeerror due to unexpected kwargs
+            try:
+                return fun(conn, *args, **kwargs)
+            except TypeError:
+                return fun(conn, *args)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
@@ -477,7 +478,8 @@ def _deploy_vm(vm_parameters, logger=None):
     for disk in settings.get("disks", []):
         if disk["deploy_type"] == "file":
             volume_name = disk.get("source_file") or "disk"
-            disk["source_file"] = '%s--%s.%s' % (volume_name, settings["uuid"], disk.get('template_format', 'qcow2'))
+            disk["source_file"] = '%s--%s.%s' % (volume_name, settings["uuid"],
+                                                 disk.get('template_format', 'qcow2'))
 
     errors = vm.adjust_setting_to_systems_resources(settings)
     if errors:

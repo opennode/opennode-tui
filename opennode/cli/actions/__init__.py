@@ -1,7 +1,47 @@
+import sys
+
 from opennode.cli.actions import oms, console, host, templates, storage, vm, sysresources, network
 
+def smolt_hardware_info():
+    """ Get hardware information from smolt. """
+    try:
+        sys.path.append("/usr/share/smolt/client")
+        import smolt
+    except ImportError:
+        return {'_error': 'smolt is not installed'}
+
+    hardware = smolt.Hardware()
+
+    return dict((param, str(getattr(hardware.host, param)))
+                     for param in dir(hardware.host)
+                     if not param.startswith('_') and getattr(hardware.host, param))
+
 def hardware_info():
-    {}
+    data = {
+        'os'              : sys.platform,
+        'defaultRunlevel' : '5',
+        'bogomips'        : 'Unknown',
+        'cpuVendor'       : 'Unknown',
+        'cpuModel'        : 'Unknown',
+        'numCpus'         : 'Unknown',
+        'cpuSpeed'        : 'Unknown',
+        'systemMemory'    : 'Unknown',
+        'systemSwap'      : 'Unknown',
+        'kernelVersion'   : 'Unknown',
+        'language'        : 'Unknown',
+        'platform'        : sys.platform,
+        'systemVendor'    : 'Unknown',
+        'systemModel'     : 'Unknown',
+        'formfactor'      : 'Unknown',
+        'selinux_enabled' : 'Unknown',
+        'selinux_enforce' : 'Unknown',
+    }
+
+    smolt_data = smolt_hardware_info()
+    if not smolt_data.get('_error', None):
+        data.update(smolt_data)
+    return data
+
 
 # Salt hack: make actions module flat
 def _extract_callables(mod, package, level):
@@ -19,13 +59,11 @@ def _extract_callables(mod, package, level):
 
 
 def _generate_classes():
-    import sys
-    package = sys.modules[__name__].__package__
+    _canonical_name = 'opennode.cli.actions'
     for name, mod in globals().items():
         if type(mod) is not type(oms):
             continue
-        if not mod.__package__.startswith(package):
-            package = mod.__package__
-        _extract_callables(mod, package, 0)
+        if mod.__name__.startswith(_canonical_name):
+            _extract_callables(mod, _canonical_name, 0)
 
 _generate_classes()
