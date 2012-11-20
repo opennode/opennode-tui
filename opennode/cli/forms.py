@@ -2,6 +2,7 @@
 
 import operator
 import re
+import os
 
 from snack import Entry, Textbox, Button, GridForm, Checkbox
 import socket
@@ -65,6 +66,8 @@ class OpenvzForm(Form):
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
+        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"],
+                                           settings["vm_id"], required=False)
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
         self.nameserver = IpField("nameserver", settings["nameserver"])
@@ -74,7 +77,8 @@ class OpenvzForm(Form):
         self.startvm = CheckboxField("startvm", settings.get("startvm", 0), display_name="Start VM")
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
-                                            self.vcpulimit, self.disk, self.hostname,
+                                            self.vcpulimit, self.disk,
+                                            self.bind_mounts, self.hostname,
                                             self.ip_address, self.nameserver,
                                             self.password, self.password2,
                                             self.ostemplate, self.startvm,
@@ -100,6 +104,9 @@ class OpenvzForm(Form):
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
             (Textbox(20, 1, "Disk size min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.disk.min_value, self.disk.max_value), 0, 0)),
+            (Textbox(20, 1, "Bind mounts:", 0, 0), self.bind_mounts),
+            (Textbox(20, 1, "", 0, 0),
+             Textbox(20, 1, "/src1,/dst1;/srcN,..", 0, 0)),
             (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
             (Textbox(20, 1, "IP-address:", 0, 0), self.ip_address),
             (Textbox(20, 2, "Nameserver:", 0, 0), self.nameserver),
@@ -121,6 +128,10 @@ class OpenvzForm(Form):
         if (self.password.validate() and self.password2.validate() and
                 self.password.value() != self.password2.value()):
             self.errors.append(("passwd", "Passwords don't match."))
+        bm_valid = self.bind_mounts.validate()
+        if bm_valid:
+            error_str = "\n".join([s[1] for s in bm_valid])
+            self.errors.append(("bind_mounts", "%s" % error_str))
         return not self.errors
 
 
@@ -232,10 +243,14 @@ class OpenvzModificationForm(Form):
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
+        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"],
+                                           settings["vm_id"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
-                                            self.swap, self.onboot, self.bootorder, self.vcpulimit])
+                                            self.bind_mounts, self.swap,
+                                            self.onboot, self.bootorder,
+                                            self.vcpulimit])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -250,6 +265,10 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "CPU usage limit (%):", 0, 0), self.vcpulimit),
             separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (Textbox(20, 1, "Bind mounts:", 0, 0), self.bind_mounts),
+            (Textbox(20, 1, "", 0, 0),
+             Textbox(20, 1, "/src1,/dst1;/srcN,..", 0, 0)),
             separator,
             (Textbox(20, 1, "", 0, 0), self.onboot),
             separator,
@@ -267,6 +286,10 @@ class OpenvzModificationForm(Form):
         if Form.validate(self):
             # TODO disallow decrease of disk size, which would break OS
             pass
+        bm_valid = self.bind_mounts.validate()
+        if bm_valid:
+            error_str = "\n".join([s[1] for s in bm_valid])
+            self.errors.append(("bind_mounts", "%s" % error_str))
         return not self.errors
 
 
@@ -352,6 +375,38 @@ class StringField(Field):
             if re.search(r"\s", self.value()):
                 self.errors = [(self.name, "%s should not include white spaces. Got: '%s'"
                                             % (self.name.capitalize(), self.value()))]
+
+
+class BindMountsField(Field):
+    def __init__(self, name, default, ctid, required=True, width=20, display_name=None):
+        Field.__init__(self, name, default, required=required, width=width, display_name=display_name)
+        self.ctid = ctid
+
+    def validate(self):
+        # Input should be in the form of '/src,/dst(;/src,/dst)'
+        if Field.validate(self) and self.value():
+            # TODO: handle \;
+            # TODO: handle comma as it can be valid path
+            bm = self.value().strip().split(';')
+            for pair in bm:
+                if len(pair) == 0:
+                    continue
+                items = pair.split(',')
+                if len(items) < 2:
+                    self.errors.append((self.name, "Bind mounts syntax is /src1,/dst1;/srcN,/dstN"))
+                    continue
+                if  not items[0].startswith('/') and not os.path.isdir(items[0]):
+                    self.errors.append((self.name,
+                                        "'%s' is not a valid path on base system."
+                                        % (items[0])))
+                if not items[1].startswith('/'):
+                    self.errors.append((self.name,
+                                        "'%s' is not a valid path."
+                                        % (items[0])))
+                #if not os.path.isdir(os.path.join("/vz/private/CTID/", items[1])):
+                #    self.errors.append((self.name, "'%s' is not a valid path."
+                #                        % (items[1])))
+        return self.errors
 
 
 class IpField(Field):
