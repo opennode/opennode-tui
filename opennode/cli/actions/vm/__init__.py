@@ -72,6 +72,7 @@ def autodetected_backends():
 def _connection(backend):
     bs = backends()
     if bs and (backend not in bs and not backend.startswith('test://')):
+        raise Exception("unsupported backend %s" % backend)
 
     conn = libvirt.open(backend)
 
