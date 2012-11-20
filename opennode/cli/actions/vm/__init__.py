@@ -177,9 +177,15 @@ def _render_vm(conn, vm):
         # XXX use libvirt
         return 0
 
+    def vm_bmounts(vm):
+        if conn.getType() == 'OpenVZ':
+            return openvz.get_bmounts(vm.name())
+        return ''
+
     return {"uuid": get_uuid(vm), "name": vm_name(vm), "memory": vm_memory(vm),
             "uptime": vm_uptime(vm, STATE_MAP[info[0]]),
             "diskspace": vm_diskspace(vm),
+            "bind_mounts": vm_bmounts(vm),
             "template": vm_template_name(vm), "state": STATE_MAP[info[0]],
             "run_state": RUN_STATE_MAP[info[0]],
             "vm_uri": conn.getURI(),

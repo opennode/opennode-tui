@@ -30,6 +30,7 @@ def get_ovf_template_settings(ovf_file):
     ovf_settings = read_ovf_settings(ovf_file)
     settings.update(ovf_settings)
     settings["vm_id"] = _get_available_ct_id()
+    settings["bind_mounts"] = get_bmounts(settings["vm_id"])
     return settings
 
 
@@ -204,6 +205,10 @@ def generate_nonubc_config(conf_filename, settings):
     # set UUID if provided
     if settings.get('uuid'):
         config_str += "\n\n#UUID: %s" % settings.get('uuid')
+
+    # Add ON_BMOUNT if needed
+    if settings.get('bind_mounts'):
+        config_str += "\nON_BMOUNT=\"%s\"" % settings.get('bind_mounts')
     return config_str
 
 
@@ -422,8 +427,8 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"],
                                             info="OpenVZ OpenNode template")
     # add OS section
-    ovf.createOperatingSystem(node=virtualSystem, 
-                              ident='operating_system', 
+    ovf.createOperatingSystem(node=virtualSystem,
+                              ident='operating_system',
                               info='Operating system type deployed in a template',
                               description=vm_settings.get('ostemplate', 'linux'))
 
@@ -554,6 +559,24 @@ def get_vcpu(ctid):
     return int(execute("vzlist %s -H -o cpus" % ctid))
 
 
+def _update_bmounts(vm_id, bind_mounts):
+    conf_fnm = '/etc/vz/conf/%s.conf' % vm_id
+    condition = False
+    with file(conf_fnm, 'rt') as f:
+        data = f.read()
+    data = data.split('\n')
+    for line in enumerate(data):
+        if line[1].count('ON_BMOUNT') and not line[1].strip().startswith('#'):
+            data[line[0]] = 'ON_BMOUNT="%s"' % bind_mounts
+            condition = True
+    if not condition:
+        data.append('ON_BMOUNT="%s"' % bind_mounts)
+    with file(''.join([conf_fnm, '.new']), 'wt') as f:
+        f.write('\n'.join(data))
+    os.rename(conf_fnm, ''.join([conf_fnm, '.bak']))
+    os.rename(''.join([conf_fnm, '.new']), conf_fnm)
+
+
 def update_vm(settings):
     """Perform modifications to the VM virtual hardware"""
     vm_id = get_ctid_by_uuid(settings["uuid"])
@@ -581,6 +604,9 @@ def update_vm(settings):
         vcpulimit = int(settings.get("vcpulimit"))
         execute("vzctl set %s --cpulimit %s --save" % (vm_id, vcpulimit))
 
+    if settings.get("bind_mounts"):
+        _update_bmounts(vm_id, settings["bind_mounts"])
+
 
 def get_uuid_by_ctid(ctid):
     """Return UUID of the VM"""
@@ -591,6 +617,25 @@ def get_ctid_by_uuid(uuid, backend='openvz:///system'):
     """Return container ID with a given UUID"""
     conn = libvirt.open(backend)
     return conn.lookupByUUIDString(uuid).name()
+
+
+def get_bmounts(ctid):
+    """Return ON_BMOUNT for the VM with given CTID"""
+    parser = SimpleConfigParser()
+    try:
+        parser.read('/etc/vz/conf/%s.conf' % ctid)
+    except IOError:
+        # File not found in case we are doing a new conf
+        return ''
+    conf = parser.items()
+    if conf.has_key('ON_BMOUNT'):
+        if conf['ON_BMOUNT'].strip().startswith('"'):
+            conf['ON_BMOUNT'] = conf['ON_BMOUNT'][1:]
+        if conf['ON_BMOUNT'].strip().endswith('"'):
+            conf['ON_BMOUNT'] = conf['ON_BMOUNT'][:-1]
+        return conf['ON_BMOUNT']
+    else:
+        return ''
 
 
 def shutdown_vm(uuid):
