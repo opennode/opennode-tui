@@ -66,8 +66,7 @@ class OpenvzForm(Form):
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
-        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"],
-                                           settings["vm_id"], required=False)
+        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
         self.nameserver = IpField("nameserver", settings["nameserver"])
@@ -243,8 +242,7 @@ class OpenvzModificationForm(Form):
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
-        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"],
-                                           settings["vm_id"], required=False)
+        self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
@@ -378,9 +376,8 @@ class StringField(Field):
 
 
 class BindMountsField(Field):
-    def __init__(self, name, default, ctid, required=True, width=20, display_name=None):
+    def __init__(self, name, default, required=True, width=20, display_name=None):
         Field.__init__(self, name, default, required=required, width=width, display_name=display_name)
-        self.ctid = ctid
 
     def validate(self):
         # Input should be in the form of '/src,/dst(;/src,/dst)'
@@ -403,9 +400,6 @@ class BindMountsField(Field):
                     self.errors.append((self.name,
                                         "'%s' is not a valid path."
                                         % (items[0])))
-                #if not os.path.isdir(os.path.join("/vz/private/CTID/", items[1])):
-                #    self.errors.append((self.name, "'%s' is not a valid path."
-                #                        % (items[1])))
         return self.errors
 
 

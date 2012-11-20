@@ -561,19 +561,20 @@ def get_vcpu(ctid):
 
 def _update_bmounts(vm_id, bind_mounts):
     conf_fnm = '/etc/vz/conf/%s.conf' % vm_id
-    rv = ''
-    ok = False
-    with open(conf_fnm, 'r') as f:
+    condition = False
+    with file(conf_fnm, 'rt') as f:
         data = f.read()
     data = data.split('\n')
     for line in enumerate(data):
-        if line[1].startswith('ON_BMOUNT'):
-            ok = True
+        if line[1].count('ON_BMOUNT') and not line[1].strip().startswith('#'):
             data[line[0]] = 'ON_BMOUNT="%s"' % bind_mounts
-    if not ok:
+            condition = True
+    if not condition:
         data.append('ON_BMOUNT="%s"' % bind_mounts)
-    with open(conf_fnm, 'w') as f:
+    with file(''.join([conf_fnm, '.new']), 'wt') as f:
         f.write('\n'.join(data))
+    os.rename(conf_fnm, ''.join([conf_fnm, '.bak']))
+    os.rename(''.join([conf_fnm, '.new']), conf_fnm)
 
 
 def update_vm(settings):
@@ -628,6 +629,10 @@ def get_bmounts(ctid):
         return ''
     conf = parser.items()
     if conf.has_key('ON_BMOUNT'):
+        if conf['ON_BMOUNT'].strip().startswith('"'):
+            conf['ON_BMOUNT'] = conf['ON_BMOUNT'][1:]
+        if conf['ON_BMOUNT'].strip().endswith('"'):
+            conf['ON_BMOUNT'] = conf['ON_BMOUNT'][:-1]
         return conf['ON_BMOUNT']
     else:
         return ''
