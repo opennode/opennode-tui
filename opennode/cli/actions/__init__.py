@@ -1,6 +1,8 @@
 import sys
 
-from opennode.cli.actions import oms, console, host, templates, storage, vm, sysresources, network
+from opennode.cli.actions import oms, console, host
+from opennode.cli.actions import templates, storage
+from opennode.cli.actions import vm, sysresources, network
 
 def smolt_hardware_info():
     """ Get hardware information from smolt. """
@@ -67,3 +69,5 @@ def _generate_classes():
             _extract_callables(mod, _canonical_name, 0)
 
 _generate_classes()
+
+__all__ = [oms, console, host, templates, storage, vm, sysresources, network, hardware_info]

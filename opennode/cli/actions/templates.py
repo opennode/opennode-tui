@@ -1,22 +1,21 @@
-import tarfile
-import os
-import shutil
-import re
 import cPickle as pickle
+import os
+import re
+import shutil
+import tarfile
 
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import c
-from opennode.cli.actions.utils import delete, calculate_hash, execute_in_screen, \
-                                execute, download, urlopen, TemplateException
 from opennode.cli.actions import storage, vm as vm_ops
+from opennode.cli.actions.utils import (delete, calculate_hash, execute_in_screen, execute, download,
+                                        urlopen, TemplateException)
 from opennode.cli import config
 
 
 __all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
-           'sync_template', 'delete_template', 'unpack_template',
-           'get_local_templates', 'sync_oms_template', 'is_fresh',
-           'is_syncing']
+           'sync_template', 'delete_template', 'unpack_template', 'get_local_templates',
+           'sync_oms_template', 'is_fresh', 'is_syncing']
 
 
 def _simple_download_hook(count, blockSize, totalSize):
