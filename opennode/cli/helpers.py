@@ -69,14 +69,14 @@ def create_select_checkbox(screen, title, text, items, buttons=('Ok', 'Cancel'),
 
 def display_create_template(screen, title, vm_type, templates, help=None):
     """Helper class for displaying a form for creating a new VM template"""
-    label_base = Textbox(40, 2, 
-        'Select %s VM to be used as a basis\n(only stopped VMs are allowed)' % 
+    label_base = Textbox(40, 2,
+        'Select %s VM to be used as a basis\n(only stopped VMs are allowed)' %
         vm_type, 0, 0)
-    
+
     base_tmpl = Listbox(7, 1, 0, 30, 1)
     for vm in templates.keys():
         base_tmpl.append(templates[vm], vm)
-    
+
     label_newname = Textbox(40, 2, 'Name of the template to be created', 0, 0)
     spacer1 = Textbox(1, 1, "", 0, 0)
     spacer2 = Textbox(1, 1, "", 0, 0)
@@ -103,14 +103,14 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
     #if len(list_of_items) == 1:
         # shortcut if there's only one item for choosing
     #    return list_of_items[0]
-    
+
     if len(list_of_items) > 0:
         if not isinstance(list_of_items[0], types.TupleType):
             # if we have a list of strings, we'd prefer to get these strings as the selection result
             list_of_items = zip(list_of_items, list_of_items)
         height = 10
         scroll = 1 if len(list_of_items) > height else 0
-        action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items, 
+        action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items,
                             buttons, scroll = scroll, height = height, default = default)
         if buttons == ['Ok', 'Back']:
             if action != 'back':

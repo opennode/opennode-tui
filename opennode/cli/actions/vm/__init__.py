@@ -14,7 +14,7 @@ from opennode.cli import config
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
-           'undeploy_vm', 'get_local_templates', 'metrics']
+           'undeploy_vm', 'get_local_templates', 'metrics', 'update_vm']
 
 
 vm_types = {
@@ -72,7 +72,7 @@ def autodetected_backends():
 def _connection(backend):
     bs = backends()
     if bs and (backend not in bs and not backend.startswith('test://')):
-        raise Exception("unsupported backend %s. Available backends: %s" % (backend, bs))
+        raise Exception("unsupported backend %s" % backend)
 
     conn = libvirt.open(backend)
 
@@ -199,10 +199,10 @@ def _render_vm(conn, vm):
 
 def _list_vms(conn):
     online = []
-    online += [_render_vm(conn, vm) for vm in (conn.lookupByID(i) for i \
-                                                    in _get_running_vm_ids(conn))]
-    offline = [_render_vm(conn, vm) for vm in (conn.lookupByName(i) for i \
-                                               in conn.listDefinedDomains())]
+    online += [_render_vm(conn, vm) for vm in
+               (conn.lookupByID(i) for i in _get_running_vm_ids(conn))]
+    offline = [_render_vm(conn, vm) for vm in
+               (conn.lookupByName(i) for i in conn.listDefinedDomains())]
     return online + offline
 
 
@@ -504,3 +504,35 @@ def _get_running_vm_ids(conn):
         return []
     else:
         return conn.listDomainsID()
+
+
+@vm_method
+def update_vm(conn, uuid, *args, **kwargs):
+    settings = {'cpu_limit': float(args[0]),
+                'memory': int(args[1]),
+                'num_cores': int(args[2]),
+                'swap_size': int(args[3])}
+
+    if conn.getType() == 'OpenVZ':
+        param_name_map = {'cpu_limit': 'vcpulimit',
+                          'swap_size': 'swap',
+                          'num_cores': 'vcpu'}
+        openvz_settings = {'uuid': uuid}
+        openvz_settings.update(dict((param_name_map.get(key, key), value)
+                                    for key, value in settings.iteritems()))
+        openvz.update_vm(openvz_settings)
+        return
+
+    dom = conn.lookupByUUIDString(uuid)
+
+    action_map = {'num_cores': dom.setVcpus,
+                  'memory': dom.setMemory}
+
+    def unknown_param(*args):
+        logger = kwargs.get('logger', None)
+        if logger:
+            logger('Updating of one of the parameters supplied '
+                   'is not supported by libvirt: %s' % settings)
+
+    for key, value in settings.iteritems():
+        action_map.get(key, unknown_param)(value)
