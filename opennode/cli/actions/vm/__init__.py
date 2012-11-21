@@ -508,14 +508,16 @@ def update_vm(conn, uuid, *args):
                 'swap_size': int(args[3])}
 
     def unknown_param(*args):
-        raise Exception('Updating of one of the parameters is not supported by libvirt: %s' % settings)
+        raise Exception('Updating of one of the parameters supplied '
+                        'is not supported by libvirt: %s' % settings)
 
     if conn.getType() == 'OpenVZ':
         param_name_map = {'cpu_limit': 'vcpulimit',
                           'swap_size': 'swap',
                           'num_cores': 'vcpu'}
         openvz_settings = {'uuid': uuid}
-        openvz_settings.update(dict((param_name_map.get(key, key), value) for key, value in settings.iteritems()))
+        openvz_settings.update(dict((param_name_map.get(key, key), value)
+                                    for key, value in settings.iteritems()))
         openvz.update_vm(openvz_settings)
         return
 
