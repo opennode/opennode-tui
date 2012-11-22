@@ -207,7 +207,7 @@ class OpenNodeTUI(object):
     def display_oms_register(self, msg='Please, enter OMS address and port'):
         oms_server, oms_port = actions.oms.get_oms_server()
         oms_entry_server = Entry(30, oms_server)
-        oms_entry_port = Entry(30, oms_port)
+        oms_entry_port = Entry(30, str(oms_port))
         command, oms_address = EntryWindow(self.screen, TITLE, msg,
                                 [('OMS server address', oms_entry_server),
                                  ('OMS server port', oms_entry_port)],

@@ -1,7 +1,7 @@
 import os
 import yaml
 
-from opennode.cli.actions.utils import execute
+from opennode.cli.actions.utils import execute2
 from opennode.cli import config
 
 
@@ -17,7 +17,7 @@ def get_oms_server():
 
 def set_oms_server(server, port=4506):
     """Write OMS server address and port to the configuration file"""
-    minion_conf_file = config.c('general', 'minion-conf')
+    minion_conf_file = config.c('salt', 'minion-conf')
 
     with open(minion_conf_file, 'r') as minion_conf:
         minion_config = yaml.safe_load(minion_conf.read())
@@ -34,7 +34,7 @@ def register_oms_server(server, port):
     """Register with a new OMS server:port."""
     # cleanup of the previous func cert
     set_oms_server(server, port)
-    execute('service salt-minion restart')
+    execute2('service salt-minion restart')
 
 
 ## OMS VM specific ##
