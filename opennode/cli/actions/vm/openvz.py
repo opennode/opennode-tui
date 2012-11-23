@@ -293,6 +293,9 @@ def deploy(ovf_settings, storage_pool):
     if ovf_settings.get("onboot", 0) == 1:
         execute("vzctl set %s --onboot yes --save" % (ovf_settings["vm_id"]))
 
+    if ofv_settings.get("ioprio", 4):
+        execute("vzctl set %s --ioprio %d --save" % (ofv_settings["vm_id"], ofv_settings["ioprio"]))
+
     print "Template %s deployed successfully!" % ovf_settings["vm_id"]
 
 
@@ -558,6 +561,22 @@ def get_vcpu(ctid):
     return int(execute("vzlist %s -H -o cpus" % ctid))
 
 
+def get_ioprio(ctid):
+    encoding = { '0': 0,
+                 '1': 0,
+                 '2': 0,
+                 '3': 0,
+                 '4': 4,
+                 '5': 7,
+                 '6': 7,
+                 '7': 7,}
+    rv = execute("vzlist %s -H -o ioprio" % ctid).strip()
+    if rv == '-':
+        return 4
+    else:
+        return encoding[rv]
+
+
 def _update_bmounts(vm_id, bind_mounts):
     conf_fnm = '/etc/vz/conf/%s.conf' % vm_id
     condition = False
@@ -605,6 +624,11 @@ def update_vm(settings):
 
     if settings.get("bind_mounts"):
         _update_bmounts(vm_id, settings["bind_mounts"])
+
+    if settings.get("ioprio") != None and settings.get("ioprio_old") != None:
+        ioprio = int(settings.get("ioprio"))
+        if ioprio != int(settings.get("ioprio_old")):
+            execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
 
 
 def get_uuid_by_ctid(ctid):

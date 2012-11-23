@@ -479,6 +479,8 @@ class OpenNodeTUI(object):
                                 get_bootorder(ctid)
                 available_vms[vm_id]["vcpulimit"] = actions.vm.openvz.get_cpulimit(ctid)
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
+                available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
+                available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,

@@ -4,7 +4,7 @@ import operator
 import re
 import os
 
-from snack import Entry, Textbox, Button, GridForm, Checkbox
+from snack import Entry, Textbox, Button, GridForm, Checkbox, RadioBar
 import socket
 
 
@@ -66,6 +66,9 @@ class OpenvzForm(Form):
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
+        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 7, settings["ioprio"] == 7),
+                                                       ('Default', 4, settings["ioprio"] == 4),
+                                                       ('High   ', 0, settings["ioprio"] == 0)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
@@ -76,7 +79,7 @@ class OpenvzForm(Form):
         self.startvm = CheckboxField("startvm", settings.get("startvm", 0), display_name="Start VM")
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
-                                            self.vcpulimit, self.disk,
+                                            self.vcpulimit, self.disk, self.ioprio
                                             self.bind_mounts, self.hostname,
                                             self.ip_address, self.nameserver,
                                             self.password, self.password2,
@@ -103,6 +106,7 @@ class OpenvzForm(Form):
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
             (Textbox(20, 1, "Disk size min/max:", 0, 0),
              Textbox(20, 1, "%s / %s" % (self.disk.min_value, self.disk.max_value), 0, 0)),
+            (Textbox(20, 1, "IO Priority:", 0, 0), self.ioprio),
             (Textbox(20, 1, "Bind mounts:", 0, 0), self.bind_mounts),
             (Textbox(20, 1, "", 0, 0),
              Textbox(20, 1, "/src1,/dst1;/srcN,..", 0, 0)),
@@ -242,10 +246,13 @@ class OpenvzModificationForm(Form):
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
+        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 7, settings["ioprio"] == 7),
+                                                       ('Default', 4, settings["ioprio"] == 4),
+                                                       ('High   ', 0, settings["ioprio"] == 0)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk,
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio
                                             self.bind_mounts, self.swap,
                                             self.onboot, self.bootorder,
                                             self.vcpulimit])
@@ -263,6 +270,8 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "CPU usage limit (%):", 0, 0), self.vcpulimit),
             separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (Textbox(20, 1, "IO Priority:", 0, 0), self.ioprio),
             separator,
             (Textbox(20, 1, "Bind mounts:", 0, 0), self.bind_mounts),
             (Textbox(20, 1, "", 0, 0),
@@ -401,6 +410,18 @@ class BindMountsField(Field):
                                         "'%s' is not a valid path."
                                         % (items[0])))
         return self.errors
+
+
+class RadioBarField(RadioBar):
+    def __init__(self, name, screen, fields):
+        RadioBar.__init__(self, screen, fields)
+        self.name = name
+
+    def value(self):
+        return self.getSelection()
+
+    def validate(self):
+        return True
 
 
 class IpField(Field):
