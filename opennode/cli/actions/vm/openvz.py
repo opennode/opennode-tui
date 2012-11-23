@@ -29,7 +29,9 @@ def get_ovf_template_settings(ovf_file):
     ovf_settings = read_ovf_settings(ovf_file)
     settings.update(ovf_settings)
     settings["vm_id"] = _get_available_ct_id()
+    # In case of template, both next items should be at default values
     settings["bind_mounts"] = get_bmounts(settings["vm_id"])
+    settings["ioprio"] = 4
     return settings
 
 
@@ -562,19 +564,21 @@ def get_vcpu(ctid):
 
 
 def get_ioprio(ctid):
-    encoding = { '0': 0,
-                 '1': 0,
-                 '2': 0,
-                 '3': 0,
-                 '4': 4,
-                 '5': 7,
-                 '6': 7,
-                 '7': 7,}
+    """ Get VM I/O priority. If priority is entered manually
+    or elsewhere, return approximate value based on value table"""
+    value = { '0': 0,
+              '1': 0,
+              '2': 0,
+              '3': 0,
+              '4': 4,
+              '5': 7,
+              '6': 7,
+              '7': 7,}
     rv = execute("vzlist %s -H -o ioprio" % ctid).strip()
     if rv == '-':
         return 4
     else:
-        return encoding[rv]
+        return value[rv]
 
 
 def _update_bmounts(vm_id, bind_mounts):
@@ -625,9 +629,12 @@ def update_vm(settings):
     if settings.get("bind_mounts"):
         _update_bmounts(vm_id, settings["bind_mounts"])
 
-    if settings.get("ioprio") != None and settings.get("ioprio_old") != None:
+    if settings.get("ioprio") != None:
         ioprio = int(settings.get("ioprio"))
-        if ioprio != int(settings.get("ioprio_old")):
+        if settings.get("ioprio_old"):
+            if ioprio != int(settings.get("ioprio_old")):
+                execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
+        else:
             execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
 
 

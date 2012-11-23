@@ -79,7 +79,7 @@ class OpenvzForm(Form):
         self.startvm = CheckboxField("startvm", settings.get("startvm", 0), display_name="Start VM")
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
-                                            self.vcpulimit, self.disk, self.ioprio
+                                            self.vcpulimit, self.disk, self.ioprio,
                                             self.bind_mounts, self.hostname,
                                             self.ip_address, self.nameserver,
                                             self.password, self.password2,
@@ -252,7 +252,7 @@ class OpenvzModificationForm(Form):
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio,
                                             self.bind_mounts, self.swap,
                                             self.onboot, self.bootorder,
                                             self.vcpulimit])
@@ -413,6 +413,8 @@ class BindMountsField(Field):
 
 
 class RadioBarField(RadioBar):
+    """ RadioBarField extends RadioBar to add value and validate methods
+    and bring it to line with other field classes"""
     def __init__(self, name, screen, fields):
         RadioBar.__init__(self, screen, fields)
         self.name = name
