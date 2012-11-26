@@ -493,7 +493,12 @@ class OpenNodeTUI(object):
             if user_settings is None:
                 return self.display_vm_manage()
 
-            actions.vm.update_vm(vm_id, user_settings)
+            G = 1024**2
+            actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id,
+                                 user_settings['vcpulimit'],
+                                 float(user_settings['memory'])*G,
+                                 user_settings['vcpu'],
+                                 float(user_settings['swap'])*G)
 
             if available_vms[vm_id]["state"] == "inactive":
                 display_info(self.screen, TITLE,
