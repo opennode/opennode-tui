@@ -629,9 +629,9 @@ def update_vm(settings):
     if settings.get("bind_mounts"):
         _update_bmounts(vm_id, settings["bind_mounts"])
 
-    if settings.get("ioprio") != None:
+    if settings.get("ioprio") is not None:
         ioprio = int(settings.get("ioprio"))
-        if settings.get("ioprio_old"):
+        if settings.get("ioprio_old") is not None:
             if ioprio != int(settings.get("ioprio_old")):
                 execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
         else:

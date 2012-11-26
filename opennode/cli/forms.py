@@ -66,9 +66,9 @@ class OpenvzForm(Form):
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
-        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 7, settings["ioprio"] == 7),
+        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
                                                        ('Default', 4, settings["ioprio"] == 4),
-                                                       ('High   ', 0, settings["ioprio"] == 0)])
+                                                       ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
@@ -246,9 +246,9 @@ class OpenvzModificationForm(Form):
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
                                / 1024)
-        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 7, settings["ioprio"] == 7),
+        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
                                                        ('Default', 4, settings["ioprio"] == 4),
-                                                       ('High   ', 0, settings["ioprio"] == 0)])
+                                                       ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
