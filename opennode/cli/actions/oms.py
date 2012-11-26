@@ -53,18 +53,18 @@ def configure_oms_vm(ctid, ipaddr):
     """Adjust configuration of the VM hosting OMS"""
     base = "/vz/private/%s/" % ctid
     # set a hostname to be used as a binding interface
-    master_conf_file = config.c('general', 'salt-master-conf')
-    master_conf_file = os.path.join((base, master_conf_file))
+    minion_conf_file = config.c('general', 'salt-minion-conf')
+    minion_conf_file = os.path.join((base, minion_conf_file))
 
-    if not os.path.exists(master_conf_file):
-        master_conf_file = os.path.join((base, '/etc/salt/master'))
-        if not os.path.exists(master_conf_file):
-            raise Exception('master-conf refers to non-existing path')
+    if not os.path.exists(minion_conf_file):
+        minion_conf_file = os.path.join((base, '/etc/salt/minion'))
+        if not os.path.exists(minion_conf_file):
+            raise Exception('minion-conf refers to non-existing path')
 
-    with open(master_conf_file, 'r') as master_conf:
-        master_config = yaml.safe_load(master_conf.read())
-        if master_config.get('master', None):
-            master_config['interface'] = ipaddr
+    with open(minion_conf_file, 'r') as minion_conf:
+        minion_config = yaml.safe_load(minion_conf.read())
+        if minion_config.get('minion', None):
+            minion_config['interface'] = ipaddr
 
-    with open(master_conf_file, 'w') as conf:
-        yaml.dump(master_config, conf, default_flow_style=False)
+    with open(minion_conf_file, 'w') as conf:
+        yaml.dump(minion_config, conf, default_flow_style=False)
