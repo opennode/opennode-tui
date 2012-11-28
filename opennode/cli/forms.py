@@ -244,8 +244,7 @@ class OpenvzModificationForm(Form):
         self.swap = FloatField("swap", float(settings["swap"]) / 1024)
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
-        self.disk = FloatField("diskspace", float(settings["diskspace"]["/"])
-                               / 1024)
+        self.disk = FloatField("diskspace", float(settings["diskspace"]["/"]) / 1024)
         self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
                                                        ('Default', 4, settings["ioprio"] == 4),
                                                        ('High   ', 7, settings["ioprio"] == 7)])
@@ -253,8 +252,7 @@ class OpenvzModificationForm(Form):
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio,
-                                            self.bind_mounts, self.swap,
-                                            self.onboot, self.bootorder,
+                                            self.bind_mounts, self.swap, self.onboot, self.bootorder,
                                             self.vcpulimit])
 
     def display(self):

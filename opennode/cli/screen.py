@@ -419,7 +419,7 @@ class OpenNodeTUI(object):
                 vms_labels.append(("%s (%s) - %s" % (vm["name"], vm["run_state"],
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
-                                          "Pick VM for modification:",
+                                "Pick VM for modification:",
                                 buttons=['Back', 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
         if res is None:
             return self.display_manage()
@@ -493,11 +493,7 @@ class OpenNodeTUI(object):
             if user_settings is None:
                 return self.display_vm_manage()
 
-            actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id,
-                                 user_settings['vcpulimit'],
-                                 float(user_settings['memory']),
-                                 user_settings['vcpu'],
-                                 float(user_settings['swap']))
+            actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id, user_settings)
 
             if available_vms[vm_id]["state"] == "inactive":
                 display_info(self.screen, TITLE,

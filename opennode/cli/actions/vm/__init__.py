@@ -508,10 +508,12 @@ def _get_running_vm_ids(conn):
 
 @vm_method
 def update_vm(conn, uuid, *args, **kwargs):
-    settings = {'cpu_limit': float(args[0]),
-                'memory': int(args[1]),
-                'num_cores': int(args[2]),
-                'swap_size': int(args[3])}
+    """
+    Update VM parameters
+    """
+    settings = kwargs
+    # allows mixed passing via a dict and keyword args
+    settings.update(args[0] if len(args) == 1 else {})
 
     if conn.getType() == 'OpenVZ':
         param_name_map = {'cpu_limit': 'vcpulimit',
@@ -527,6 +529,10 @@ def update_vm(conn, uuid, *args, **kwargs):
 
     action_map = {'num_cores': dom.setVcpus,
                   'memory': dom.setMemory}
+
+    # XXX: libvirt wants memory in KiB
+    if 'memory' in settings:
+        settings['memory'] = float(settings['memory']) * (1024 ** 2)
 
     def unknown_param(*args):
         logger = kwargs.get('logger', None)
