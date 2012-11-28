@@ -11,6 +11,7 @@ import cPickle as pickle
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, RotatingMarker
 
+from openvz_exit_status import OpenVZ_EXIT_STATUS
 
 class CommandException(Exception):
 
@@ -53,10 +54,14 @@ def get_file_size_bytes(path):
 def execute(cmd):
     """
     Run cmd in a shell, return output of the execution. Raise exception for
-    non-0 return code
+    non-0 return code. vzctl gets special treatment.
+    TODO: add other vz family commmands
     """
     status, output = commands.getstatusoutput("LC_ALL=C %s" % cmd)
     if status != 0:
+        if cmd.startswith('vzctl'):
+            raise CommandException("Failed to execute command '%s'. Status: '%s'. Message: '%s'. Output: '%s'"
+                                   % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]], output), status>>8)
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
                                % (cmd, status, output), status)
     return output
