@@ -71,13 +71,15 @@ def get_default_pool():
 def delete_pool(pool_name):
     """Delete a storage pool"""
     try:
+        if os.path.join(c('general', 'storage-endpoint'), pool_name) == '/storage/local':
+            raise Exception('/storage/local can not be deleted')
         execute("virsh 'pool-destroy %s'" % pool_name)
         execute("virsh 'pool-undefine %s'" % pool_name)
         del_folder(os.path.join(c('general', 'storage-endpoint'), pool_name))
         if pool_name == c('general', 'default-storage-pool'):
             set_default_pool('')
     except Exception, e:
-        print "Failed to delete pool %s: %s" % (pool_name, e)
+        raise Exception("Failed to delete pool %s: %s" % (pool_name, e))
 
 
 def add_pool(pool_name, careful=True):
