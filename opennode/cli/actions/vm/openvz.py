@@ -294,6 +294,8 @@ def deploy(ovf_settings, storage_pool):
 
     if ovf_settings.get("onboot", 0) == 1:
         execute("vzctl set %s --onboot yes --save" % (ovf_settings["vm_id"]))
+    else:
+        execute("vzctl set %s --onboot no --save" % (ovf_settings["vm_id"]))
 
     if ovf_settings.get("ioprio", 4):
         execute("vzctl set %s --ioprio %d --save" % (ovf_settings["vm_id"], ovf_settings["ioprio"]))
