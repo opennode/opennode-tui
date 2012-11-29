@@ -628,7 +628,7 @@ def update_vm(settings):
         vcpulimit = int(settings.get("vcpulimit"))
         execute("vzctl set %s --cpulimit %s --save" % (vm_id, vcpulimit))
 
-    if settings.get("bind_mounts"):
+    if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
 
     if settings.get("ioprio") is not None:
