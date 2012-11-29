@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from ovf.OvfFile import OvfFile
 
-from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow
+from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
                                   display_selection, display_vm_type_select, display_info)
@@ -14,7 +14,10 @@ from opennode.cli import actions
 from opennode.cli import config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
-from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh, TemplateException
+from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
+                                        TemplateException, CommandException)
+
+from libvirt import libvirtError
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -402,8 +405,22 @@ class OpenNodeTUI(object):
                 return self.display_vm_manage()
 
         self.screen.finish()
-        vm.migrate(vm_id, target_host, live=live)
-        self.screen = SnackScreen()
+        try:
+            vm.migrate(vm_id, target_host, live=live)
+            self.screen = SnackScreen()
+        except libvirtError as e:
+            errmsg = e.get_error_message()
+            err = reflow(errmsg, 50)
+            self.screen = SnackScreen()
+            display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
+        except CommandException as e:
+            errmsg = e
+            if e.code is not None:
+                errmsg = errmsg + ' - Error code ' + str(e.code)
+            err = reflow(errmsg, 50)
+            self.screen = SnackScreen()
+            display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
+
         return self.display_vm_manage()
 
     def display_vm_manage(self):
