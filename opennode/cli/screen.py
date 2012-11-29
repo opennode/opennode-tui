@@ -136,7 +136,12 @@ class OpenNodeTUI(object):
                                          ('No, not today.', 'no')])
             if result == 'yes':
                 # sorry, pool, time to go
-                actions.storage.delete_pool(pool)
+                try:
+                    actions.storage.delete_pool(pool)
+                except Exception as e:
+                    err = reflow(e.message, 50)
+                    self.screen = SnackScreen()
+                    display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
         return self.display_storage()
 
     def display_network(self):
