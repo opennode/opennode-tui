@@ -405,8 +405,22 @@ class OpenNodeTUI(object):
                 return self.display_vm_manage()
 
         self.screen.finish()
-        vm.migrate(vm_id, target_host, live=live)
-        self.screen = SnackScreen()
+        try:
+            vm.migrate(vm_id, target_host, live=live)
+            self.screen = SnackScreen()
+        except libvirtError as e:
+            errmsg = e.get_error_message()
+            err = reflow(errmsg, 50)
+            self.screen = SnackScreen()
+            display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
+        except CommandException as e:
+            errmsg = e
+            if e.code is not None:
+                errmsg = errmsg + ' - Error code ' + str(e.code)
+            err = reflow(errmsg, 50)
+            self.screen = SnackScreen()
+            display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
+
         return self.display_vm_manage()
 
     def display_vm_manage(self):
