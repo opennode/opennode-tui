@@ -519,7 +519,7 @@ def get_swap(ctid):
 def get_memory(ctid):
     """Max memory in MB"""
     res = int(execute("vzlist %s -H -o privvmpages.l" % ctid)) * 4 / 1024
-    if res >= 2 ** 31:
+    if res >= 2 ** 31 or res == 0:
         res = int(execute("vzlist %s -H -o physpages.l" % ctid)) * 4 / 1024
     return res
 

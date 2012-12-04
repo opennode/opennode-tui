@@ -295,6 +295,9 @@ class OpenvzModificationForm(Form):
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
             self.errors.append(("bind_mounts", "%s" % error_str))
+        if self.memory.value() < self.settings["memory_min"]:
+            err_msg = "Memory size can not be lower than minimum defined in template: %s GB" % self.settings["memory_min"]
+            self.errors.append(("memory", err_msg))
         return not self.errors
 
 
