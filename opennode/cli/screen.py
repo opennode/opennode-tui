@@ -510,6 +510,10 @@ class OpenNodeTUI(object):
 
             if vm_type == 'openvz':
                 ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
+                storage_pool = actions.storage.get_default_pool()
+                vm = actions.vm.get_module(vm_type)
+                template_settings = vm.get_active_template_settings(ctid, storage_pool)
+                available_vms[vm_id]["memory_min"] = template_settings["memory_min"]
                 available_vms[vm_id]['onboot'] = actions.vm.openvz. \
                                 get_onboot(ctid)
                 available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
