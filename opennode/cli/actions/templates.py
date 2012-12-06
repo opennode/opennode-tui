@@ -6,11 +6,10 @@ import tarfile
 
 from ovf.OvfFile import OvfFile
 
-from opennode.cli.config import c
+from opennode.cli.config import get_config
 from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli.actions.utils import (delete, calculate_hash, execute_in_screen, execute, download,
                                         urlopen, TemplateException)
-from opennode.cli import config
 
 
 __all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
@@ -26,31 +25,37 @@ def _simple_download_hook(count, blockSize, totalSize):
 
 def get_template_repos():
     """Return a formatted list of strings describing configured repositories"""
-    repo_groups = c('general', 'repo-groups').split(',')
+    config = get_config()
+    repo_groups = config.getstring('general', 'repo-groups').split(',')
     result = []
     for r in repo_groups:
         group = "%s-repo" % r.strip()
-        name = c(group, 'name')
-        vm_type = c(group, 'type')
+        name = config.getstring(group, 'name')
+        vm_type = config.getstring(group, 'type')
         result.append(("%s (%s)" % (name, vm_type), group))
     return result
 
 
+# Dead code for TUI. 
+# get_template_repos and get_template_repos_info are exactly the same
+# and get_template_repos_info is used nowhere.
 def get_template_repos_info():
     """Return a formatted list of strings describing configured repositories"""
-    repo_groups = c('general', 'repo-groups').split(',')
+    config = get_config()
+    repo_groups = config.getstring('general', 'repo-groups').split(',')
     result = []
     for r in repo_groups:
         group = "%s-repo" % r.strip()
-        name = c(group, 'name')
-        vm_type = c(group, 'type')
+        name = config.getstring(group, 'name')
+        vm_type = config.getstring(group, 'type')
         result.append(dict(name=name, vm_type=vm_type, group=group))
     return result
 
 
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
-    url = c(remote_repo, 'url')
+    config = get_config()
+    url = config.getstring(remote_repo, 'url')
     tmpl_list = urlopen("%s/templatelist.txt" % url)
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
@@ -58,11 +63,14 @@ def get_template_list(remote_repo):
 
 
 def sync_storage_pool(storage_pool, remote_repo, templates,
-                      sync_tasks_fnm=c('general', 'sync_task_list'), force=False):
+                      sync_tasks_fnm=None, force=False):
     """Synchronize selected storage pool with the remote repo. Only selected templates
     will be persisted, all of the other templates shall be purged.
     Ignores purely local templates - templates with no matching name in remote repo."""
-    vm_type = c(remote_repo, 'type')
+    config = get_config()
+    if not sync_tasks_fnm:
+        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
+    vm_type = config.getstring(remote_repo, 'type')
     existing_templates = get_local_templates(vm_type, storage_pool)
     # synchronize selected templates
     if templates is None: templates = []
@@ -88,9 +96,10 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
 
 def sync_template(remote_repo, template, storage_pool):
     """Synchronizes local template (cache) with the remote one (master)"""
-    url = c(remote_repo, 'url')
-    vm_type = c(remote_repo, 'type')
-    storage_endpoint = c('general', 'storage-endpoint')
+    config = get_config()
+    url = config.getstring(remote_repo, 'url')
+    vm_type = config.getstring(remote_repo, 'type')
+    storage_endpoint = config.getstring('general', 'storage-endpoint')
     localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
     remotefile = os.path.join(url, template)
     # only download if we don't already have a fresh copy
@@ -105,13 +114,16 @@ def sync_template(remote_repo, template, storage_pool):
         unpack_template(storage_pool, vm_type, localfile)
 
 
-def import_template(template, vm_type, storage_pool = c('general', 'default-storage-pool')):
+def import_template(template, vm_type, storage_pool = None):
     """Import external template into ON storage pool"""
+    config = get_config()
+    if not storage_pool:
+        storage_pool = config.getstring('general', 'default-storage-pool')
     if not os.path.exists(template):
         raise RuntimeError("Template not found: %s" % template)
     if not template.endswith('tar'):
         raise RuntimeError("Expecting a file ending with .tar for a template")
-    storage_endpoint = c('general', 'storage-endpoint')
+    storage_endpoint = config.getstring('general', 'storage-endpoint')
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage_endpoint, storage_pool, vm_type, tmpl_name)
     print "Copying template to the storage pool..."
@@ -125,8 +137,9 @@ def import_template(template, vm_type, storage_pool = c('general', 'default-stor
 def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
     # get a list of files in the template
+    config = get_config()
     print "Deleting %s (%s) from %s..." % (template, vm_type, storage_pool)
-    storage_endpoint = c('general', 'storage-endpoint')
+    storage_endpoint = config.getstring('general', 'storage-endpoint')
     templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type,
                                         template)
     tmpl = tarfile.open(templatefile)
@@ -142,14 +155,15 @@ def delete_template(storage_pool, vm_type, template):
     delete("%s.pfff" % templatefile)
     # also remove symlink for openvz vm_type
     if vm_type == 'openvz':
-        delete("%s/%s" % (c('general', 'openvz-templates'), "%s.tar.gz" % template))
+        delete("%s/%s" % (config.getstring('general', 'openvz-templates'), "%s.tar.gz" % template))
 
 
 def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
-    basedir = os.path.join(c('general', 'storage-endpoint'), storage_pool, vm_type)
+    config = get_config()
+    basedir = os.path.join(config.getstring('general', 'storage-endpoint'), storage_pool, vm_type)
     tmpl = tarfile.open(os.path.join(basedir, "%s.tar" %tmpl_name))
     unpacked_dir = os.path.join(basedir, 'unpacked')
     tmpl.extractall(unpacked_dir)
@@ -162,17 +176,23 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
         vm.openvz.link_template(storage_pool, tmpl_name[0])
 
 
-def get_local_templates(vm_type, storage_pool=c('general', 'default-storage-pool')):
+def get_local_templates(vm_type, storage_pool=None):
     """Returns a list of templates of a certain vm_type from the storage pool"""
-    storage_endpoint = c('general', 'storage-endpoint')
+    config = get_config()
+    if not storage_pool:
+        storage_pool = config.getstring('general', 'default-storage-pool')
+    storage_endpoint = config.getstring('general', 'storage-endpoint')
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
                                 storage_pool, vm_type)) if tmpl.endswith('tar')]
 
 
-def sync_oms_template(storage_pool=c('general', 'default-storage-pool')):
+def sync_oms_template(storage_pool=None):
     """Synchronize OMS template"""
-    repo = c('opennode-oms-template', 'repo')
-    tmpl = c('opennode-oms-template', 'template_name')
+    config = get_config()
+    if not storage_pool:
+        storage_pool = config.getstring('general', 'default-storage-pool')
+    repo = config.getstring('opennode-oms-template', 'repo')
+    tmpl = config.getstring('opennode-oms-template', 'template_name')
     sync_template(repo, tmpl, storage_pool)
 
 
@@ -195,19 +215,20 @@ def is_fresh(localfile, remotefile):
 def list_templates():
     """ Prints all local and remote templates """
     # local templates
+    config = get_config()
     for vm_type in ["openvz", "kvm"]:
         print "%s local templates:" % vm_type.upper()
         for storage_pool in storage.list_pools():
-            print "\t", "Storage:", os.path.join(config.c("general", "storage-endpoint"),
+            print "\t", "Storage:", os.path.join(config.getstring("general", "storage-endpoint"),
                                                  storage_pool[0], vm_type)
             for tmpl in get_local_templates(vm_type, storage_pool[0]):
                 print "\t\t", tmpl
             print
     # remote templates
-    repo_groups = re.split(",\s*", config.c("general", "repo-groups"))
+    repo_groups = re.split(",\s*", config.getstring("general", "repo-groups"))
     repo_groups = [repo_group + "-repo" for repo_group in repo_groups]
     for repo_group in repo_groups:
-        url, vm_type = config.c(repo_group, "url"), config.c(repo_group, "type")
+        url, vm_type = config.getstring(repo_group, "url"), config.getstring(repo_group, "type")
         print "%s remote templates:" % vm_type.upper()
         print "\t", "Repository:", url
         for tmpl in get_template_list(repo_group):
@@ -221,10 +242,13 @@ def get_purely_local_templates(storage_pool, vm_type, remote_repo):
     return list(set(local_templates) - set(remote_templates))
 
 
-def get_template_info(template_name, vm_type, storage_pool = c('general', 'default-storage-pool')):
-    ovf_file = OvfFile(os.path.join(c("general", "storage-endpoint"),
-                                        storage_pool, vm_type, "unpacked",
-                                        template_name + ".ovf"))
+def get_template_info(template_name, vm_type, storage_pool = None):
+    config = get_config()
+    if not storage_pool:
+        storage_pool = config.getstring('general', 'default-storage-pool')
+    ovf_file = OvfFile(os.path.join(config.getstring("general", "storage-endpoint"),
+                                    storage_pool, vm_type, "unpacked",
+                                    template_name + ".ovf"))
     vm = vm_ops.get_module(vm_type)
     template_settings = vm.get_ovf_template_settings(ovf_file)
     # XXX handle modification to system params
@@ -232,23 +256,32 @@ def get_template_info(template_name, vm_type, storage_pool = c('general', 'defau
     return template_settings
 
 
-def get_templates_sync_list(sync_tasks_fnm=c('general', 'sync_task_list')):
+def get_templates_sync_list(sync_tasks_fnm=None):
     """Return current template synchronisation list"""
+    config = get_config()
+    if not sync_tasks_fnm:
+        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
     with open(sync_tasks_fnm, 'r') as tf:
         return pickle.load(tf)
 
 
-def set_templates_sync_list(tasks, sync_tasks_fnm=c('general', 'sync_task_list')):
+def set_templates_sync_list(tasks, sync_tasks_fnm=None):
     """Set new template synchronisation list. Function should be handled with care,
     as some retrieval might be in progress"""
+    config = get_config()
+    if not sync_tasks_fnm:
+        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
     with open(sync_tasks_fnm, 'w') as tf:
         pickle.dump(tasks, tf)
 
 
-def sync_templates_list(sync_tasks_fnm=c('general', 'sync_task_list')):
+def sync_templates_list(sync_tasks_fnm=None):
     """Sync a list of templates defined in a file. After synchronizing a template,
     removes it from the list. NB: multiple copies of this function should be run
     against the same task list file!"""
+    config = get_config()
+    if not sync_tasks_fnm:
+        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
     if os.path.exists(sync_tasks_fnm):
         tasks = get_templates_sync_list(sync_tasks_fnm)
         while tasks:

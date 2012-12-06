@@ -2,12 +2,13 @@ import os
 import yaml
 
 from opennode.cli.actions.utils import execute2
-from opennode.cli import config
+from opennode.cli.config import get_config
 
 
 def get_oms_server():
     """Read OMS server port and address from the configuration file"""
-    minion_conf_file = config.c('general', 'salt-minion-conf')
+    config = get_config()
+    minion_conf_file = config.getstring('general', 'salt-minion-conf')
 
     if not os.path.exists(minion_conf_file):
         minion_conf_file = '/etc/salt/minion'
@@ -25,7 +26,8 @@ def get_oms_server():
 
 def set_oms_server(server, port=4506):
     """Write OMS server address and port to the configuration file"""
-    minion_conf_file = config.c('general', 'salt-minion-conf')
+    config = get_config()
+    minion_conf_file = config.getstring('general', 'salt-minion-conf')
 
     if not os.path.exists(minion_conf_file):
         minion_conf_file = '/etc/salt/minion'
@@ -55,7 +57,8 @@ def configure_oms_vm(ctid, ipaddr):
     """Adjust configuration of the VM hosting OMS"""
     base = "/vz/private/%s/" % ctid
     # set a hostname to be used as a binding interface
-    minion_conf_file = config.c('general', 'salt-minion-conf')
+    config = get_config()
+    minion_conf_file = config.getstring('general', 'salt-minion-conf')
     minion_conf_file = os.path.join((base, minion_conf_file))
 
     if not os.path.exists(minion_conf_file):

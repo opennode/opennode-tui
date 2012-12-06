@@ -4,7 +4,7 @@ import subprocess
 import time
 
 from opennode.cli.actions.utils import execute
-from opennode.cli import config
+from opennode.cli.config import get_config
 
 
 def uptime():
@@ -45,7 +45,8 @@ def interfaces():
             prefix = number_of_set_bits(l)
             res['ip'] = '%s/%s' % (ip, prefix)
 
-        default_name = (config.c('general', 'main_iface')
+        config = get_config()
+        default_name = (config.get_string('general', 'main_iface')
                         if config.has_option('general', 'main_iface') else 'vmbr0')
         if name == default_name:
             res['primary'] = True
@@ -105,7 +106,8 @@ def metrics():
 
     def network_usage():
         def get_netstats():
-            iface = config.c('general', 'main_iface')
+            config = get_config()
+            iface = config.getstring('general', 'main_iface')
             return [int(v) for v in \
                     execute("grep %s: /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
         try:

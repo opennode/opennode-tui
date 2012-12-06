@@ -10,7 +10,7 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data, execute
-from opennode.cli import config
+from opennode.cli.config import get_config
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
@@ -48,7 +48,8 @@ def vm_method(fun):
 
 
 def backends():
-    return config.c('general', 'backends').split(',')
+    config = get_config()
+    return config.getstring('general', 'backends').split(',')
 
 
 def backend_hname(uri):
@@ -60,12 +61,13 @@ def backend_hname(uri):
 
 
 def autodetected_backends():
+    config = get_config()
     auto = []
     if os.path.exists('/dev/vzctl'):
         auto.append('openvz:///system')
     if os.path.exists('/dev/kvm'):
         auto.append('qemu:///system')
-    config.cs('general', 'backends', ','.join(auto))
+    config.setvalue('general', 'backends', ','.join(auto))
     return auto
 
 
@@ -458,7 +460,7 @@ def get_module(vm_type):
 
 def _deploy_vm(vm_parameters, logger=None):
     from opennode.cli import actions
-
+    config = get_config()
     storage_pool = actions.storage.get_default_pool()
     if storage_pool is None:
         raise  Exception("Storage pool not defined")
@@ -473,7 +475,7 @@ def _deploy_vm(vm_parameters, logger=None):
         raise Exception("Cannot deploy because template is '%s'" % (template))
         return
 
-    ovf_file = OvfFile(os.path.join(config.c("general", "storage-endpoint"),
+    ovf_file = OvfFile(os.path.join(config.getstring("general", "storage-endpoint"),
                                     storage_pool, vm_type, "unpacked",
                                     template + ".ovf"))
     vm = actions.vm.get_module(vm_type)

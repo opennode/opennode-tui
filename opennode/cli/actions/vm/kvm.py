@@ -11,7 +11,7 @@ import libvirt
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
-from opennode.cli import config
+from opennode.cli.config import get_config
 from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
@@ -70,15 +70,19 @@ def get_libvirt_conf_xml(vm_name):
 
 def read_default_ovf_settings():
     """ Reads default ovf configuration from file, returns a dictionary of settings."""
+    config = get_config("kvm")
     settings = {
         "serial": {"type": "pty", "target_port": 0},
         "console": {"type": "pty", "target_port": 0},
-        "graphics": {"type": "vnc", "port": -1, "autoport": "yes", "keymap": config.c("vnc", "keymap", "kvm")},
+        "graphics": {"type": "vnc",
+                     "port": -1,
+                     "autoport": "yes",
+                     "keymap": config.getstring("vnc", "keymap")},
         "interfaces": [],
         "features": [],
         "disks": []
     }
-    settings.update(dict(config.clist('ovf-defaults', 'kvm')))
+    settings.update(dict(config.getlist('ovf-defaults')))
     if not os.path.exists(settings.get("emulator", "")):
         settings["emulator"] = "/usr/bin/kvm"
     return settings
@@ -142,9 +146,10 @@ def prepare_file_system(settings, storage_pool):
         - copy disk based images
         - convert block device based images to file based images
     """
-    images_dir = path.join(config.c("general", "storage-endpoint"),
+    config = get_config()
+    images_dir = path.join(config.getstring("general", "storage-endpoint"),
                            storage_pool, "images")
-    target_dir = path.join(config.c("general", "storage-endpoint"),
+    target_dir = path.join(config.getstring("general", "storage-endpoint"),
                            storage_pool, "kvm", "unpacked")
     for disk in settings.get("disks", []):
         disk_template_path = path.join(target_dir, disk["template_name"])
@@ -283,7 +288,10 @@ def generate_libvirt_conf(settings):
             driver_dom.setAttribute("type", disk.get('template_format', 'qcow2'))
             disk_dom.appendChild(driver_dom)
             disk_source_dom = libvirt_conf_dom.createElement("source")
-            image_path = path.join(config.c("general", "storage-endpoint"), config.c("general", "default-storage-pool"), "images")
+            config = get_config()
+            image_path = path.join(config.getstring("general", "storage-endpoint"),
+                                   config.getstring("general", "default-storage-pool"),
+                                   "images")
             disk_source_dom.setAttribute("file", path.join(image_path,
                                                            "%s-%s" % (settings["vm_type"], disk["source_file"])))
             disk_dom.appendChild(disk_source_dom)
@@ -370,7 +378,8 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
         - (if unpack) leave generated files as unpacked
     """
 
-    target_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
+    config = get_config()
+    target_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
     if unpack:
         target_dir = path.join(target_dir, 'unpacked')
     # prepare file system
@@ -386,7 +395,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
 
     # pack container archive and ovf file
     print "Archiving..."
-    arch_location = path.join(config.c('general', 'storage-endpoint'), storage_pool, "kvm")
+    arch_location = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
     ovf_archive_fnm = path.join(arch_location, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))

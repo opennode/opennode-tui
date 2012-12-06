@@ -12,7 +12,7 @@ import libvirt
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
-from opennode.cli import config
+from opennode.cli.config import get_config
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import oms
@@ -37,7 +37,8 @@ def get_ovf_template_settings(ovf_file):
 
 def get_active_template_settings(vm_name, storage_pool):
     """ Reads ovf settings of the specified VM """
-    ovf_fnm = path.join(config.c("general", "storage-endpoint"), storage_pool,
+    config = get_config()
+    ovf_fnm = path.join(config.getstring("general", "storage-endpoint"), storage_pool,
                        "openvz", "unpacked",
                        get_template_name(vm_name) + ".ovf")
     if path.exists(ovf_fnm):
@@ -52,7 +53,8 @@ def read_default_ovf_settings():
     Reads default ovf configuration from file, returns a dictionary of
     settings.
     """
-    return dict(config.clist('ovf-defaults', 'openvz'))
+    config = get_config()
+    return dict(config.getlist('ovf-defaults', 'openvz'))
 
 
 def read_ovf_settings(ovf_file):
@@ -166,6 +168,7 @@ def _compute_diskspace_hard_limit(soft_limit):
 
 def generate_ubc_config(settings):
     """ Generates UBC part of configuration file for VZ container """
+    config = get_config("openvz")
     st = settings
     ubc_params = {
         "physpages_limit": st["memory"],
@@ -176,15 +179,15 @@ def generate_ubc_config(settings):
         "diskspace_hard": _compute_diskspace_hard_limit(float(st["disk"])),
 
         "diskinodes_soft": float(st["disk"]) *
-                           int(config.c("ubc-defaults", "DEFAULT_INODES", "openvz")),
+                           int(config.getstring("ubc-defaults", "DEFAULT_INODES")),
         "diskinodes_hard": round(_compute_diskspace_hard_limit(float(st["disk"])) *
-                           int(config.c("ubc-defaults", "DEFAULT_INODES", "openvz"))),
+                           int(config.getstring("ubc-defaults", "DEFAULT_INODES"))),
 
-        "quotatime": config.c("ubc-defaults", "DEFAULT_QUOTATIME", "openvz"),
+        "quotatime": config.string("ubc-defaults", "DEFAULT_QUOTATIME"),
 
         "cpus": st["vcpu"],
         "cpulimit": int(st["vcpulimit"]) * int(st["vcpu"]),
-        'cpuunits': config.c("ubc-defaults", "DEFAULT_CPUUNITS", "openvz"),
+        'cpuunits': config.getstring("ubc-defaults", "DEFAULT_CPUUNITS"),
     }
     # Get rid of zeros where necessary (eg 5.0 - > 5 )
     ubc_params = dict([(key, int(float(val)) if float(val).is_integer() else val)
@@ -233,7 +236,8 @@ def create_container(ovf_settings):
 
 def setup_scripts(vm_settings, storage_pool):
     """Setup action scripts for the CT"""
-    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
+    config = get_config()
+    dest_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
     dest_folder = '/etc/vz/conf/%s' % vm_settings['vm_id']
@@ -363,12 +367,13 @@ def link_template(storage_pool, tmpl_name, overwrite=True):
     """Setup symlinks from the OpenVZ template to the location expected by vzctl"""
     # added resilience. Openvz templates are distributed as tarballs, so sometimes
     # name and name.tar.gz are used in a mixed way
+    config = get_config()
     if not tmpl_name.endswith('.tar.gz'):
         tmpl_name = tmpl_name + '.tar.gz'
-    source_file = os.path.join(config.c('general', 'storage-endpoint'),
+    source_file = os.path.join(config.getstring('general', 'storage-endpoint'),
                                                   storage_pool, 'openvz',
                                                   'unpacked', tmpl_name)
-    dest_file = os.path.join(config.c('general', 'openvz-templates'), tmpl_name)
+    dest_file = os.path.join(config.getstring('general', 'openvz-templates'), tmpl_name)
     if overwrite:
         try:
             os.unlink(dest_file)
@@ -387,7 +392,8 @@ def save_as_ovf(vm_settings, storage_pool):
         - generate ovf configuration file
         - pack ovf and container archive into tar.gz file
     """
-    dest_dir = path.join(config.c('general', 'storage-endpoint'), storage_pool, "openvz")
+    config = get_config()
+    dest_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % vm_settings["template_name"])
     ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])
