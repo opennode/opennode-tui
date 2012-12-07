@@ -10,11 +10,20 @@ config_names = {'global': 'opennode-tui.conf',
 
 _config_object = {}
 
+
 def get_config(config_type='global'):
     global _config_object
     if not _config_object.get(config_type, None):
         _config_object[config_type] = TUIConfig(config_type)
     return _config_object[config_type]
+
+
+def gen_config_file_names():
+    config_path = '/etc/opennode/'
+    config_types = ['global', 'openvz', 'kvm']
+    config_names = ['opennode-tui.conf', 'openvz.conf', 'kvm.conf']
+    return dict(zip(config_types, [os.path.join(config_path,
+                                                i) for i in config_names]))
 
 
 class TUIConfig(ConfigParser):
@@ -25,8 +34,8 @@ class TUIConfig(ConfigParser):
         self.config_path = path
         self.config_names = names
         self.config_type = config_type
-        with closing(open(os.path.join(self.config_path,
-                                       self.config_names[self.config_type]))) as f:
+        self.config_file = gen_config_file_names()[self.config_type]
+        with closing(open(self.config_file)) as f:
             self.readfp(f)
 
     def getboolean(self, section, option, default=no_default):

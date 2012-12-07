@@ -192,9 +192,8 @@ class OpenNodeTUI(object):
         return self.display_network_bridge()
 
     def display_select_storage_pool(self, default=None):
-        config = get_config()
         if not default:
-            default = config.getstring('general', 'default-storage-pool')
+            default = get_config().getstring('general', 'default-storage-pool')
         storage_pools = [("%s (%s)" % (p[0], p[1]), p[0]) for p in actions.storage.list_pools()]
         return display_selection(self.screen, TITLE, storage_pools,
                                  'Select a storage pool to use:',
@@ -250,9 +249,8 @@ class OpenNodeTUI(object):
         return self.display_oms()
 
     def display_oms_install(self):
-        config = get_config()
         vm_type = 'openvz'
-        template = config.getstring('opennode-oms-template', 'template_name')
+        template = get_config().getstring('opennode-oms-template', 'template_name')
         callback = self.display_oms
         oms_flag = {'appliance_type': 'oms'}
         return self.display_vm_create(callback, vm_type, template, custom_settings=oms_flag)
@@ -311,9 +309,8 @@ class OpenNodeTUI(object):
         self.display_templates()
 
     def display_select_template_from_repo(self, repo, storage_pool):
-        config = get_config()
         remote_templates = actions.templates.get_template_list(repo)
-        local_templates = actions.templates.get_local_templates(config.getstring(repo, 'type'),
+        local_templates = actions.templates.get_local_templates(get_config().getstring(repo, 'type'),
                                                                 storage_pool)
         list_items = [('(r)' + tmpl, tmpl, tmpl in local_templates) for tmpl in remote_templates]
         purely_local_templates = list(set(local_templates) - set(remote_templates))
@@ -561,8 +558,7 @@ class OpenNodeTUI(object):
 
         # get ovf template setting
         try:
-            config = get_config()
-            path = os.path.join(config.getstring("general", "storage-endpoint"),
+            path = os.path.join(get_config().getstring("general", "storage-endpoint"),
                                 storage_pool, chosen_vm_type, "unpacked",
                                 chosen_template + ".ovf")
             ovf_file = OvfFile(path)

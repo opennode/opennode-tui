@@ -54,8 +54,7 @@ def get_template_repos_info():
 
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
-    config = get_config()
-    url = config.getstring(remote_repo, 'url')
+    url = get_config().getstring(remote_repo, 'url')
     tmpl_list = urlopen("%s/templatelist.txt" % url)
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
@@ -162,8 +161,7 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool. 
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
-    config = get_config()
-    basedir = os.path.join(config.getstring('general', 'storage-endpoint'), storage_pool, vm_type)
+    basedir = os.path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, vm_type)
     tmpl = tarfile.open(os.path.join(basedir, "%s.tar" %tmpl_name))
     unpacked_dir = os.path.join(basedir, 'unpacked')
     tmpl.extractall(unpacked_dir)
@@ -258,9 +256,8 @@ def get_template_info(template_name, vm_type, storage_pool = None):
 
 def get_templates_sync_list(sync_tasks_fnm=None):
     """Return current template synchronisation list"""
-    config = get_config()
     if not sync_tasks_fnm:
-        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
+        sync_tasks_fnm = get_config().getstring('general', 'sync_task_list')
     with open(sync_tasks_fnm, 'r') as tf:
         return pickle.load(tf)
 
@@ -268,9 +265,8 @@ def get_templates_sync_list(sync_tasks_fnm=None):
 def set_templates_sync_list(tasks, sync_tasks_fnm=None):
     """Set new template synchronisation list. Function should be handled with care,
     as some retrieval might be in progress"""
-    config = get_config()
     if not sync_tasks_fnm:
-        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
+        sync_tasks_fnm = get_config().getstring('general', 'sync_task_list')
     with open(sync_tasks_fnm, 'w') as tf:
         pickle.dump(tasks, tf)
 
@@ -279,9 +275,8 @@ def sync_templates_list(sync_tasks_fnm=None):
     """Sync a list of templates defined in a file. After synchronizing a template,
     removes it from the list. NB: multiple copies of this function should be run
     against the same task list file!"""
-    config = get_config()
     if not sync_tasks_fnm:
-        sync_tasks_fnm = config.getstring('general', 'sync_task_list')
+        sync_tasks_fnm = get_config().getstring('general', 'sync_task_list')
     if os.path.exists(sync_tasks_fnm):
         tasks = get_templates_sync_list(sync_tasks_fnm)
         while tasks:

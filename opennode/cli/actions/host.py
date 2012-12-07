@@ -106,8 +106,7 @@ def metrics():
 
     def network_usage():
         def get_netstats():
-            config = get_config()
-            iface = config.getstring('general', 'main_iface')
+            iface = get_config().getstring('general', 'main_iface')
             return [int(v) for v in \
                     execute("grep %s: /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
         try:

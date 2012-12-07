@@ -37,8 +37,7 @@ def get_ovf_template_settings(ovf_file):
 
 def get_active_template_settings(vm_name, storage_pool):
     """ Reads ovf settings of the specified VM """
-    config = get_config()
-    ovf_fnm = path.join(config.getstring("general", "storage-endpoint"), storage_pool,
+    ovf_fnm = path.join(get_config().getstring("general", "storage-endpoint"), storage_pool,
                        "openvz", "unpacked",
                        get_template_name(vm_name) + ".ovf")
     if path.exists(ovf_fnm):
@@ -53,8 +52,7 @@ def read_default_ovf_settings():
     Reads default ovf configuration from file, returns a dictionary of
     settings.
     """
-    config = get_config()
-    return dict(config.getlist('ovf-defaults', 'openvz'))
+    return dict(get_config().getlist('ovf-defaults', 'openvz'))
 
 
 def read_ovf_settings(ovf_file):
@@ -236,8 +234,7 @@ def create_container(ovf_settings):
 
 def setup_scripts(vm_settings, storage_pool):
     """Setup action scripts for the CT"""
-    config = get_config()
-    dest_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "openvz")
+    dest_dir = path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
     dest_folder = '/etc/vz/conf/%s' % vm_settings['vm_id']
@@ -392,8 +389,7 @@ def save_as_ovf(vm_settings, storage_pool):
         - generate ovf configuration file
         - pack ovf and container archive into tar.gz file
     """
-    config = get_config()
-    dest_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "openvz")
+    dest_dir = path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, "openvz")
     unpacked_dir = path.join(dest_dir, "unpacked")
     ct_archive_fnm = path.join(unpacked_dir, "%s.tar.gz" % vm_settings["template_name"])
     ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])

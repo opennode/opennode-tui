@@ -68,8 +68,7 @@ def set_default_pool(name):
 
 def get_default_pool():
     """Return name of the storage pool to use by default. Or None if not configured"""
-    config = get_config()
-    name = config.getstring('general', 'default-storage-pool')
+    name = get_config().getstring('general', 'default-storage-pool')
     return None if name is None or name == '' or name == 'None' else name
 
 
@@ -94,9 +93,8 @@ def add_pool(pool_name, careful=True):
         print "Pool '%s' already exists." %pool_name
         return
     try:
-        config = get_config()
         pool_name = re.sub(" " , "_", pool_name) # safety measure
-        pool_path = os.path.join(config.getstring('general', 'storage-endpoint'),
+        pool_path = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                  pool_name)
         mkdir_p(pool_path)
         prepare_storage_pool(pool_name)
@@ -110,8 +108,7 @@ def add_pool(pool_name, careful=True):
 def prepare_storage_pool(storage_pool=get_default_pool()):
     """Assures that storage pool has the correct folder structure"""
     # create structure
-    config = get_config()
-    storage_pool = "%s/%s" % (config.getstring('general', 'storage-endpoint'),
+    storage_pool = "%s/%s" % (get_config().getstring('general', 'storage-endpoint'),
                               storage_pool)
     mkdir_p("%s/iso/" % storage_pool)
     mkdir_p("%s/images/" % storage_pool)
