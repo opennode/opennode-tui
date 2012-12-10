@@ -4,13 +4,13 @@ from sys import argv
 from getopt import getopt, GetoptError
 
 from opennode.cli.actions import templates
-from opennode.cli import config
+from opennode.cli.config import get_config
 
 # default values
 operation = 'cli'
 template_type = 'openvz'
 template_name = object()
-storage_pool = config.c('general', 'default-storage-pool')
+storage_pool = get_config().getstring('general', 'default-storage-pool')
 repo_name = object()
 
 operations = {'list-templates': ('l', 'list-templates',
