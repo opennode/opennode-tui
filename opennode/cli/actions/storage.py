@@ -63,7 +63,7 @@ def set_default_pool(name):
                 execute("virsh 'pool-build %s'" % default_pool_name)
                 execute("virsh 'pool-start %s'" % default_pool_name)
     # finally set a pointer in the configuration file
-    config.setoption('general', 'default-storage-pool', name)
+    config.setvalue('general', 'default-storage-pool', name)
 
 
 def get_default_pool():
