@@ -181,7 +181,7 @@ def generate_ubc_config(settings):
         "diskinodes_hard": round(_compute_diskspace_hard_limit(float(st["disk"])) *
                            int(config.getstring("ubc-defaults", "DEFAULT_INODES"))),
 
-        "quotatime": config.string("ubc-defaults", "DEFAULT_QUOTATIME"),
+        "quotatime": config.getstring("ubc-defaults", "DEFAULT_QUOTATIME"),
 
         "cpus": st["vcpu"],
         "cpulimit": int(st["vcpulimit"]) * int(st["vcpu"]),
