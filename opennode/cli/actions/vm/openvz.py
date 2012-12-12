@@ -52,7 +52,7 @@ def read_default_ovf_settings():
     Reads default ovf configuration from file, returns a dictionary of
     settings.
     """
-    return dict(get_config().getlist('ovf-defaults', 'openvz'))
+    return dict(get_config('openvz').getlist('ovf-defaults'))
 
 
 def read_ovf_settings(ovf_file):
