@@ -46,7 +46,7 @@ def interfaces():
             res['ip'] = '%s/%s' % (ip, prefix)
 
         config = get_config()
-        default_name = (config.get_string('general', 'main_iface')
+        default_name = (config.getstring('general', 'main_iface')
                         if config.has_option('general', 'main_iface') else 'vmbr0')
         if name == default_name:
             res['primary'] = True
