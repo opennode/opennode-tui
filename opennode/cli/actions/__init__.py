@@ -21,22 +21,22 @@ def smolt_hardware_info():
 def hardware_info():
     data = {
         'os'              : sys.platform,
-        'defaultRunlevel' : '5',
-        'bogomips'        : 'Unknown',
+        'defaultRunlevel' : 5,
+        'bogomips'        : None,
         'cpuVendor'       : 'Unknown',
         'cpuModel'        : 'Unknown',
-        'numCpus'         : 'Unknown',
-        'cpuSpeed'        : 'Unknown',
-        'systemMemory'    : 'Unknown',
-        'systemSwap'      : 'Unknown',
+        'numCpus'         : None,
+        'cpuSpeed'        : None,
+        'systemMemory'    : None,
+        'systemSwap'      : None,
         'kernelVersion'   : 'Unknown',
-        'language'        : 'Unknown',
+        'language'        : None,
         'platform'        : sys.platform,
         'systemVendor'    : 'Unknown',
-        'systemModel'     : 'Unknown',
-        'formfactor'      : 'Unknown',
-        'selinux_enabled' : 'Unknown',
-        'selinux_enforce' : 'Unknown',
+        'systemModel'     : None,
+        'formfactor'      : None,
+        'selinux_enabled' : None,
+        'selinux_enforce' : None,
     }
 
     smolt_data = smolt_hardware_info()

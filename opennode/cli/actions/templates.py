@@ -168,7 +168,8 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
     # special case for openvz vm_type
     if vm_type == 'openvz':
         from opennode.cli.actions import vm
-        tmpl_name = [fnm for fnm in tmpl.getnames() if fnm.endswith('tar.gz') and not fnm.endswith('scripts.tar.gz')]
+        tmpl_name = [fnm for fnm in tmpl.getnames()
+                     if fnm.endswith('tar.gz') and not fnm.endswith('scripts.tar.gz')]
         # make sure we have only a single tarball with the image
         assert len(tmpl_name) == 1
         vm.openvz.link_template(storage_pool, tmpl_name[0])
@@ -280,7 +281,6 @@ def sync_templates_list(sync_tasks_fnm=None):
     if os.path.exists(sync_tasks_fnm):
         tasks = get_templates_sync_list(sync_tasks_fnm)
         while tasks:
-            
             # this doesn't make sense the first time, but for resilience we reread a list
             # each time a template was downloaded
             tasks = get_templates_sync_list(sync_tasks_fnm)

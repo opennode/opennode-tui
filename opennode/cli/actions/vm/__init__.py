@@ -215,15 +215,15 @@ def free_mem():
     parameter.
 
     """
-    backends = backends()
+    backends_ = backends()
 
     # Start with the physical memory and subtract
-    memory = _connection(backends[0]).getInfo()[1]
+    memory = _connection(backends_[0]).getInfo()[1]
 
     # Take 256M off which is reserved for Domain-0
     memory = memory - 256
 
-    for conn in (_connection(b) for b in backends):
+    for conn in (_connection(b) for b in backends_):
         for vm in (conn.lookupByID(i) for i in conn.listDomainsID()):
             # Exclude stopped vms and Domain-0 by using
             # ids greater than 0
@@ -329,8 +329,7 @@ def get_local_templates(conn):
     if vm_type == 'qemu':
         vm_type = 'kvm'
     tmpls = []
-    from opennode.cli.actions.templates import get_template_info, \
-                get_local_templates as local_templates
+    from opennode.cli.actions.templates import get_template_info, get_local_templates as local_templates
     for tmpl_name in local_templates(vm_type):
         tmpl_data = get_template_info(tmpl_name, vm_type)
         tmpl_data['template_name'] = tmpl_name
