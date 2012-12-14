@@ -13,6 +13,7 @@ from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import oms
@@ -245,7 +246,9 @@ def setup_scripts(vm_settings, storage_pool):
                 shutil.copyfileobj(tar.extractfile(f), open(target_script, 'w'))
                 os.chmod(target_script, 0755)
     except:
-        print "No action scripts in the template."
+        msg = "No action scripts in the template."
+        get_logger().log_warn(msg)
+        print msg
         pass
 
 
@@ -268,13 +271,20 @@ def deploy(ovf_settings, storage_pool):
     # make sure we have required template present and symlinked
     link_template(storage_pool, ovf_settings["template_name"])
 
-    print "Generating configuration..."
+    log = get_logger()
+    msg = "Generating configuration..."
+    log.log_info(msg)
+    print msg
     generate_config(ovf_settings)
 
-    print "Creating OpenVZ container..."
+    msg = "Creating OpenVZ container..."
+    log.log_info(msg)
+    print msg
     create_container(ovf_settings)
 
-    print "Deploying..."
+    msg = "Deploying..."
+    log.log_info(msg)
+    print msg
     nameservers = ovf_settings.get("nameservers", None)
     if not nameservers:
         nameservers = [ovf_settings["nameserver"]]
@@ -284,7 +294,9 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
 
-    print "Setting up action scripts..."
+    msg = "Setting up action scripts..."
+    log.log_info(msg)
+    print msg
     setup_scripts(ovf_settings, storage_pool)
 
     if ovf_settings.get('appliance_type') == 'oms':
@@ -301,7 +313,9 @@ def deploy(ovf_settings, storage_pool):
     if ovf_settings.get("ioprio", 4):
         execute("vzctl set %s --ioprio %d --save" % (ovf_settings["vm_id"], ovf_settings["ioprio"]))
 
-    print "Template %s deployed successfully!" % ovf_settings["vm_id"]
+    msg = "Template %s deployed successfully!" % ovf_settings["vm_id"]
+    log.log_info(msg)
+    print msg
 
 
 def query_openvz(include_running=False, fields='ctid,hostname'):
@@ -395,13 +409,18 @@ def save_as_ovf(vm_settings, storage_pool):
     ct_source_dir = path.join("/vz/private", vm_settings["vm_name"])
 
     # Pack vm container catalog
-    print "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
+    log = get_logger()
+    msg = "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
+    log.log_info(msg)
+    print msg
     with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
         for f in os.listdir(ct_source_dir):
             tar.add(path.join(ct_source_dir, f), arcname=f)
 
     # Archive action scripts if they are present
-    print "Adding action scripts..."
+    msg = "Adding action scripts..."
+    log.log_info(msg)
+    print msg
     ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
     with closing(tarfile.open(ct_scripts_fnm, "w:gz")) as tar:
         for script_type in ['premount', 'mount', 'start', 'stop', 'umount', 'postumount']:
@@ -410,14 +429,18 @@ def save_as_ovf(vm_settings, storage_pool):
                 tar.add(script_fnm, arcname=script_type)
 
     # generate and save ovf configuration file
-    print "Generating ovf file..."
+    msg = "Generating ovf file..."
+    log.log_info(msg)
+    print msg
     ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
     ovf_fnm = path.join(unpacked_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
         ovf.writeFile(f, pretty=True, encoding='UTF-8')
 
     # pack container archive and ovf file
-    print "Archiving..."
+    msg = "Archiving..."
+    log.log_info(msg)
+    print msg
     ovf_archive_fnm = path.join(dest_dir, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
@@ -675,13 +698,18 @@ def get_bmounts(ctid):
 def shutdown_vm(uuid):
     """Shutdown VM with a given UUID"""
     ctid = get_ctid_by_uuid(uuid)
+    log = get_logger()
     try:
-        print execute("vzctl stop %s" % ctid)
+        msg = execute("vzctl stop %s" % ctid)
+        log.log_info(msg)
+        print msg
     except CommandException as e:
         if e.code == 13056:  # sometimes umount fails
             for i in range(5):
                 try:
-                    print execute("vzctl umount %s" % ctid)
+                    msg = execute("vzctl umount %s" % ctid)
+                    log.log_info(msg)
+                    print log
                 except CommandException:
                     import time
                     time.sleep(3)
@@ -706,7 +734,10 @@ def migrate(uid, target_host, live=False):
             pass
         else:
             raise ce
-    print "Initiating migration to %s..." % target_host
+    msg = "Initiating migration to %s..." % target_host
+    get_logger().log_info(msg)
+    print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
+        get_logger().log_info(line)
         print line

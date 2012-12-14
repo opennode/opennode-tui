@@ -5,6 +5,7 @@ from getopt import getopt, GetoptError
 
 from opennode.cli.actions import templates
 from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 
 # default values
 operation = 'cli'
@@ -57,7 +58,8 @@ SEE ALSO:
 
 if __name__ == '__main__':
     #Run OpenNode utility
-
+    log = get_logger()
+    log.log_info('Starting opennode-tui')
     try:
         short_opts = ''.join(zip(*operations.values())[0]) + \
                     ':'.join(zip(*parameters.values())[0]) + ':'
@@ -95,3 +97,4 @@ if __name__ == '__main__':
         templates.sync_template(user_input['repo_name'], user_input['template_name'], user_input['storage_pool'])
     elif operation == 'help':
         _help()
+    log.log_info('opennode-tui exiting')
