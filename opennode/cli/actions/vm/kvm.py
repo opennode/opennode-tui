@@ -12,6 +12,7 @@ from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
@@ -127,16 +128,25 @@ def read_ovf_settings(settings, ovf_file):
 
 
 def deploy(settings, storage_pool):
-    print "Copying KVM template disks (this may take a while)..."
+    log = get_logger()
+    msg = "Copying KVM template disks (this may take a while)..."
+    log.info(msg)
+    print msg
     prepare_file_system(settings, storage_pool)
 
-    print "Generating KVM VM configuration..."
+    msg = "Generating KVM VM configuration..."
+    log.info(msg)
+    print msg
     libvirt_conf_dom = generate_libvirt_conf(settings)
 
-    print "Finalyzing KVM template deployment..."
+    msg = "Finalyzing KVM template deployment..."
+    log.info(msg)
+    print msg
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
-    print "Done!"
+    msg = "Done!"
+    log.info(msg)
+    print msg
 
 
 def prepare_file_system(settings, storage_pool):
@@ -379,22 +389,29 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     """
 
     config = get_config()
+    log = get_logger()
     target_dir = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
     if unpack:
         target_dir = path.join(target_dir, 'unpacked')
     # prepare file system
-    print "Preparing disks... (This may take a while)"
+    msg = "Preparing disks... (This may take a while)" 
+    log.info(msg)
+    print msg
     vm_settings["disks"] = _prepare_disks(vm_settings, target_dir)
 
     # generate and save ovf configuration file
-    print "Generating ovf file..."
+    msg = "Generating ovf file..."
+    log.info(msg)
+    print msg
     ovf = _generate_ovf_file(vm_settings)
     ovf_fnm = path.join(target_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
         ovf.writeFile(f, pretty=True, encoding='UTF-8')
 
     # pack container archive and ovf file
-    print "Archiving..."
+    msg = "Archiving..."
+    log.info(msg)
+    print msg
     arch_location = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
     ovf_archive_fnm = path.join(arch_location, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
@@ -409,8 +426,9 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
             os.remove(disk["new_path"])
 
     calculate_hash(ovf_archive_fnm)
-    print "Done! Template saved at %s" % ovf_archive_fnm
-
+    msg = "Done! Template saved at %s" % ovf_archive_fnm
+    log.info(msg)
+    print msg
 
 def _prepare_disks(vm_settings, target_dir):
     """
@@ -448,7 +466,9 @@ def _prepare_disks(vm_settings, target_dir):
 
 
 def get_kvm_disk_capacity_bytes(path):
-    print "Getting capacity of the kvm disk '%s'" % path
+    msg = "Getting capacity of the kvm disk '%s'" % path
+    get_logger().log.info(msg)
+    print msg
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0

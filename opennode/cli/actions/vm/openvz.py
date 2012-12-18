@@ -247,7 +247,7 @@ def setup_scripts(vm_settings, storage_pool):
                 os.chmod(target_script, 0755)
     except:
         msg = "No action scripts in the template."
-        get_logger().log_warn(msg)
+        get_logger().warn(msg)
         print msg
         pass
 
@@ -273,17 +273,17 @@ def deploy(ovf_settings, storage_pool):
 
     log = get_logger()
     msg = "Generating configuration..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     generate_config(ovf_settings)
 
     msg = "Creating OpenVZ container..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     create_container(ovf_settings)
 
     msg = "Deploying..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     nameservers = ovf_settings.get("nameservers", None)
     if not nameservers:
@@ -295,7 +295,7 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
 
     msg = "Setting up action scripts..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     setup_scripts(ovf_settings, storage_pool)
 
@@ -314,7 +314,7 @@ def deploy(ovf_settings, storage_pool):
         execute("vzctl set %s --ioprio %d --save" % (ovf_settings["vm_id"], ovf_settings["ioprio"]))
 
     msg = "Template %s deployed successfully!" % ovf_settings["vm_id"]
-    log.log_info(msg)
+    log.info(msg)
     print msg
 
 
@@ -411,7 +411,7 @@ def save_as_ovf(vm_settings, storage_pool):
     # Pack vm container catalog
     log = get_logger()
     msg = "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
-    log.log_info(msg)
+    log.info(msg)
     print msg
     with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
         for f in os.listdir(ct_source_dir):
@@ -419,7 +419,7 @@ def save_as_ovf(vm_settings, storage_pool):
 
     # Archive action scripts if they are present
     msg = "Adding action scripts..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
     with closing(tarfile.open(ct_scripts_fnm, "w:gz")) as tar:
@@ -430,7 +430,7 @@ def save_as_ovf(vm_settings, storage_pool):
 
     # generate and save ovf configuration file
     msg = "Generating ovf file..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
     ovf_fnm = path.join(unpacked_dir, "%s.ovf" % vm_settings["template_name"])
@@ -439,7 +439,7 @@ def save_as_ovf(vm_settings, storage_pool):
 
     # pack container archive and ovf file
     msg = "Archiving..."
-    log.log_info(msg)
+    log.info(msg)
     print msg
     ovf_archive_fnm = path.join(dest_dir, "%s.tar" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
@@ -701,14 +701,14 @@ def shutdown_vm(uuid):
     log = get_logger()
     try:
         msg = execute("vzctl stop %s" % ctid)
-        log.log_info(msg)
+        log.info(msg)
         print msg
     except CommandException as e:
         if e.code == 13056:  # sometimes umount fails
             for i in range(5):
                 try:
                     msg = execute("vzctl umount %s" % ctid)
-                    log.log_info(msg)
+                    log.info(msg)
                     print log
                 except CommandException:
                     import time
@@ -735,9 +735,9 @@ def migrate(uid, target_host, live=False):
         else:
             raise ce
     msg = "Initiating migration to %s..." % target_host
-    get_logger().log_info(msg)
+    get_logger().info(msg)
     print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
-        get_logger().log_info(line)
+        get_logger().info(line)
         print line
