@@ -39,7 +39,7 @@ class DownloadMonitor():
         self.screen.refresh()
 
 
-def create_select_checkbox(screen, title, text, items, buttons=('Ok', 'Cancel'),
+def create_select_checkbox(screen, title, text, items, buttons=(('Cancel', 'cancel', 'F12'), 'Ok'),
             width=40, scroll=0, height=-1, help=None):
     """Helper class for displaying a windows with a checkbox list.
     On exit, list of selected items is returned"""
@@ -98,7 +98,7 @@ def display_create_template(screen, title, vm_type, templates, help=None):
 
 
 def display_selection(screen, title, list_of_items, subtitle, default = None,
-                      buttons = ['Ok', 'Back']):
+                      buttons = [('Back', 'back', 'F12'), 'Ok']):
     """Display a list of items, return selected one or None, if nothing was selected"""
     #if len(list_of_items) == 1:
         # shortcut if there's only one item for choosing
@@ -112,7 +112,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
         scroll = 1 if len(list_of_items) > height else 0
         action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items,
                             buttons, scroll = scroll, height = height, default = default)
-        if buttons == ['Ok', 'Back']:
+        if buttons == [('Back', 'back', 'F12'), 'Ok']:
             if action != 'back':
                 return selection
         else:

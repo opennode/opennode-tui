@@ -37,7 +37,7 @@ class OpenNodeTUI(object):
                  }
 
         result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI', \
-                [('Exit', 'exit'),
+                [('Exit', 'exit', 'F12'),
                 ('Console', 'console'),
                 ('Create VM', 'createvm'),
                 ('Manage', 'manage'),
@@ -45,7 +45,6 @@ class OpenNodeTUI(object):
                 ('OMS (beta)', 'oms')
                 ],
                 42)
-
         return logic[result]()
 
     def display_manage(self):
@@ -57,7 +56,7 @@ class OpenNodeTUI(object):
                  }
 
         result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today?',
-                [('Back', 'back'),
+                [('Back', 'back', 'F12'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
                 ('VMs', 'managevm'),
@@ -76,8 +75,8 @@ class OpenNodeTUI(object):
                }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a management console to use:',
-                                    [('KVM', 'kvm'), ('OpenVZ', 'ovz'),
-                                     ('Main menu', 'main')])
+                                    [('Back', 'main', 'F12'),
+                                     ('KVM', 'kvm'), ('OpenVZ', 'ovz')])
         if result != 'main':
             self.screen.finish()
             logic[result]()
@@ -94,10 +93,10 @@ class OpenNodeTUI(object):
                 'shared': self.display_storge_shared,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage pool operation',
-                  [('Select default', 'default'),
+                  [('Back', 'back', 'F12'),
+                   ('Select default', 'default'),
                    ('Add', 'add'),
-                   ('Delete', 'delete'),
-                   ('Back', 'back')])
+                   ('Delete', 'delete')])
         logic[result]()
 
     def display_storage_default(self):
@@ -108,15 +107,15 @@ class OpenNodeTUI(object):
 
     def display_storge_shared(self):
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
-                  [('List bind mounts', 'default'), ('Add a bind mount', 'add'),
-                    ('Delete a bind mount', 'delete'), ('Main menu', 'main')])
+                  [('Back', 'main', 'F12'), ('List bind mounts', 'default'),
+                   ('Add a bind mount', 'add'), ('Delete a bind mount', 'delete')])
 
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
         command, _ = EntryWindow(self.screen, TITLE,
                                  'Please, enter a new storage pool name',
                                  [('Storage pool', storage_entry)],
-                                 buttons=[('Add', 'add'), ('Back', 'storage')])
+                                 buttons=[('Back', 'storage', 'F12'), ('Add', 'add')])
         if command == 'storage':
             return self.display_storage()
         elif command == 'add':
@@ -132,8 +131,8 @@ class OpenNodeTUI(object):
         if pool is not None:
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         'Are you sure you want to delete "%s"?' % pool,
-                                        [('Yes, delete the pool and all of its contents', 'yes'),
-                                         ('No, not today.', 'no')])
+                                        [('No, not today.', 'no', 'F12'),
+                                         ('Yes, delete the pool and all of its contents', 'yes')])
             if result == 'yes':
                 # sorry, pool, time to go
                 try:
@@ -149,10 +148,10 @@ class OpenNodeTUI(object):
                 'bridge': self.display_network_bridge,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select network operation',
-                  [('Bridge management', 'bridge'),
+                  [('Back', 'main', 'F12'),
                    #('Nameserver configuration', 'nameserver'),
                    #('Hostname modification', 'hostname'),
-                    ('Main menu', 'main')])
+                    ('Bridge management', 'bridge')])
         logic[result]()
 
     def display_network_bridge(self):
@@ -161,15 +160,15 @@ class OpenNodeTUI(object):
                 'del': self.display_network_bridge_delete,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bridge operation',
-                  [('Add new bridge', 'add'),
+                  [('Main menu', 'main', 'F12'),
                    ('Delete bridge', 'del'),
-                   ('Main menu', 'main')])
+                   ('Add new bridge', 'add')])
         logic[result]()
 
     def display_network_bridge_add_update(self, bridge=None):
         action, bridge = EntryWindow(self.screen, TITLE, 'Add new bridge',
                 ['Name', 'Hello', 'FD', 'STP'],
-                buttons=['Create', 'Back'])
+                buttons=[('Back', 'back', 'F12'), 'Create'])
         if action == 'create':
             actions.network.add_bridge(bridge[0])
             actions.network.configure_bridge(bridge[0], bridge[1], bridge[2], bridge[3])
@@ -185,7 +184,7 @@ class OpenNodeTUI(object):
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         'Are you sure you want to delete "%s"?' %
                                         chosen_bridge,
-                        [('Yes, delete the bridge.', 'yes'), ('No, not today.', 'no')])
+                        [('No, not today.', 'no', 'F12'), ('Yes, delete the bridge.', 'yes')])
             if result == 'yes':
                 # sorry, pool, time to go
                 actions.network.delete_bridge(chosen_bridge)
@@ -210,8 +209,8 @@ class OpenNodeTUI(object):
                  'install': self.display_oms_install,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE, 'OpenNode Management Service (OMS) operations',
-            [('Register with OMS', 'register'), ('Download OMS image', 'download'),
-             ('Install OMS image', 'install'), ('Main menu', 'main')])
+            [('Back', 'main', 'F12'), ('Download OMS image', 'download'),
+             ('Install OMS image', 'install'), ('Register with OMS', 'register')])
         logic[result]()
 
     def display_oms_register(self, msg='Please, enter OMS address and port'):
@@ -221,8 +220,8 @@ class OpenNodeTUI(object):
         command, oms_address = EntryWindow(self.screen, TITLE, msg,
                                 [('OMS server address', oms_entry_server),
                                  ('OMS server port', oms_entry_port)],
-                                buttons=[('Register', 'register'),
-                                         ('Back', 'oms_menu')])
+                                buttons=[('Back', 'oms_menu', 'F12'),
+                                         ('Register', 'register')])
         if command == 'oms_menu':
             return self.display_oms()
         elif command == 'register':
@@ -240,7 +239,7 @@ class OpenNodeTUI(object):
     def display_oms_download(self):
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Would you like to download OMS template?',
-                                    [('Yes', 'download'), ('No', 'main')])
+                                    [('No', 'main', 'F12'), ('Yes', 'download')])
         if result == 'download':
             self.screen.finish()
             actions.templates.sync_oms_template()
@@ -267,9 +266,9 @@ class OpenNodeTUI(object):
                 }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a template action to perform',
-                                    [('Manage template cache', 'manage'),
-                                     ('Create a new template from VM', 'create'),
-                                     ('Back', 'back')])
+                                    [('Back', 'back', 'F12'),
+                                     ('Create', 'create'),
+                                     ('Download', 'manage')])
         logic[result]()
 
     def display_template_manage(self):
@@ -444,7 +443,7 @@ class OpenNodeTUI(object):
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                 "Pick VM for modification:",
-                                buttons=['Back', 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
+                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
         if res is None:
             return self.display_manage()
         else:
@@ -496,8 +495,8 @@ class OpenNodeTUI(object):
             else:
                 result = ButtonChoiceWindow(self.screen, TITLE,
                                         "Are you sure you want to delete VM '%s'" % available_vms[vm_id]['name'],
-                                        [('Yes, do that.', 'yes'),
-                                         ('No, not today.', 'no')])
+                                        [('No, not today.', 'no', 'F12'),
+                                         ('Yes, do that.', 'yes')])
 
                 if result == 'yes':
                     self.screen.finish()
@@ -625,6 +624,8 @@ class OpenNodeTUI(object):
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
+        self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> back")
+
         try:
             self.assure_env_sanity()
             self.display_main_screen()
