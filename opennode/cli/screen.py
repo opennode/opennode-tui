@@ -56,7 +56,7 @@ class OpenNodeTUI(object):
                  }
 
         result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today?',
-                [('Back', 'back', 'F12'),
+                [('Menu', 'back', 'F12'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
                 ('VMs', 'managevm'),
@@ -75,12 +75,13 @@ class OpenNodeTUI(object):
                }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a management console to use:',
-                                    [('Back', 'main', 'F12'),
+                                    [('Menu', 'main', 'F12'),
                                      ('KVM', 'kvm'), ('OpenVZ', 'ovz')])
         if result != 'main':
             self.screen.finish()
             logic[result]()
             self.screen = SnackScreen()
+            self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> Back / exit ")
             return self.display_console_menu()
         else:
             return self.display_main_screen()
@@ -209,7 +210,7 @@ class OpenNodeTUI(object):
                  'install': self.display_oms_install,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE, 'OpenNode Management Service (OMS) operations',
-            [('Back', 'main', 'F12'), ('Download OMS image', 'download'),
+            [('Menu', 'main', 'F12'), ('Download OMS image', 'download'),
              ('Install OMS image', 'install'), ('Register with OMS', 'register')])
         logic[result]()
 
@@ -624,7 +625,7 @@ class OpenNodeTUI(object):
     def run(self):
         """Main loop of the TUI"""
         self.screen = SnackScreen()
-        self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> back")
+        self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> Back / exit ")
 
         try:
             self.assure_env_sanity()

@@ -112,7 +112,7 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
         scroll = 1 if len(list_of_items) > height else 0
         action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items,
                             buttons, scroll = scroll, height = height, default = default)
-        if buttons == [('Back', 'back', 'F12'), 'Ok']:
+        if buttons == [('Back', 'back', 'F12'), 'Ok'] or buttons == [('Menu', 'back', 'F12'), 'Ok']:
             if action != 'back':
                 return selection
         else:
@@ -140,7 +140,8 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
 def display_vm_type_select(screen, title):
     """Display selection menu for the template type"""
     types = [actions.vm.backend_hname(t) for t in actions.vm.backends()]
-    return display_selection(screen, title, types, 'Select a VM type to use:')
+    return display_selection(screen, title, types, 'Select a VM type to use:',
+                             buttons=[('Menu', 'back', 'F12'), 'Ok'])
 
 
 def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
