@@ -4,6 +4,7 @@ import re
 from xml.dom.minidom import parseString
 
 from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 from opennode.cli.actions.utils import del_folder, execute, mkdir_p, CommandException
 
 
@@ -19,7 +20,9 @@ def list_pools():
             p = re.sub("\s+", " ", p.strip())
             pool_params.append(p.split(' '))
     except Exception, e:
-        print "Unable to list storage pools: %s" % e
+        msg = "Unable to list storage pools: %s" % e
+        get_logger().error(msg)
+        print msg
     return pool_params
 
 
@@ -90,7 +93,9 @@ def delete_pool(pool_name):
 def add_pool(pool_name, careful=True):
     """Add a new pool_name"""
     if careful and filter(lambda p: p[0] == pool_name, list_pools()):
-        print "Pool '%s' already exists." %pool_name
+        msg = "Pool '%s' already exists." %pool_name
+        get_logger().warn(msg)
+        print msg
         return
     try:
         pool_name = re.sub(" " , "_", pool_name) # safety measure
@@ -102,7 +107,9 @@ def add_pool(pool_name, careful=True):
         execute("virsh 'pool-start %s'" %pool_name)
         execute("virsh 'pool-autostart %s'" %pool_name)
     except Exception, e:
-        print "Failed to create a new pool: %s" %e
+        msg = "Failed to create a new pool: %s" %e
+        get_logger().error(msg)
+        print msg
 
 
 def prepare_storage_pool(storage_pool=get_default_pool()):

@@ -11,7 +11,7 @@ def get_logger(ext_log = None, level = 0):
 
 
 class Logger():
-    """ Signleton logging class """
+    """ Wrapper around standard logger, configured for our use case """
     logger = None
     def __init__(self, logger = None, level=0):
         if logger is None:

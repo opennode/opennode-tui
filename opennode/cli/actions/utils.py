@@ -12,12 +12,15 @@ import cPickle as pickle
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, RotatingMarker
 
 from openvz_exit_status import OpenVZ_EXIT_STATUS
+from opennode.cli.log import get_logger
+
 
 class CommandException(Exception):
 
     def __init__(self, msg, code=None):
         super(CommandException, self).__init__(msg)
         self.code = code
+        get_logger().error('Command exception: %s', msg)
 
 
 class TemplateException(Exception):
@@ -57,6 +60,7 @@ def execute(cmd):
     non-0 return code. vzctl gets special treatment.
     TODO: add other vz family commmands
     """
+    get_logger().debug('execute cmd: %s', cmd)
     status, output = commands.getstatusoutput("LC_ALL=C %s" % cmd)
     if status != 0:
         if cmd.startswith('vzctl'):
@@ -64,10 +68,12 @@ def execute(cmd):
                                    % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]], output), status>>8)
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
                                % (cmd, status, output), status)
+    get_logger().debug('execute returned: %s', output)
     return output
 
 
 def execute2(cmd):
+    get_logger().debug('execute2 cmd: %s', cmd)
     args = shlex.split(cmd)
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     while(True):
