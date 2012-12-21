@@ -17,8 +17,8 @@ from opennode.cli.log import get_logger
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import oms
-from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes, \
-                        calculate_hash, CommandException, TemplateException, test_passwordless_ssh, execute2
+from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
+                                        CommandException, TemplateException, test_passwordless_ssh, execute2)
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 import shutil
@@ -289,7 +289,8 @@ def deploy(ovf_settings, storage_pool):
     if not nameservers:
         nameservers = [ovf_settings["nameserver"]]
 
-    execute("vzctl set %s %s --save" % (ovf_settings["vm_id"], ' '.join('--nameserver %s' % i for i in nameservers)))
+    execute("vzctl set %s %s --save" % (ovf_settings["vm_id"],
+                                        ' '.join('--nameserver %s' % i for i in nameservers)))
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
@@ -730,10 +731,8 @@ def migrate(uid, target_host, live=False):
         execute("ssh %s vzlist %s" % (target_host, ctid))
         raise CommandException("Target host '%s' has an already defined CTID '%s'" % (target_host, ctid))
     except CommandException as ce:
-        if ce.code == 256:
-            pass
-        else:
-            raise ce
+        if ce.code != 256:
+            raise
     msg = "Initiating migration to %s..." % target_host
     get_logger().info(msg)
     print msg

@@ -36,6 +36,7 @@ def vm_method(fun):
             if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
                 args = args[:-1]
             # try without keyword arguments when function fails with typeerror due to unexpected kwargs
+            # XXX: it's a potential performance issue!
             try:
                 return fun(conn, *args, **kwargs)
             except TypeError:
@@ -312,7 +313,7 @@ def deploy_vm(conn, vm_parameters):
     try:
         _deploy_vm(vm_parameters)
     except Exception as e:
-        raise e
+        raise
     return "OK"
 
 
@@ -342,7 +343,7 @@ def _vm_console_vnc(conn, uuid):
     element = ([i for i in dom_dom(conn, uuid).findall('.//graphics') if \
                     i.attrib.get('type', None) == 'vnc'] or [None])[0]
     # elementtree element without children is treated as false
-    if element != None:
+    if element is not None:
         port = element.attrib.get('port', None)
         if port and port != '-1':
             return dict(type='vnc', port=port)
@@ -354,7 +355,7 @@ def _vm_console_pty(conn, uuid):
     # python 2.6 etree library doesn't support xpath with predicate
     element = ([i for i in dom_dom(conn, uuid).findall('.//console') if \
                     i.attrib.get('type', None) == 'pty'] or [None])[0]
-    if element != None:
+    if element is not None:
         pty = element.attrib.get('tty', None)
         if pty:
             return dict(type='pty', pty=pty)
@@ -370,14 +371,14 @@ def _vm_interfaces(conn, uuid):
 
     def interface(idx, i):
         type = i.attrib.get('type')
-        if type == 'network' and (i.find('forward') == None or \
+        if type == 'network' and (i.find('forward') is None or \
                         i.find('forward').attrib.get('mode', None) == 'nat'):
             type = 'nat'
 
         mac = i.find('mac').attrib.get('address', None)
 
         alias = i.find('alias')
-        if alias == None:
+        if alias is None:
             alias = 'eth%s' % idx
         else:
             alias = alias.attrib.get('name', None)
@@ -385,7 +386,7 @@ def _vm_interfaces(conn, uuid):
         res = dict(mac=mac, name=alias, type=type)
 
         ip = i.find('ip')
-        if ip != None:
+        if ip is not None:
             res['ipv4_address'] = ip.attrib.get('address', None)
             if not '/' in res['ipv4_address']:
                 res['ipv4_address'] += '/24'
@@ -408,7 +409,8 @@ def metrics(conn):
 
     def vm_metrics(vm):
         def cpu_usage():
-            time_list_now = map(int, execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
+            time_list_now = map(int,
+                                execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
             time_list_was = roll_data('/tmp/func-cpu-%s' % vm.ID(), time_list_now, [0] * 6)
             deltas = [yi - xi for yi, xi in zip(time_list_now, time_list_was)]
             try:
@@ -421,11 +423,13 @@ def metrics(conn):
             return float(execute("vzctl exec %s \"cat /proc/loadavg | awk '{print \$1}'\"" % vm.ID()))
 
         def memory_usage():
-            return float(execute("vzctl exec %s \"free | tail -n 2 | head -n 1 |awk '{print \$3 / 1024}'\"" % vm.ID()))
+            return float(execute("vzctl exec %s \"free | tail -n 2 | head -n 1 |"
+                                 " awk '{print \$3 / 1024}'\"" % vm.ID()))
 
         def network_usage():
             def get_netstats():
-                return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 | awk -F: '{print \$2}' | awk '{print \$1, \$9}'\""
+                return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 | "
+                                                "awk -F: '{print \$2}' | awk '{print \$1, \$9}'\""
                                                 % vm.ID()).split(' ')]
 
             t2, (rx2, tx2) = time.time(), get_netstats()
@@ -435,7 +439,8 @@ def metrics(conn):
             return ((rx2 - rx1) / window, (tx2 - tx1) / window)
 
         def diskspace_usage():
-            return float(execute("vzctl exec %s \"df -P |grep ' /\$' | head -n 1 | awk '{print \$3/1024}'\"" % vm.ID()))
+            return float(execute("vzctl exec %s \"df -P | grep ' /\$' | head -n 1 | "
+                                 "awk '{print \$3/1024}'\"" % vm.ID()))
 
         return dict(cpu_usage=cpu_usage(),
                     load=load(),
@@ -443,7 +448,8 @@ def metrics(conn):
                     network_usage=max(network_usage()),
                     diskspace_usage=diskspace_usage())
     try:
-        return dict((get_uuid(vm), vm_metrics(vm)) for vm in (conn.lookupByID(i) for i in conn.listDomainsID()))
+        return dict((get_uuid(vm), vm_metrics(vm)) for vm in
+                    (conn.lookupByID(i) for i in conn.listDomainsID()))
     except libvirt.libvirtError:
         return {}
 
@@ -489,7 +495,7 @@ def _deploy_vm(vm_parameters, logger=None):
     if errors:
         if logger:
             logger("Got %s" % (errors,))
-        raise  Exception("got errors %s" % (errors,))
+        raise Exception("got errors %s" % (errors,))
 
     vm.deploy(settings, storage_pool)
 
@@ -525,8 +531,7 @@ def update_vm(conn, uuid, *args, **kwargs):
 
     dom = conn.lookupByUUIDString(uuid)
 
-    action_map = {'num_cores': dom.setVcpus,
-                  'memory': dom.setMemory}
+    action_map = {'num_cores': dom.setVcpus, 'memory': dom.setMemory}
 
     # XXX: libvirt wants memory in KiB
     if 'memory' in settings:
@@ -540,3 +545,12 @@ def update_vm(conn, uuid, *args, **kwargs):
 
     for key, value in settings.iteritems():
         action_map.get(key, unknown_param)(value)
+
+@vm_method
+def migrate(conn, uuid, target_host, *args, **kwargs):
+    """ Migrate VM to another host """
+    if conn.getType() == 'OpenVZ':
+        openvz.migrate(uuid, target_host, **kwargs)
+        return
+
+    raise NotImplemented
