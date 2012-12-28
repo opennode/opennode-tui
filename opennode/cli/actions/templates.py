@@ -294,4 +294,4 @@ def sync_templates_list(sync_tasks_fnm=None):
 
 def is_syncing():
     """Return true if syncing in progress"""
-    return int(execute("screen -ls |grep OPENNODE-SYNC| wc -l")) == 1
+    return int(execute("screen -ls 2>/dev/null | grep OPENNODE-SYNC| wc -l")) == 1
