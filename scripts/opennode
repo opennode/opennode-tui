@@ -9,6 +9,7 @@ from opennode.cli.log import get_logger
 
 # default values
 operation = 'cli'
+log_level = None
 template_type = 'openvz'
 template_name = object()
 storage_pool = get_config().getstring('general', 'default-storage-pool')
@@ -30,7 +31,9 @@ parameters = {'template_type': ('t', 'template-type',
               'storage_pool': ('p', 'storage-pool',
                     'Set storage pool.'),
               'repo_name': ('r', 'repo-name',
-                    'Set repository name.')}
+                    'Set repository name.'),
+              'log_verbosity': ('v', 'log-verbosity',
+                    'Set log verbosity level. Default is INFO, supported are DEBUG, INFO, WARN')}
 
 
 def _help():
@@ -58,8 +61,6 @@ SEE ALSO:
 
 if __name__ == '__main__':
     #Run OpenNode utility
-    log = get_logger()
-    log.info('Starting opennode-tui')
     try:
         short_opts = ''.join(zip(*operations.values())[0]) + \
                     ':'.join(zip(*parameters.values())[0]) + ':'
@@ -74,6 +75,10 @@ if __name__ == '__main__':
                   'storage_pool': storage_pool}
 
     for o, a in options:
+        if o.lstrip('-') == 'v':
+            if a.upper() in ('INFO', 'DEBUG', 'WARN', 'WARNING'):
+                log_level = a.upper()
+            continue
         for op in operations.keys():
             if o.lstrip('-') in operations[op]:
                 operation = op
@@ -81,6 +86,9 @@ if __name__ == '__main__':
         for par in parameters.keys():
             if o.lstrip('-') in parameters[par]:
                 user_input[par] = a
+
+    log = get_logger(log_level)
+    log.info('Starting opennode-tui')
 
     if operation == 'cli':
         from opennode.cli import screen
