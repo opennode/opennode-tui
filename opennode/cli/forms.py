@@ -36,7 +36,7 @@ class KvmForm(Form):
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname])
 
     def display(self):
-        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        button_save, button_exit = Button("Create VM"), Button("Main menu")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
@@ -88,7 +88,7 @@ class OpenvzForm(Form):
         self.settings = settings  # save passed parameters for convenience
 
     def display(self):
-        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        button_exit, button_save = Button("Back"), Button("Create VM")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
@@ -118,7 +118,7 @@ class OpenvzForm(Form):
             (Textbox(20, 2, "OS Template:", 0, 0), self.ostemplate),
             (self.startvm, self.onboot),
             separator,
-            (button_save, button_exit)
+            (button_exit, button_save)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
@@ -155,7 +155,7 @@ class OpenvzTemplateForm(Form):
                                             self.disk, self.ostemplate])
 
     def display(self):
-        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        button_save, button_exit = Button("Create VM"), Button("Back")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
@@ -170,7 +170,7 @@ class OpenvzTemplateForm(Form):
             separator,
             (Textbox(20, 1, "OS template:", 0, 0), self.ostemplate),
             separator,
-            (button_save, button_exit)
+            (button_exit, button_save)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
@@ -202,7 +202,7 @@ class KvmTemplateForm(Form):
                                             self.vcpu, self.vcpu_min, self.vcpu_max])
 
     def display(self):
-        button_save, button_exit = Button("Save VM settings"), Button("Main menu")
+        button_save, button_exit = Button("Create"), Button("Back")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
@@ -213,7 +213,7 @@ class KvmTemplateForm(Form):
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
             separator,
-            (button_save, button_exit)
+            (button_exit, button_save)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
@@ -279,7 +279,7 @@ class OpenvzModificationForm(Form):
             separator,
             (Textbox(20, 1, "Boot order:", 0, 0), self.bootorder),
             separator,
-            (button_save, button_exit)
+            (button_exit, button_save)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
