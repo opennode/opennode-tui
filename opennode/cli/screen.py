@@ -421,7 +421,7 @@ class OpenNodeTUI(object):
             self.screen = SnackScreen()
             display_info(self.screen, TITLE, err[0], width=err[1], height=err[2])
         except CommandException as e:
-            errmsg = e
+            errmsg = str(e)
             if e.code is not None:
                 errmsg = errmsg + ' - Error code ' + str(e.code)
             err = reflow(errmsg, 50)

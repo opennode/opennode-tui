@@ -728,7 +728,7 @@ def migrate(uid, target_host, live=False):
     ctid = get_ctid_by_uuid(uid)
     try:
         execute("ssh %s vzlist %s" % (target_host, ctid))
-        raise CommandException("Target host '%s' already has a defined CTID '%s'" % (target_host, ctid))
+        raise CommandException("Target host '%s' has an already defined CTID '%s'" % (target_host, ctid))
     except CommandException as ce:
         if ce.code == 256:
             pass
