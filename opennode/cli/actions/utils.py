@@ -171,11 +171,24 @@ class BasicURLOpener(urllib.FancyURLopener):
 
 def download(remote, local):
     """Download a remote file to a local file, using optional username/password
-    for basic HTTP authentication"""
+    for basic HTTP authentication. Using cURL as external dependency"""
+    msg = "Getting remote file %s" % remote
+    get_logger().info(msg)
+    print msg
     url = urlparse.urlsplit(remote)
-    opener = BasicURLOpener(url.username, url.password)
-    download_monitor = ConsoleProgressBar(url.path.split('/')[-1])
-    opener.retrieve(remote, local, download_monitor.download_hook)
+    if url.username:
+        if 'http_proxy' in os.environ:
+            if url.password:
+                remote = remote.replace('%s:%s@' % (url.username, url.password), '')
+                userauth = '%s:%s' % (url.username, url.password)
+            else:
+                remote = remote.replace('%s@' % url.username, '')
+                userauth = url.username
+            subprocess.call(['curl', '--anyauth', 
+                             '--user', userauth,
+                             '-C', '-', '-o', '%s' % local, '%s' % remote])
+    else:
+        subprocess.call(['curl', '-C', '-', '-o', '%s' % local, '%s' % remote])
 
 
 def urlopen(remote):
