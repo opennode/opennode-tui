@@ -91,6 +91,8 @@ if __name__ == '__main__':
     log.info('Starting opennode-tui')
 
     if operation == 'cli':
+        from opennode.cli.actions.vm import autodetected_backends
+        autodetected_backends()
         from opennode.cli import screen
         tui = screen.OpenNodeTUI()
         tui.run()
