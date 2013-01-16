@@ -19,6 +19,10 @@ from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordles
 
 from libvirt import libvirtError
 
+from opennode.cli.log import get_logger
+
+from snack import GridFormHelp, Entry, TextboxReflowed, ButtonBar
+
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
 
@@ -264,11 +268,13 @@ class OpenNodeTUI(object):
         logic = {'back': self.display_manage,
                  'manage': self.display_template_manage,
                  'create': self.display_template_create,
+                 'rename': self.display_template_rename,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a template action to perform',
                                     [('Back', 'back', 'F12'),
                                      ('Create', 'create'),
+                                     ('Rename', 'rename'),
                                      ('Download', 'manage')])
         logic[result]()
 
@@ -369,6 +375,47 @@ class OpenNodeTUI(object):
         vm.save_as_ovf(template_settings, storage_pool)
         self.screen = SnackScreen()
         return self.display_templates()
+
+
+    def display_template_rename(self):
+        self.screen.finish()
+        self.screen = SnackScreen()
+        template_type = display_vm_type_select(self.screen, TITLE)
+        if template_type is None:
+            return self.display_templates()
+        template = self.display_select_template_from_storage(actions.storage.get_default_pool(),
+                                                        template_type)
+        if template is None:
+            return self.display_templates()
+        self.screen.finish()
+        self.screen = SnackScreen()
+
+        # Rename form, maybe refactor to cli.helpers?
+        buttons=(('Cancel', 'cancel', 'F12'), 'Ok')
+        t = TextboxReflowed(40, 'Rename template %s' % template)
+        bb = ButtonBar(self.screen, buttons)
+        nn = Entry(30, template)
+        g = GridFormHelp(self.screen, 'Rename', help, 2, 4)
+        g.add(t, 0, 0)
+        g.add(nn, 0, 1, padding = (0, 1, 0, 1))
+        g.add(bb, 0, 2, growx = 1)
+        rc = g.runOnce()
+        if bb.buttonPressed(rc) is not 'ok':
+            return self.display_templates()
+
+        # Protect against directory traversing
+        i = 0
+        s = nn.value()
+        while (not s[i].isalnum()):
+            i += 1
+        s = s[i:].replace('/', '_')
+        if s == template:
+            return self.display_templates()
+
+        # ovf_path = ''
+
+        return self.display_templates()
+
 
     def _display_custom_form(self, form, template_settings):
         while 1:
