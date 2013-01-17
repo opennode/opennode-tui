@@ -118,7 +118,7 @@ class OpenvzForm(Form):
             (Textbox(20, 2, "OS Template:", 0, 0), self.ostemplate),
             (self.startvm, self.onboot),
             separator,
-            (button_exit, button_save)
+            (button_save, button_exit)
         ]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
