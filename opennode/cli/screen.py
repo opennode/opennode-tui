@@ -7,6 +7,7 @@ from uuid import uuid4
 from ovf.OvfFile import OvfFile
 
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
+from snack import GridFormHelp, TextboxReflowed, ButtonBar
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
                                   display_selection, display_vm_type_select, display_info)
@@ -19,9 +20,6 @@ from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordles
 
 from libvirt import libvirtError
 
-from opennode.cli.log import get_logger
-
-from snack import GridFormHelp, Entry, TextboxReflowed, ButtonBar
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -378,8 +376,6 @@ class OpenNodeTUI(object):
 
 
     def display_template_rename(self):
-        self.screen.finish()
-        self.screen = SnackScreen()
         template_type = display_vm_type_select(self.screen, TITLE)
         if template_type is None:
             return self.display_templates()
@@ -387,32 +383,36 @@ class OpenNodeTUI(object):
                                                         template_type)
         if template is None:
             return self.display_templates()
-        self.screen.finish()
-        self.screen = SnackScreen()
 
         # Rename form, maybe refactor to cli.helpers?
         buttons=(('Cancel', 'cancel', 'F12'), 'Ok')
         t = TextboxReflowed(40, 'Rename template %s' % template)
         bb = ButtonBar(self.screen, buttons)
-        nn = Entry(30, template)
+        name_entry = Entry(30, template)
         g = GridFormHelp(self.screen, 'Rename', help, 2, 4)
         g.add(t, 0, 0)
-        g.add(nn, 0, 1, padding = (0, 1, 0, 1))
+        g.add(name_entry, 0, 1, padding = (0, 1, 0, 1))
         g.add(bb, 0, 2, growx = 1)
-        rc = g.runOnce()
-        if bb.buttonPressed(rc) is not 'ok':
+        rc = g.runOnce() 
+
+        if bb.buttonPressed(rc) == 'cancel':
             return self.display_templates()
 
         # Protect against directory traversing
-        i = 0
-        s = nn.value()
-        while (not s[i].isalnum()):
-            i += 1
-        s = s[i:].replace('/', '_')
-        if s == template:
-            return self.display_templates()
+        # Take basename form new name and run with that
+        new_name = os.path.basename(name_entry.value())
 
-        # ovf_path = ''
+        ovf_file_path = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                                     get_config().getstring('general', 'default-storage-pool'),
+                                     template_type,
+                                     'unpacked',
+                                     template + '.ovf')
+        try:
+            ovf_file = OvfFile(ovf_file_path)
+        except IOError:
+            # OVF template is not unpacked...
+            # 
+            return self.display_templates()
 
         return self.display_templates()
 
