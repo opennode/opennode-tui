@@ -54,20 +54,5 @@ def register_oms_server(server, port):
 def configure_oms_vm(ctid, ipaddr):
     """Adjust configuration of the VM hosting OMS"""
     base = "/vz/private/%s/" % ctid
-    # set a hostname to be used as a binding interface
-    minion_conf_file = get_config().getstring('general', 'salt-minion-conf')
-    minion_conf_file = os.path.join((base, minion_conf_file))
-
-    if not os.path.exists(minion_conf_file):
-        minion_conf_file = os.path.join((base, '/etc/salt/minion'))
-        if not os.path.exists(minion_conf_file):
-            raise Exception('minion-conf refers to non-existing path')
-
-    with open(minion_conf_file, 'r') as minion_conf:
-        minion_config = yaml.safe_load(minion_conf.read())
-        if minion_config is None:
-            minion_config = {}
-        minion_config['interface'] = ipaddr
-
-    with open(minion_conf_file, 'w') as conf:
-        yaml.dump(minion_config, conf, default_flow_style=False)
+    # this hook is not needed at the moment after migration from Func
+    # however, keeping it here for the future use
