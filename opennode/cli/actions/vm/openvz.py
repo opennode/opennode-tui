@@ -454,6 +454,8 @@ def save_as_ovf(vm_settings, storage_pool):
 
 def _generate_ovf_file(vm_settings, ct_archive_fnm):
     ovf = OvfFile()
+    # Workaround for broken OvfFile.__init__
+    ovf.files = []
     ovf.createEnvelope()
     instanceId = 0
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"],
