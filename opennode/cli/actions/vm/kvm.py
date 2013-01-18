@@ -487,6 +487,8 @@ def _generate_ovf_file(vm_settings):
     @rtype: DOM Document
     """
     ovf = OvfFile()
+    # Workaround for broken OvfFile.__init__
+    ovf.files = []
     ovf.createEnvelope()
     ovf.envelope.setAttribute("xmlns:opennodens", "http://opennodecloud.com/schema/ovf/opennodens/1")
 
