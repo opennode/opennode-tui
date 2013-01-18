@@ -86,7 +86,7 @@ def execute2(cmd):
 
 def calculate_hash(target_file):
     """Hash contents of a file and write hashes out to a file"""
-    execute("pfff -k 6996807 -B %s > %s.pfff" % (target_file, target_file))
+    execute("pfff -k 6996807 -B \"%s\" > \"%s\".pfff" % (target_file, target_file))
 
 
 def execute_in_screen(name, cmd):

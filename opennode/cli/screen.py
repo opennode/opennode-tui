@@ -2,6 +2,8 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
+import shutil
+import tarfile
 from uuid import uuid4
 
 from ovf.OvfFile import OvfFile
@@ -16,10 +18,10 @@ from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
-                                        TemplateException, CommandException)
+                                        TemplateException, CommandException, calculate_hash)
 
 from libvirt import libvirtError
-
+from opennode.cli.log import get_logger
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -401,12 +403,11 @@ class OpenNodeTUI(object):
         # Protect against directory traversing
         # Take basename form new name and run with that
         new_name = os.path.basename(name_entry.value())
-
-        ovf_file_path = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+        unpacked_base = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                      get_config().getstring('general', 'default-storage-pool'),
                                      template_type,
-                                     'unpacked',
-                                     template + '.ovf')
+                                     'unpacked')
+        ovf_file_path = os.path.join(unpacked_base, template + '.ovf')
         try:
             ovf_file = OvfFile(ovf_file_path)
         except IOError:
@@ -414,6 +415,40 @@ class OpenNodeTUI(object):
             # 
             return self.display_templates()
 
+        # Rename items inside .ovf file
+        VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
+        VirtualSystem[0].attributes['ovf:id'].value = new_name
+        References = ovf_file.document.getElementsByTagName('References')
+        for ref_node in References:
+            file_nodes = ref_node.getElementsByTagName('File')
+            for item in file_nodes:
+                if item.attributes['ovf:href'].value == template + '.tar.gz':
+                    item.attributes['ovf:href'].value = new_name + '.tar.gz'
+        new_ovf_fn = os.path.join(unpacked_base, new_name + '.ovf')
+        with open(new_ovf_fn, 'wt') as f:
+            ovf_file.writeFile(f)
+
+        # Actual rename
+        shutil.copy(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
+                    os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
+        shutil.copy(os.path.join(unpacked_base, template + '.tar.gz'),
+                    os.path.join(unpacked_base, new_name + '.tar.gz'))
+        tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                                 get_config().getstring('general', 'default-storage-pool'),
+                                 template_type, new_name + '.tar')
+        tmpl = tarfile.open(tmpl_file, 'w')
+        # It does not work as described on http://stackoverflow.com/questions/2239655/
+        tmpl.addfile(tarfile.TarInfo(new_name + '.scripts.tar.gz'),
+                     open(os.path.join(unpacked_base, new_name + '.scripts.tar.gz')))
+        tmpl.addfile(tarfile.TarInfo(new_name + '.tar.gz'),
+                     open(os.path.join(unpacked_base, new_name + '.tar.gz')))
+        tmpl.addfile(tarfile.TarInfo(new_name + '.ovf'),
+                     open(os.path.join(unpacked_base, new_name + '.ovf')))
+        tmpl.close()
+        get_logger().info(tmpl_file)
+        calculate_hash(tmpl_file)
+        display_info(self.screen, TITLE, 'Renamed \"%s\" to \"%s\"' % (template, new_name), width=50, height=2)
+        # All done
         return self.display_templates()
 
 
