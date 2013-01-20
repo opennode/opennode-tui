@@ -737,8 +737,6 @@ def migrate(uid, target_host, live=False):
             raise
     msg = "Initiating migration to %s..." % target_host
     get_logger().info(msg)
-    print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
         get_logger().info(line)
-        print line
