@@ -550,7 +550,7 @@ def update_vm(conn, uuid, *args, **kwargs):
 def migrate(conn, uuid, target_host, *args, **kwargs):
     """ Migrate VM to another host """
     if conn.getType() == 'OpenVZ':
-        openvz.migrate(uuid, target_host, **kwargs)
+        openvz.migrate(uuid, target_host, *args, **kwargs)
         return
 
     raise NotImplemented

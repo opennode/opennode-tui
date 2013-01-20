@@ -723,7 +723,7 @@ def get_vzcpucheck():
     return tuple([int(v.strip()) for v in execute('vzcpucheck|cut -f 2 -d ":"').split("\n")])
 
 
-def migrate(uid, target_host, live=False):
+def migrate(uid, target_host, live=False, print_=True):
     """Migrate given container to a target_host"""
     if not test_passwordless_ssh(target_host):
         raise CommandException("Public key ssh connection with the target host could not be established")
@@ -737,6 +737,10 @@ def migrate(uid, target_host, live=False):
             raise
     msg = "Initiating migration to %s..." % target_host
     get_logger().info(msg)
+    if print_:
+        print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
         get_logger().info(line)
+        if print_:
+            print line
