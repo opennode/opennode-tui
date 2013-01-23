@@ -2,7 +2,6 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
-import shutil
 import tarfile
 from uuid import uuid4
 
@@ -20,7 +19,6 @@ from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordles
 
 from ovf.OvfFile import OvfFile
 from libvirt import libvirtError
-from opennode.cli.log import get_logger
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -457,8 +455,6 @@ class OpenNodeTUI(object):
         # Rename items inside .ovf file
         if changed:
             def _get_child_by_name(node, name):
-                with open('/root/tick', 'a+t') as f:
-                    f.write('.')
                 for child in node.childNodes:
                     if child.nodeName == name:
                         return child
