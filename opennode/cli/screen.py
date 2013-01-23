@@ -456,9 +456,47 @@ class OpenNodeTUI(object):
 
         # Rename items inside .ovf file
         if changed:
-            self.screen.finish()
-            print 'CHANGE ME!'
-            self.screen = SnackScreen()
+            def _get_child_by_name(node, name):
+                with open('/root/tick', 'a+t') as f:
+                    f.write('.')
+                for child in node.childNodes:
+                    if child.nodeName == name:
+                        return child
+            items = ovf_file.document.getElementsByTagName('VirtualHardwareSection')
+            for item in items:
+                for node in item.childNodes:
+                    if node.nodeName == 'Item':
+                        res_type = _get_child_by_name(node, 'rasd:ResourceType')
+                        if res_type.childNodes[0].data == '3':
+                            if node.attributes['ovf:bound'].value == 'min':
+                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['vcpu_min']
+                            else:
+                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['vcpu']
+                        if res_type.childNodes[0].data == '4':
+                            _get_child_by_name(node, 'rasd:AllocationUnits').childNodes[0].data = 'GigaBytes'
+                            if node.attributes['ovf:bound'].value == 'min':
+                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['memory_min']
+                            else:
+                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['memory']
+            with open(ovf_file_name, 'wt') as f:
+                ovf_file.writeFile(f)
+           
+            if not rename:
+                os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
+                os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
+                tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                                         get_config().getstring('general', 'default-storage-pool'),
+                                         template_type, template + '.tar')
+                tmpl = tarfile.open(tmpl_file, 'w')
+                tmpl.add(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
+                         arcname=new_name+'.scripts.tar.gz')
+                tmpl.add(os.path.join(unpacked_base, template + '.tar.gz'),
+                         arcname=new_name+'.tar.gz')
+                tmpl.add(os.path.join(unpacked_base, template + '.ovf'),
+                         arcname=new_name+'.ovf')
+                tmpl.close()  
+                calculate_hash(tmpl_file)
+                display_info(self.screen, TITLE, 'Template "%s"\nmetadata successfully edited.' % template, width=60, height=2)
         if rename:
             if template_type == 'openvz':
                 VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
