@@ -183,3 +183,30 @@ def _get_ovf_memory_gb(ovf_file, bound):
                 memory = str(float(memoryQuantity) * memoryFactor / 1024 ** 2)
                 break
     return memory
+
+
+def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name = None):
+    if ovf_file_name is None:
+        ovf_file_name = ovf_file.path
+    def _get_child_by_name(node, name):
+                for child in node.childNodes:
+                    if child.nodeName == name:
+                        return child
+    items = ovf_file.document.getElementsByTagName('VirtualHardwareSection')
+    for item in items:
+        for node in item.childNodes:
+            if node.nodeName == 'Item':
+                res_type = _get_child_by_name(node, 'rasd:ResourceType')
+                if res_type.childNodes[0].data == '3':
+                    if node.attributes['ovf:bound'].value == 'min':
+                        _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = settings['vcpu_min']
+                    else:
+                        _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = settings['vcpu']
+                if res_type.childNodes[0].data == '4':
+                    _get_child_by_name(node, 'rasd:AllocationUnits').childNodes[0].data = 'GigaBytes'
+                    if node.attributes['ovf:bound'].value == 'min':
+                        _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = settings['memory_min']
+                    else:
+                        _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = settings['memory']
+    with open(ovf_file_name, 'wt') as f:
+        ovf_file.writeFile(f)

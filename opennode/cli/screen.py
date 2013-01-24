@@ -2,20 +2,21 @@
 """OpenNode Terminal User Interface (TUI)"""
 
 import os
-import tarfile
 from uuid import uuid4
 
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
-from snack import GridFormHelp, TextboxReflowed, ButtonBar, Label, Grid
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
-                                  display_selection, display_vm_type_select, display_info)
+                                  display_selection, display_vm_type_select, display_info,
+                                  display_template_edit_form)
 from opennode.cli import actions
 from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
-                                        TemplateException, CommandException, calculate_hash)
+                                        TemplateException, CommandException, calculate_hash,
+                                        save_to_tar)
+from opennode.cli.actions.vm.ovfutil import save_cpu_mem_to_ovf
 
 from ovf.OvfFile import OvfFile
 from libvirt import libvirtError
@@ -398,134 +399,78 @@ class OpenNodeTUI(object):
             return self.display_templates()
         settings = vm.read_ovf_settings(ovf_file)
 
-        # Rename form, maybe refactor to cli.helpers?
-        buttons=(('Cancel', 'cancel', 'F12'), 'Ok')
-        label_mincpu = Label('Minimal cpus')
-        label_normcpu = Label('Default cpus')
-        label_minmem = Label('Minimal memory (GB)')
-        label_normmem = Label('Default memory (GB)')
-        label_name = Label('Template name')
-        e_mincpu = Entry(30, settings.get('vcpu_min', 1))
-        e_normcpu = Entry(30, settings.get('vcpu', 1))
-        e_minmem = Entry(30, settings.get('memory_min', 0.25))
-        e_normmem = Entry(30, settings.get('memory', 0.25))
-        e_name = Entry(30, settings.get('template_name'))
-        gr = Grid(2, 5)
-        gr.setField(label_name, 0, 0)
-        gr.setField(e_name, 1, 0)
-        gr.setField(label_minmem, 0, 1)
-        gr.setField(e_minmem, 1, 1)
-        gr.setField(label_normmem, 0, 2)
-        gr.setField(e_normmem, 1, 2)
-        gr.setField(label_mincpu, 0, 3)
-        gr.setField(e_mincpu, 1, 3)
-        gr.setField(label_normcpu, 0, 4)
-        gr.setField(e_normcpu, 1, 4)
+        new_values = display_template_edit_form(self.screen, TITLE, settings)
 
-        g = GridFormHelp(self.screen, 'Rename', help, 1, 3)
-        t = TextboxReflowed(50, 'Edit template %s' % template)
-        bb = ButtonBar(self.screen, buttons)
-        g.add(t, 0, 0, growx=1)
-        g.add(gr, 0, 1)
-        g.add(bb, 0, 2, growx=1)
-        rc = g.runOnce() 
-
-        if bb.buttonPressed(rc) == 'cancel':
-            return self.display_templates()
-
-        new_values = {}
-        new_values['vcpu_min'] = e_mincpu.value()
-        new_values['vcpu'] = e_normcpu.value()
-        new_values['memory_min'] = e_minmem.value()
-        new_values['memory'] = e_normmem.value()
         changed = False
         rename = False
         for k in new_values:
-            if settings[k] != new_values[k]:
-                changed = True
+            if k == 'template_name':
+                if settings[k] != new_values[k]:
+                    rename = True
+            else:
+                if settings[k] != new_values[k]:
+                    changed = True
  
         # Protect against directory traversing
         # Take basename form new name and run with that
-        new_name = os.path.basename(e_name.value())
+        new_name = os.path.basename(new_values['template_name'])
         if settings['template_name'] != new_name:
             rename = True
         if not changed and not rename:
             return self.display_templates()
 
-        # Rename items inside .ovf file
         if changed:
-            def _get_child_by_name(node, name):
-                for child in node.childNodes:
-                    if child.nodeName == name:
-                        return child
-            items = ovf_file.document.getElementsByTagName('VirtualHardwareSection')
-            for item in items:
-                for node in item.childNodes:
-                    if node.nodeName == 'Item':
-                        res_type = _get_child_by_name(node, 'rasd:ResourceType')
-                        if res_type.childNodes[0].data == '3':
-                            if node.attributes['ovf:bound'].value == 'min':
-                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['vcpu_min']
-                            else:
-                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['vcpu']
-                        if res_type.childNodes[0].data == '4':
-                            _get_child_by_name(node, 'rasd:AllocationUnits').childNodes[0].data = 'GigaBytes'
-                            if node.attributes['ovf:bound'].value == 'min':
-                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['memory_min']
-                            else:
-                                _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = new_values['memory']
-            with open(ovf_file_name, 'wt') as f:
-                ovf_file.writeFile(f)
-           
+            save_cpu_mem_to_ovf(ovf_file, new_values)
             if not rename:
                 os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
                 os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
                 tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                          get_config().getstring('general', 'default-storage-pool'),
                                          template_type, template + '.tar')
-                tmpl = tarfile.open(tmpl_file, 'w')
-                tmpl.add(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
-                         arcname=new_name+'.scripts.tar.gz')
-                tmpl.add(os.path.join(unpacked_base, template + '.tar.gz'),
-                         arcname=new_name+'.tar.gz')
-                tmpl.add(os.path.join(unpacked_base, template + '.ovf'),
-                         arcname=new_name+'.ovf')
-                tmpl.close()  
+                filenames = []
+                filenames.append((os.path.join(unpacked_base, template + '.scripts.tar.gz'),
+                                  new_name+'.scripts.tar.gz'))
+                filenames.append((os.path.join(unpacked_base, template + '.tar.gz'),
+                                  new_name+'.tar.gz'))
+                filenames.append((os.path.join(unpacked_base, template + '.ovf'),
+                                  new_name+'.ovf'))
+                save_to_tar(tmpl_file, filenames)
                 calculate_hash(tmpl_file)
                 display_info(self.screen, TITLE, 'Template "%s"\nmetadata successfully edited.' % template, width=60, height=2)
         if rename:
-            if template_type == 'openvz':
-                VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
-                VirtualSystem[0].attributes['ovf:id'].value = new_name
-                References = ovf_file.document.getElementsByTagName('References')
-                for ref_node in References:
-                    file_nodes = ref_node.getElementsByTagName('File')
-                    for item in file_nodes:
-                        if item.attributes['ovf:href'].value == template + '.tar.gz':
-                            item.attributes['ovf:href'].value = new_name + '.tar.gz'
-                new_ovf_fn = os.path.join(unpacked_base, new_name + '.ovf')
-                with open(new_ovf_fn, 'wt') as f:
-                    ovf_file.writeFile(f)
-                os.rename(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
-                          os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
-                os.rename(os.path.join(unpacked_base, template + '.tar.gz'),
-                          os.path.join(unpacked_base, new_name + '.tar.gz')) 
-                os.unlink(os.path.join(unpacked_base, template + '.ovf'))
-                os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
-                os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
-                tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
-                                         get_config().getstring('general', 'default-storage-pool'),
-                                         template_type, new_name + '.tar')
-                tmpl = tarfile.open(tmpl_file, 'w')
-                tmpl.add(os.path.join(unpacked_base, new_name + '.scripts.tar.gz'),
-                         arcname=new_name+'.scripts.tar.gz')
-                tmpl.add(os.path.join(unpacked_base, new_name + '.tar.gz'),
-                         arcname=new_name+'.tar.gz')
-                tmpl.add(os.path.join(unpacked_base, new_name + '.ovf'),
-                         arcname=new_name+'.ovf')
-                tmpl.close()  
-                calculate_hash(tmpl_file)
-                display_info(self.screen, TITLE, 'Renamed \"%s\" to\n\"%s\"' % (template, new_name), width=50, height=2)
+            VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
+            VirtualSystem[0].attributes['ovf:id'].value = new_name
+            References = ovf_file.document.getElementsByTagName('References')
+            # TODO: until our packaged templates contain incorrect .ovf
+            # we can not rely on files defined in References section
+            for ref_node in References:
+                file_nodes = ref_node.getElementsByTagName('File')
+                for item in file_nodes:
+                    if item.attributes['ovf:href'].value == template + '.tar.gz':
+                        item.attributes['ovf:href'].value = new_name + '.tar.gz'
+            new_ovf_fn = os.path.join(unpacked_base, new_name + '.ovf')
+            with open(new_ovf_fn, 'wt') as f:
+                ovf_file.writeFile(f)
+            os.rename(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
+                      os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
+            os.rename(os.path.join(unpacked_base, template + '.tar.gz'),
+                      os.path.join(unpacked_base, new_name + '.tar.gz')) 
+            os.unlink(os.path.join(unpacked_base, template + '.ovf'))
+            os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
+            os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
+            tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                                     get_config().getstring('general', 'default-storage-pool'),
+                                     template_type, new_name + '.tar')
+            filenames = []
+            filenames.append((os.path.join(unpacked_base, new_name + '.scripts.tar.gz'),
+                              new_name+'.scripts.tar.gz'))
+            filenames.append((os.path.join(unpacked_base, new_name + '.tar.gz'),
+                              new_name+'.tar.gz'))
+            filenames.append((os.path.join(unpacked_base, new_name + '.ovf'),
+                              new_name+'.ovf'))
+            save_to_tar(tmpl_file, filenames)
+            calculate_hash(tmpl_file)
+            display_info(self.screen, TITLE, 'Renamed \"%s\" to\n\"%s\"' % (template, new_name), width=50, height=2)
 
         return self.display_templates()
 

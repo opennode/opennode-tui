@@ -8,6 +8,7 @@ import shutil
 import urllib
 import urlparse
 import cPickle as pickle
+import tarfile
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, RotatingMarker
 
@@ -229,3 +230,15 @@ def test_passwordless_ssh(remote_host, port=22):
 def setup_passwordless_ssh(remote_host):
     """Execute a script for setting up a passwordless login to the target host"""
     execute("ssh-keyput root@%s" % remote_host)
+
+
+def save_to_tar(tar_filename, filelist):
+    """ save_to_flat_tar(tar_filename, filelist)
+    Save files to tar file.
+    'tar_filename' is desired name for tar archive
+    'filelist' is list of filename to be added to tar
+    [(filename_on_disk, filename in archive),]"""
+    tmpl = tarfile.open(tar_filename, 'w')
+    for f in filelist:
+        tmpl.add(f[0], arcname=f[1])
+    tmpl.close()
