@@ -182,7 +182,7 @@ def display_template_edit_form(screen, title, settings):
     g.add(t, 0, 0, growx=1)
     g.add(gr, 0, 1)
     g.add(bb, 0, 2, growx=1)
-    rc = g.runOnce() 
+    rc = g.runOnce()
 
     if bb.buttonPressed(rc) == 'cancel':
         return None

@@ -14,10 +14,7 @@ from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
-                                        TemplateException, CommandException, calculate_hash,
-                                        save_to_tar)
-from opennode.cli.actions.vm.ovfutil import save_cpu_mem_to_ovf
-
+                                        TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
 from libvirt import libvirtError
 
@@ -57,7 +54,7 @@ class OpenNodeTUI(object):
                  'templates': self.display_templates
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today?',
+        result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today',
                 [('Menu', 'back', 'F12'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
@@ -376,7 +373,11 @@ class OpenNodeTUI(object):
 
 
     def display_template_edit(self):
-        template_type = display_vm_type_select(self.screen, TITLE)
+        repos = [f for f in [('Local openvz', 'openvz'), ('Local kvm', 'kvm')]]
+        if repos is None:
+            return self.display_templates()
+        template_type = display_selection(self.screen, TITLE, repos,
+                                          'Please, select template type from the list')
         if template_type is None:
             return self.display_templates()
         vm = actions.vm.get_module(template_type)
@@ -384,23 +385,22 @@ class OpenNodeTUI(object):
                                                              template_type)
         if template is None:
             return self.display_templates()
-
         unpacked_base = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                      get_config().getstring('general', 'default-storage-pool'),
                                      template_type,
                                      'unpacked')
-
         ovf_file_name = os.path.join(unpacked_base, template + '.ovf')
         try:
             ovf_file = OvfFile(ovf_file_name)
         except IOError as (errno, _):
             if errno == 2:  # ovf file not found
-                display_info(self.screen, "ERROR", "Template OVF file is missing:\n%s" % ovf_file_name)
+                display_info(self.screen, "ERROR",
+                             "Template OVF file is missing:\n%s" % ovf_file_name)
             return self.display_templates()
-        settings = vm.read_ovf_settings(ovf_file)
-
+        settings = vm.get_ovf_template_settings(ovf_file)
         new_values = display_template_edit_form(self.screen, TITLE, settings)
-
+        if new_values is None:
+            return self.display_templates()
         changed = False
         rename = False
         for k in new_values:
@@ -411,67 +411,21 @@ class OpenNodeTUI(object):
                 if settings[k] != new_values[k]:
                     changed = True
  
-        # Protect against directory traversing
-        # Take basename form new name and run with that
         new_name = os.path.basename(new_values['template_name'])
+        new_values['template_name'] = settings['template_name']
         if settings['template_name'] != new_name:
             rename = True
         if not changed and not rename:
             return self.display_templates()
 
-        if changed:
-            save_cpu_mem_to_ovf(ovf_file, new_values)
-            if not rename:
-                os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
-                os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
-                tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
-                                         get_config().getstring('general', 'default-storage-pool'),
-                                         template_type, template + '.tar')
-                filenames = []
-                filenames.append((os.path.join(unpacked_base, template + '.scripts.tar.gz'),
-                                  new_name+'.scripts.tar.gz'))
-                filenames.append((os.path.join(unpacked_base, template + '.tar.gz'),
-                                  new_name+'.tar.gz'))
-                filenames.append((os.path.join(unpacked_base, template + '.ovf'),
-                                  new_name+'.ovf'))
-                save_to_tar(tmpl_file, filenames)
-                calculate_hash(tmpl_file)
-                display_info(self.screen, TITLE, 'Template "%s"\nmetadata successfully edited.' % template, width=60, height=2)
-        if rename:
-            VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
-            VirtualSystem[0].attributes['ovf:id'].value = new_name
-            References = ovf_file.document.getElementsByTagName('References')
-            # TODO: until our packaged templates contain incorrect .ovf
-            # we can not rely on files defined in References section
-            for ref_node in References:
-                file_nodes = ref_node.getElementsByTagName('File')
-                for item in file_nodes:
-                    if item.attributes['ovf:href'].value == template + '.tar.gz':
-                        item.attributes['ovf:href'].value = new_name + '.tar.gz'
-            new_ovf_fn = os.path.join(unpacked_base, new_name + '.ovf')
-            with open(new_ovf_fn, 'wt') as f:
-                ovf_file.writeFile(f)
-            os.rename(os.path.join(unpacked_base, template + '.scripts.tar.gz'),
-                      os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
-            os.rename(os.path.join(unpacked_base, template + '.tar.gz'),
-                      os.path.join(unpacked_base, new_name + '.tar.gz')) 
-            os.unlink(os.path.join(unpacked_base, template + '.ovf'))
-            os.unlink(os.path.join(unpacked_base, '..', template + '.tar'))
-            os.unlink(os.path.join(unpacked_base, '..', template + '.tar.pfff'))
-            tmpl_file = os.path.join(get_config().getstring('general', 'storage-endpoint'),
-                                     get_config().getstring('general', 'default-storage-pool'),
-                                     template_type, new_name + '.tar')
-            filenames = []
-            filenames.append((os.path.join(unpacked_base, new_name + '.scripts.tar.gz'),
-                              new_name+'.scripts.tar.gz'))
-            filenames.append((os.path.join(unpacked_base, new_name + '.tar.gz'),
-                              new_name+'.tar.gz'))
-            filenames.append((os.path.join(unpacked_base, new_name + '.ovf'),
-                              new_name+'.ovf'))
-            save_to_tar(tmpl_file, filenames)
-            calculate_hash(tmpl_file)
-            display_info(self.screen, TITLE, 'Renamed \"%s\" to\n\"%s\"' % (template, new_name), width=50, height=2)
+        if changed and not rename:
+            vm.update_template(ovf_file, new_values)
+        else:
+            vm.update_template_and_name(ovf_file, new_values, new_name)
 
+        display_info(self.screen, TITLE,
+                     'Template "%s"\nmetadata successfully edited.' % template,
+                     width=50, height=2)
         return self.display_templates()
 
 

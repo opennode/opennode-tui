@@ -13,7 +13,9 @@ from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
-from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
+from opennode.cli.actions.utils import (execute, get_file_size_bytes, calculate_hash,
+                                        TemplateException, generate_filelist, get_unp_base,
+                                        update_referenced_files, save_to_tar)
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
@@ -106,7 +108,7 @@ def read_ovf_settings(settings, ovf_file):
 
     memory_settings = [
         ("memory_min", ovfutil.get_ovf_min_memory_gb(ovf_file)),
-        ("memory_normal", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
+        ("memory", ovfutil.get_ovf_normal_memory_gb(ovf_file)),
         ("memory_max", ovfutil.get_ovf_max_memory_gb(ovf_file))]
     # set only those settings that are explicitly specified in the ovf file (non-null)
     settings.update(dict(filter(operator.itemgetter(1), memory_settings)))
@@ -590,3 +592,46 @@ def _generate_ovf_file(vm_settings):
         feature_dom = doc.createElement(feature)
         features_dom.appendChild(feature_dom)
     return ovf
+
+
+def update_template_and_name(ovf_file, settings, new_name):
+    """ update .ovf and rename template
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    @param new_name: new name for template
+    """ 
+    unpacked_base = get_unp_base('kvm')
+    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.tar')):
+        return None
+    ovf_file = update_referenced_files(ovf_file, settings['template_name'],
+                                       new_name)
+    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base,
+                                                                 new_name + '.ovf'))
+    os.unlink(ovf_file.path)
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.scripts.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.tar.gz'))
+    _package_files(settings['template_name'], new_name)
+
+
+def update_template(ovf_file, settings):
+    """ update .ovf and recreate tar archive
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    """
+    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings)
+    template = settings['template_name']
+    _package_files(template)
+
+
+def _package_files(template_name, new_name=None):
+    if new_name is None:
+        new_name = template_name
+    unpacked_base = get_unp_base('openvz')
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar'))
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar.pfff'))
+    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.tar')
+    filelist = generate_filelist('openvz', new_name)
+    save_to_tar(tmpl_file, filelist)
+    calculate_hash(tmpl_file)
