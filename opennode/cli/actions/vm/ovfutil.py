@@ -2,8 +2,9 @@
 @note: open-ovf api: http://gitorious.org/open-ovf/
 """
 
+import os
 from ovf import Ovf, OvfLibvirt
-
+from opennode.cli.config import get_config
 
 def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
@@ -186,6 +187,11 @@ def _get_ovf_memory_gb(ovf_file, bound):
 
 
 def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name = None):
+    """ Save custom memory and cpu settings to ovf file.
+    @param ovf_file: ovf.OvfFile object
+    @param settings: dict containing new resource values in gigabytes.
+    @param ovf_file_name: filename for saving with new name. Optional.
+    """
     if ovf_file_name is None:
         ovf_file_name = ovf_file.path
     def _get_child_by_name(node, name):
@@ -210,3 +216,49 @@ def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name = None):
                         _get_child_by_name(node, 'rasd:VirtualQuantity').childNodes[0].data = settings['memory']
     with open(ovf_file_name, 'wt') as f:
         ovf_file.writeFile(f)
+
+
+def update_referenced_files(ovf_file, template_name, new_name):
+    """ Update files in .ovf <Referenced> section.
+    @param ovf_file: ovf.OvfFile object
+    @param template_name: current template name
+    @param new_name: new template name
+    """
+    VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
+    VirtualSystem[0].attributes['ovf:id'].value = new_name
+    References = ovf_file.document.getElementsByTagName('References')
+    # TODO: until our packaged templates contain incorrect .ovf
+    # we can not rely on files defined in References section
+    for ref_node in References:
+        file_nodes = ref_node.getElementsByTagName('File')
+        for item in file_nodes:
+            if item.attributes['ovf:href'].value == template_name + '.tar.gz':
+                item.attributes['ovf:href'].value = new_name + '.tar.gz'
+    return ovf_file
+
+
+def generate_ovf_archive_filelist(template_type, template_name, new_name = None):
+    """ Generates list of files to add to tar archive
+    @param template_type: 'openvz' or 'kvm'
+    @param template_name: template name to use
+    @param new_name: new base name to use, optional.
+    """
+    if new_name is None:
+        new_name = template_name
+    unpacked_base = _get_unpacked_base(template_type)
+    filenames = []
+    filenames.append((os.path.join(unpacked_base, template_name + '.scripts.tar.gz'),
+                      new_name+'.scripts.tar.gz'))
+    filenames.append((os.path.join(unpacked_base, template_name + '.tar.gz'),
+                      new_name+'.tar.gz'))
+    filenames.append((os.path.join(unpacked_base, template_name + '.ovf'),
+                      new_name+'.ovf'))
+    return filenames
+
+def _get_unpacked_base(vm_type):
+    """ Get unpacked base for given vm type.
+    @param vm_type: 'openvz' or 'kvm'
+    """
+    return os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                        get_config().getstring('general', 'default-storage-pool'),
+                        vm_type, 'unpacked')

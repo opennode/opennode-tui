@@ -14,7 +14,6 @@ from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, Ro
 
 from openvz_exit_status import OpenVZ_EXIT_STATUS
 from opennode.cli.log import get_logger
-from opennode.cli.config import get_config
 
 
 class CommandException(Exception):
@@ -243,37 +242,3 @@ def save_to_tar(tar_filename, filelist):
     for f in filelist:
         tmpl.add(f[0], arcname=f[1])
     tmpl.close()
-
-
-def generate_filelist(template_type, template_name, new_name = None):
-    if new_name is None:
-        new_name = template_name
-    unpacked_base = get_unp_base(template_type)
-    filenames = []
-    filenames.append((os.path.join(unpacked_base, template_name + '.scripts.tar.gz'),
-                      new_name+'.scripts.tar.gz'))
-    filenames.append((os.path.join(unpacked_base, template_name + '.tar.gz'),
-                      new_name+'.tar.gz'))
-    filenames.append((os.path.join(unpacked_base, template_name + '.ovf'),
-                      new_name+'.ovf'))
-    return filenames
-
-
-def update_referenced_files(ovf_file, template_name, new_name):
-    VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
-    VirtualSystem[0].attributes['ovf:id'].value = new_name
-    References = ovf_file.document.getElementsByTagName('References')
-    # TODO: until our packaged templates contain incorrect .ovf
-    # we can not rely on files defined in References section
-    for ref_node in References:
-        file_nodes = ref_node.getElementsByTagName('File')
-        for item in file_nodes:
-            if item.attributes['ovf:href'].value == template_name + '.tar.gz':
-                item.attributes['ovf:href'].value = new_name + '.tar.gz'
-    return ovf_file
-
-
-def get_unp_base(vm_type):
-    return os.path.join(get_config().getstring('general', 'storage-endpoint'),
-                        get_config().getstring('general', 'default-storage-pool'),
-                        vm_type, 'unpacked')
