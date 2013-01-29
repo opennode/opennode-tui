@@ -4,19 +4,18 @@
 import os
 from uuid import uuid4
 
-from ovf.OvfFile import OvfFile
-
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
-                                  display_selection, display_vm_type_select, display_info)
+                                  display_selection, display_vm_type_select, display_info,
+                                  display_template_edit_form)
 from opennode.cli import actions
 from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
-
+from ovf.OvfFile import OvfFile
 from libvirt import libvirtError
 
 VERSION = '2.0.0a'
@@ -55,7 +54,7 @@ class OpenNodeTUI(object):
                  'templates': self.display_templates
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today?',
+        result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today',
                 [('Menu', 'back', 'F12'),
                 # XXX disable till more sound functionality
                 #('Network', 'net'),
@@ -264,11 +263,13 @@ class OpenNodeTUI(object):
         logic = {'back': self.display_manage,
                  'manage': self.display_template_manage,
                  'create': self.display_template_create,
+                 'edit': self.display_template_edit,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a template action to perform',
                                     [('Back', 'back', 'F12'),
                                      ('Create', 'create'),
+                                     ('Edit', 'edit'),
                                      ('Download', 'manage')])
         logic[result]()
 
@@ -369,6 +370,64 @@ class OpenNodeTUI(object):
         vm.save_as_ovf(template_settings, storage_pool)
         self.screen = SnackScreen()
         return self.display_templates()
+
+
+    def display_template_edit(self):
+        repos = [f for f in [('Local openvz', 'openvz'), ('Local kvm', 'kvm')]]
+        if repos is None:
+            return self.display_templates()
+        template_type = display_selection(self.screen, TITLE, repos,
+                                          'Please, select template type from the list')
+        if template_type is None:
+            return self.display_templates()
+        vm = actions.vm.get_module(template_type)
+        template = self.display_select_template_from_storage(actions.storage.get_default_pool(),
+                                                             template_type)
+        if template is None:
+            return self.display_templates()
+        unpacked_base = os.path.join(get_config().getstring('general', 'storage-endpoint'),
+                                     get_config().getstring('general', 'default-storage-pool'),
+                                     template_type,
+                                     'unpacked')
+        ovf_file_name = os.path.join(unpacked_base, template + '.ovf')
+        try:
+            ovf_file = OvfFile(ovf_file_name)
+        except IOError as (errno, _):
+            if errno == 2:  # ovf file not found
+                display_info(self.screen, "ERROR",
+                             "Template OVF file is missing:\n%s" % ovf_file_name)
+            return self.display_templates()
+        settings = vm.get_ovf_template_settings(ovf_file)
+        new_values = display_template_edit_form(self.screen, TITLE, settings)
+        if new_values is None:
+            return self.display_templates()
+        changed = False
+        rename = False
+        for k in new_values:
+            if k == 'template_name':
+                if settings[k] != new_values[k]:
+                    rename = True
+            else:
+                if settings[k] != new_values[k]:
+                    changed = True
+ 
+        new_name = os.path.basename(new_values['template_name'])
+        new_values['template_name'] = settings['template_name']
+        if settings['template_name'] != new_name:
+            rename = True
+        if not changed and not rename:
+            return self.display_templates()
+
+        if changed and not rename:
+            vm.update_template(ovf_file, new_values)
+        else:
+            vm.update_template_and_name(ovf_file, new_values, new_name)
+
+        display_info(self.screen, TITLE,
+                     'Template "%s"\nmetadata successfully edited.' % template,
+                     width=50, height=2)
+        return self.display_templates()
+
 
     def _display_custom_form(self, form, template_settings):
         while 1:

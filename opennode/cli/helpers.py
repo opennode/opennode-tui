@@ -5,7 +5,7 @@ from opennode.cli import actions
 
 from snack import (Textbox, Entry, Button, Listbox, Grid, Scale, Form,
                    ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp,
-                   ButtonChoiceWindow, ListboxChoiceWindow)
+                   ButtonChoiceWindow, ListboxChoiceWindow, Label)
 
 
 class DownloadMonitor():
@@ -150,3 +150,48 @@ def display_info(screen, title, info_text="Close me, please.", width=50, height=
     g.add(Textbox(width, height, info_text, 0, 0), 0, 0, padding = (0, 1, 0, 1))
     g.add(Button("OK"), 0, 1)
     g.runOnce()
+
+
+def display_template_edit_form(screen, title, settings):
+    buttons=(('Cancel', 'cancel', 'F12'), 'Ok')
+    label_mincpu = Label('Minimal cpus')
+    label_normcpu = Label('Default cpus')
+    label_minmem = Label('Minimal memory (GB)')
+    label_normmem = Label('Default memory (GB)')
+    label_name = Label('Template name')
+    e_mincpu = Entry(30, settings.get('vcpu_min', 1))
+    e_normcpu = Entry(30, settings.get('vcpu', 1))
+    e_minmem = Entry(30, settings.get('memory_min', 0.25))
+    e_normmem = Entry(30, settings.get('memory', 0.25))
+    e_name = Entry(30, settings.get('template_name'))
+    gr = Grid(2, 5)
+    gr.setField(label_name, 0, 0)
+    gr.setField(e_name, 1, 0)
+    gr.setField(label_minmem, 0, 1)
+    gr.setField(e_minmem, 1, 1)
+    gr.setField(label_normmem, 0, 2)
+    gr.setField(e_normmem, 1, 2)
+    gr.setField(label_mincpu, 0, 3)
+    gr.setField(e_mincpu, 1, 3)
+    gr.setField(label_normcpu, 0, 4)
+    gr.setField(e_normcpu, 1, 4)
+
+    g = GridFormHelp(screen, 'Rename', help, 1, 3)
+    t = TextboxReflowed(50, 'Edit template %s' % settings.get('template_name'))
+    bb = ButtonBar(screen, buttons)
+    g.add(t, 0, 0, growx=1)
+    g.add(gr, 0, 1)
+    g.add(bb, 0, 2, growx=1)
+    rc = g.runOnce()
+
+    if bb.buttonPressed(rc) == 'cancel':
+        return None
+
+    new_values = {}
+    new_values['vcpu_min'] = e_mincpu.value()
+    new_values['vcpu'] = e_normcpu.value()
+    new_values['memory_min'] = e_minmem.value()
+    new_values['memory'] = e_normmem.value()
+    new_values['template_name'] = e_name.value()
+
+    return new_values
