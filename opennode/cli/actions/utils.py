@@ -66,7 +66,7 @@ def execute(cmd):
     if status != 0:
         if cmd.startswith('vzctl'):
             raise CommandException("Failed to execute command '%s'. Status: '%s'. Message: '%s'. Output: '%s'"
-                                   % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]], output), status>>8)
+                                   % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]][status>>8], output), status>>8)
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
                                % (cmd, status, output), status)
     get_logger().debug('execute returned: %s', output)
