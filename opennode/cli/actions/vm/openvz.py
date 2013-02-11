@@ -728,6 +728,10 @@ def migrate(uid, target_host, live=False, print_=True):
     """Migrate given container to a target_host"""
     if not test_passwordless_ssh(target_host):
         raise CommandException("Public key ssh connection with the target host could not be established")
+    log = get_logger()
+    # a workaround for the megadynamic nature of python variable type when called via an agent
+    live = live == 'True' if type(live) == str else live
+    print_ = print_ == 'True' if type(print_) == str else print_
     # is ctid present on the target host?
     ctid = get_ctid_by_uuid(uid)
     try:
@@ -737,11 +741,11 @@ def migrate(uid, target_host, live=False, print_=True):
         if ce.code != 256:
             raise
     msg = "Initiating migration to %s..." % target_host
-    get_logger().info(msg)
+    log.info(msg)
     if print_:
         print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
-        get_logger().info(line)
-        if line and print_:
+        log.info(line)
+        if print_ and line:
             print line
