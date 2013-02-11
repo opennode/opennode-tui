@@ -743,5 +743,5 @@ def migrate(uid, target_host, live=False, print_=True):
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
         get_logger().info(line)
-        if print_:
+        if line and print_:
             print line
