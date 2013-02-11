@@ -730,8 +730,8 @@ def migrate(uid, target_host, live=False, print_=True):
         raise CommandException("Public key ssh connection with the target host could not be established")
     log = get_logger()
     # a workaround for the megadynamic nature of python variable type when called via an agent
-    live = live == 'True' if type(live) == str else live
-    print_ = print_ == 'True' if type(print_) == str else print_
+    live = live == 'True' if type(live) is str else live
+    print_ = print_ == 'True' if type(print_) is str else print_
     # is ctid present on the target host?
     ctid = get_ctid_by_uuid(uid)
     try:
