@@ -516,8 +516,8 @@ def update_vm(conn, uuid, *args, **kwargs):
     Update VM parameters
     """
     settings = kwargs
-    # allows mixed passing via a dict and keyword args
-    settings.update(args[0] if len(args) == 1 else {})
+    # allows mixed passing via a dict and/or keyword args
+    settings.update(args[0] if (len(args) == 1 and type(args[0]) is dict) else {})
 
     if conn.getType() == 'OpenVZ':
         param_name_map = {'cpu_limit': 'vcpulimit',
