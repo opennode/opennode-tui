@@ -307,12 +307,10 @@ def resume_vm(conn, uuid):
 
 @vm_method
 def deploy_vm(conn, vm_parameters):
-    # XXX Disabled logger for now. In it's current form it introduces dependency
-    # on the func architecture, actions should have their own logging system,
-    # which can be set to use func's logging
     try:
+        vm_parameters = eval(vm_parameters) if type(vm_parameters) is str else vm_parameters
         _deploy_vm(vm_parameters)
-    except Exception as e:
+    except Exception:
         raise
     return "OK"
 
