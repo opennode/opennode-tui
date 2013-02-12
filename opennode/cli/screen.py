@@ -410,7 +410,7 @@ class OpenNodeTUI(object):
             else:
                 if settings[k] != new_values[k]:
                     changed = True
- 
+
         new_name = os.path.basename(new_values['template_name'])
         new_values['template_name'] = settings['template_name']
         if settings['template_name'] != new_name:
@@ -427,7 +427,6 @@ class OpenNodeTUI(object):
                      'Template "%s"\nmetadata successfully edited.' % template,
                      width=50, height=2)
         return self.display_templates()
-
 
     def _display_custom_form(self, form, template_settings):
         while 1:

@@ -6,6 +6,7 @@ import os
 from ovf import Ovf, OvfLibvirt
 from opennode.cli.config import get_config
 
+
 def get_vm_type(ovf_file):
     return ovf_file.document.getElementsByTagName("vssd:VirtualSystemType")[0].firstChild.nodeValue
 
@@ -13,7 +14,7 @@ def get_vm_type(ovf_file):
 def get_ovf_os_type(ovf_file):
     oss = ovf_file.document.getElementsByTagName("OperatingSystemSection")
     if len(oss) == 0:
-        return 'redhat' # default supported linux
+        return 'redhat'  # default supported linux
     os_section = oss[0]
     for e in Ovf.getDict(os_section)['children']:
         if e['name'] == u'Description':
@@ -186,7 +187,7 @@ def _get_ovf_memory_gb(ovf_file, bound):
     return memory
 
 
-def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name = None):
+def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name=None):
     """ Save custom memory and cpu settings to ovf file.
     @param ovf_file: ovf.OvfFile object
     @param settings: dict containing new resource values in gigabytes.
@@ -194,6 +195,7 @@ def save_cpu_mem_to_ovf(ovf_file, settings, ovf_file_name = None):
     """
     if ovf_file_name is None:
         ovf_file_name = ovf_file.path
+
     def _get_child_by_name(node, name):
                 for child in node.childNodes:
                     if child.nodeName == name:
@@ -237,7 +239,7 @@ def update_referenced_files(ovf_file, template_name, new_name):
     return ovf_file
 
 
-def generate_ovf_archive_filelist(template_type, template_name, new_name = None):
+def generate_ovf_archive_filelist(template_type, template_name, new_name=None):
     """ Generates list of files to add to tar archive
     @param template_type: 'openvz' or 'kvm'
     @param template_name: template name to use
@@ -248,12 +250,13 @@ def generate_ovf_archive_filelist(template_type, template_name, new_name = None)
     unpacked_base = _get_unpacked_base(template_type)
     filenames = []
     filenames.append((os.path.join(unpacked_base, template_name + '.scripts.tar.gz'),
-                      new_name+'.scripts.tar.gz'))
+                      new_name + '.scripts.tar.gz'))
     filenames.append((os.path.join(unpacked_base, template_name + '.tar.gz'),
-                      new_name+'.tar.gz'))
+                      new_name + '.tar.gz'))
     filenames.append((os.path.join(unpacked_base, template_name + '.ovf'),
-                      new_name+'.ovf'))
+                      new_name + '.ovf'))
     return filenames
+
 
 def _get_unpacked_base(vm_type):
     """ Get unpacked base for given vm type.

@@ -307,12 +307,10 @@ def resume_vm(conn, uuid):
 
 @vm_method
 def deploy_vm(conn, vm_parameters):
-    # XXX Disabled logger for now. In it's current form it introduces dependency
-    # on the func architecture, actions should have their own logging system,
-    # which can be set to use func's logging
     try:
+        vm_parameters = eval(vm_parameters) if type(vm_parameters) is str else vm_parameters
         _deploy_vm(vm_parameters)
-    except Exception as e:
+    except Exception:
         raise
     return "OK"
 
@@ -465,17 +463,16 @@ def _deploy_vm(vm_parameters, logger=None):
     from opennode.cli import actions
     storage_pool = actions.storage.get_default_pool()
     if storage_pool is None:
-        raise  Exception("Storage pool not defined")
+        raise Exception("Storage pool not defined")
 
+    assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
     vm_type = vm_parameters['vm_type']
-
     template = vm_parameters['template_name']
 
     if not template:
         if logger:
             logger("Cannot deploy because template is '%s'" % (template))
         raise Exception("Cannot deploy because template is '%s'" % (template))
-        return
 
     ovf_file = OvfFile(os.path.join(get_config().getstring("general", "storage-endpoint"),
                                     storage_pool, vm_type, "unpacked",
