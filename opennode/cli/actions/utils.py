@@ -76,13 +76,16 @@ def execute(cmd):
 def execute2(cmd):
     get_logger().debug('execute2 cmd: %s', cmd)
     args = shlex.split(cmd)
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    while(True):
-        retcode = p.poll()  # returns None while subprocess is running
-        line = p.stdout.readline()
-        yield line
-        if(retcode is not None):
-            break
+    try:
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while p.poll() is None:
+            line = p.stdout.readline()
+            yield line
+    except Exception:
+        p.kill()
+        raise
+    finally:
+        del p
 
 
 def calculate_hash(target_file):
