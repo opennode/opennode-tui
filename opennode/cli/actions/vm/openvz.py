@@ -757,7 +757,7 @@ def update_template_and_name(ovf_file, settings, new_name):
     @param settings: dictionary containing settings
     @param new_name: new name for template
     """
-    unpacked_base = ovfutil._get_unpacked_base('kvm')
+    unpacked_base = ovfutil._get_unpacked_base('openvz')
     if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.tar')):
         return None
     ovf_file = ovfutil.update_referenced_files(ovf_file, settings['template_name'],
