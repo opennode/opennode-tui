@@ -55,7 +55,7 @@ def get_template_repos_info():
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
     url = get_config().getstring(remote_repo, 'url')
-    tmpl_list = urlopen("%s/templatelist.txt" % url)
+    tmpl_list = urlopen(os.path.join(url, "templatelist.txt"))
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
     return templates
