@@ -623,6 +623,8 @@ class OpenNodeTUI(object):
             path = os.path.join(get_config().getstring("general", "storage-endpoint"),
                                 storage_pool, chosen_vm_type, "unpacked",
                                 chosen_template + ".ovf")
+            if not os.path.exists(path):
+                actions.templates.unpack_template(storage_pool, chosen_vm_type, chosen_template)
             ovf_file = OvfFile(path)
         except IOError as (errno, _):
             if errno == 2:  # ovf file not found
