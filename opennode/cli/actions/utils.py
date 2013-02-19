@@ -189,7 +189,7 @@ def download(remote, local):
                              '--user', userauth,
                              '-C', '-', '-o', '%s' % local, '%s' % remote])
     else:
-        subprocess.call(['curl', '-C', '-', '-o', '%s' % local, '%s' % remote])
+        subprocess.call(['curl', '-L', '-C', '-', '-o', '%s' % local, '%s' % remote])
 
 
 def urlopen(remote):
