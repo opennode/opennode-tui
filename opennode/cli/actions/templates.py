@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import tarfile
+import urlparse
 
 from ovf.OvfFile import OvfFile
 
@@ -55,7 +56,8 @@ def get_template_repos_info():
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
     url = get_config().getstring(remote_repo, 'url')
-    tmpl_list = urlopen(os.path.join(url, "templatelist.txt"))
+    url = url.rstrip('/') + '/'
+    tmpl_list = urlopen(urlparse.urljoin(url, 'templatelist.txt'))
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
     return templates
@@ -100,7 +102,7 @@ def sync_template(remote_repo, template, storage_pool):
     vm_type = config.getstring(remote_repo, 'type')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
-    remotefile = os.path.join(url, template)
+    remotefile = urlparse.urljoin(url, template)
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):
         # for resilience
