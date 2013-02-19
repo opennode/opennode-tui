@@ -47,6 +47,7 @@ def register_oms_server(server, port):
     """Register with a new OMS server:port."""
     # cleanup of the previous func cert
     set_oms_server(server, port)
+    execute2('chkconfig salt-minion on')
     execute2('service salt-minion restart')
 
 
