@@ -468,7 +468,7 @@ def _prepare_disks(vm_settings, target_dir):
 
 def get_kvm_disk_capacity_bytes(path):
     msg = "Getting capacity of the kvm disk '%s'" % path
-    get_logger().log.info(msg)
+    get_logger().info(msg)
     print msg
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
