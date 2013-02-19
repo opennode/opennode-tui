@@ -102,7 +102,7 @@ def sync_template(remote_repo, template, storage_pool):
     vm_type = config.getstring(remote_repo, 'type')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
-    remotefile = urlparse.urljoin(url, template)
+    remotefile = urlparse.urljoin(url.rstrip('/') + '/', template)
     # only download if we don't already have a fresh copy
     if not is_fresh(localfile, remotefile):
         # for resilience
