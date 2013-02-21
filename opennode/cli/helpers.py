@@ -151,11 +151,7 @@ def display_yesno(screen, title, question_text="Yes / No", width=50, height=2):
     g.add(Textbox(width, height, question_text, 0, 0), 0, 0, padding=(0, 1, 0, 1))
     g.add(bb, 0, 1)
     rc = g.runOnce()
-
-    if bb.buttonPressed(rc) == 'no':
-        return False
-    else:
-        return True
+    return bb.buttonPressed(rc) == 'yes'
 
 
 def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
