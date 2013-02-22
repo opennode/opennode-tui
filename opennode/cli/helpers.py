@@ -144,6 +144,16 @@ def display_vm_type_select(screen, title):
                              buttons=[('Menu', 'back', 'F12'), 'Ok'])
 
 
+def display_yesno(screen, title, question_text="Yes / No", width=50, height=2):
+    """Display yes/no dialog. Return True on yes and False on no."""
+    g = GridFormHelp(screen, title, help, 1, 2)
+    bb = ButtonBar(screen, (('No', 'no', 'F12'), 'Yes'))
+    g.add(Textbox(width, height, question_text, 0, 0), 0, 0, padding=(0, 1, 0, 1))
+    g.add(bb, 0, 1)
+    rc = g.runOnce()
+    return bb.buttonPressed(rc) == 'yes'
+
+
 def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
     """Display information message on information screen"""
     g = GridFormHelp(screen, title, help, 1, 2)

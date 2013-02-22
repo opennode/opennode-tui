@@ -8,7 +8,7 @@ from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
                                   display_selection, display_vm_type_select, display_info,
-                                  display_template_edit_form)
+                                  display_template_edit_form, display_yesno)
 from opennode.cli import actions
 from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
@@ -17,6 +17,7 @@ from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordles
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
 from libvirt import libvirtError
+import tarfile
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -623,6 +624,16 @@ class OpenNodeTUI(object):
             path = os.path.join(get_config().getstring("general", "storage-endpoint"),
                                 storage_pool, chosen_vm_type, "unpacked",
                                 chosen_template + ".ovf")
+            if not os.path.exists(path):
+                if display_yesno(self.screen, 'Template unpack',
+                                 'Unpacked template does not exist.\nDo you want to try to unpack it?', 40):
+                    try:
+                        actions.templates.unpack_template(storage_pool, chosen_vm_type, chosen_template)
+                    except tarfile.ReadError:
+                        display_info(self.scren, "ERROR", "Invalid OVA package format.")
+                        return callback()
+                else:
+                    return callback()
             ovf_file = OvfFile(path)
         except IOError as (errno, _):
             if errno == 2:  # ovf file not found
