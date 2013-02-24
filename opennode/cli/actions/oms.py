@@ -38,6 +38,7 @@ def set_oms_server(server, port=4506):
             minion_config = {}
         minion_config['master'] = server
         minion_config['master_port'] = port
+        minion_config['dns_retry'] = 0  # TUI-47
 
     with open(minion_conf_file, 'w') as conf:
         yaml.dump(minion_config, conf, default_flow_style=False)
