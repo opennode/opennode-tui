@@ -11,8 +11,10 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_template_edit_form)
 from opennode.cli import actions
 from opennode.cli.config import get_config
-from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                OpenvzModificationForm, OpenVZMigrationForm)
+from opennode.cli.forms2 import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
+                                 OpenvzModificationForm, OpenVZMigrationForm)
+from opennode.cli.forms import (CreateVM, NetworkSettings, Storage, Resources,
+                                AddVIF, EditVIF, SetDefaultRoute)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
@@ -652,26 +654,89 @@ class OpenNodeTUI(object):
 
     def display_template_settings(self, template_settings):
         """ Display configuration details of a new VM """
+        logic = {'network': NetworkSettings,
+                 'storage': Storage,
+                 'resources': Resources,
+                 'back': CreateVM,
+                 'addvif': AddVIF,
+                 'editvif': EditVIF,
+                 'route': SetDefaultRoute,
+                 }
         vm_type = template_settings["vm_type"]
         if vm_type == "openvz":
             template_settings["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
-            form = OpenvzForm(self.screen, TITLE, template_settings)
+            form = CreateVM(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmForm(self.screen, TITLE, template_settings)
         else:
             raise ValueError("Unsupported vm type '%s'" % vm_type)
         while 1:
-            if not form.display():
-                return None
-            if form.validate():
-                settings = template_settings.copy()
-                settings.update(form.data)
-                return settings
+            if vm_type == 'openvz':
+                rv = form.display()
+                if rv == 'menu':
+                    return None
+                if rv == 'create':
+                    if form.validate():
+                        settings = template_settings.copy()
+                        settings.update(form.data)
+                        return settings
+                    else:
+                        errors = form.errors
+                        key, msg = errors[0]
+                        display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                if form.validate():
+                    settings = template_settings.copy()
+                    settings.update(form.data)
+                    template_settings = settings
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
+                while 1:
+                    with open('/root/settings.txt', 'a+t') as f:
+                        from pprint import pformat
+                        f.write(pformat(template_settings))
+                        f.write('\n')
+                        f.write('='*50)
+                        f.write('\n')
+                    new_form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
+                    rv = new_form.display()
+                    if new_form.validate():
+                        settings = template_settings.copy()
+                        settings.update(new_form.data)
+                        template_settings = settings
+                    else:
+                        errors = form.errors
+                        key, msg = errors[0]
+                        display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                    if rv == 'back' or rv == 'menu':
+                        break
+                    else:
+                        if new_form.validate():
+                            settings = template_settings.copy()
+                            settings.update(new_form.data)
+                            template_settings = settings
+                        else:
+                            errors = form.errors
+                            key, msg = errors[0]
+                            display_info(self.screen, TITLE, msg, width=75)
+                        continue
             else:
-                errors = form.errors
-                key, msg = errors[0]
-                display_info(self.screen, TITLE, msg, width=75)
-                continue
+                if not form.display():
+                    return None
+                if form.validate():
+                    settings = template_settings.copy()
+                    settings.update(form.data)
+                    return settings
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
+
 
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)

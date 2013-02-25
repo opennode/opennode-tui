@@ -1,11 +1,58 @@
-""" Forms for OpenNode Terminal User Interface """
+#!/usr/bin/env python
 
 import operator
-import re
 import os
-
-from snack import Entry, Textbox, Button, GridForm, Checkbox, RadioBar
+import re
 import socket
+from snack import Grid, Entry, Listbox, colorsets, FLAG_DISABLED, Textbox, Button
+from snack import GridForm, Label, Checkbox, ButtonBar, CheckboxTree, RadioBar
+#from snack import Entry, Textbox, Button, GridForm, Checkbox, RadioBar
+
+
+class OneLineListbox(Listbox):
+    """ Helper for one line Listbox.
+    This one adds visual aids ('<' '>') and truncates string if need be."""
+    def __init__(self, items=[], width=24):
+        self.list_items = []
+        Listbox.__init__(self, 1, width=width, oneline=True)
+        for (k, v) in items:
+            spaces = width - len(k) - 3
+            if spaces < 0:
+                nv = '< ' + k[:(width - 3)] + '>'
+            nv = '< ' + k + ' '*spaces + '>'
+            self.list_items.append((nv, v))
+        for (k, v) in self.list_items:
+            self.append(k, v)
+
+
+class HBox(Grid):
+    """ Helper wrapper around snack.Grid
+    Horisontal 1 column grid element. """
+    def __init__(self, rows=1):
+        Grid.__init__(self, 1, rows)
+        self.lastrow=0
+        self.rows=rows
+
+    def append(self, widget, *args, **kwargs):
+        if self.lastrow >= self.rows:
+            raise Exception('Row index out of bounds')
+        self.setField(widget, 0, self.lastrow, *args, **kwargs)
+        self.lastrow += 1
+
+
+class VBox(Grid):
+    """ Helper wrapper around snack.Grid
+    Vertical 1 row grid element. """
+    def __init__(self, cols=1):
+        Grid.__init__(self, cols, 1)
+        self.lastcol = 0
+        self.cols = cols
+
+    def append(self, widget, *args, **kwargs):
+        if self.lastcol >= self.cols:
+            raise Exception('Column index out of bounds')
+        self.setField(widget, self.lastcol, 0, *args, **kwargs)
+        self.lastcol += 1
 
 
 class Form(object):
@@ -15,10 +62,10 @@ class Form(object):
         self.title, self.screen, self.fields = title, screen, fields
 
     def validate(self):
-        self.errors = reduce(operator.add, [field.errors for field in self.fields
-                                            if not field.validate()], [])
+        self.errors = reduce(operator.add, [self.fields[field].errors for field in self.fields
+                                            if not self.fields[field].validate()], [])
         if not self.errors:
-            self.data = dict([(field.name, field.value()) for field in self.fields])
+            self.data = dict([(self.fields[field].name, self.fields[field].value()) for field in self.fields])
             return True
         else:
             return False
@@ -26,6 +73,474 @@ class Form(object):
     def display(self):
         pass
 
+
+class CreateVM(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        self.fields['memory'] = FloatField('memory',
+                                           settings.get('memory', ''),
+                                           settings.get('memory_min', ''),
+                                           settings.get('memory_max', ''),
+                                           width=6)
+        self.fields['swap'] = FloatField('swap',
+                                         settings.get('swap', ''),
+                                         settings.get('swap_min', ''),
+                                         settings.get('swap_max', ''),
+                                         width=6)
+        self.fields['disk'] = FloatField('disk',
+                                         settings.get('disk', ''),
+                                         settings.get('disk_min', ''),
+                                         settings.get('disk_max', ''),
+                                         width=6)
+        self.fields['vcpu'] = IntegerField('vcpu',
+                                           settings.get('vcpu', ''),
+                                           settings.get('vcpu_min', ''),
+                                           settings.get('vcpu_max', ''),
+                                           width = 6)
+        self.fields['hostname'] = StringField('hostname',
+                                              settings.get('hostname', ''),
+                                              width = 15)
+        self.fields['ip_address'] = IpField('ip_address',
+                                            settings.get('ip_address', ''),
+                                            width = 16)
+        self.fields['nameserver'] = IpField('nameserver',
+                                            settings.get('nameserver', ''),
+                                            width = 36)
+        self.fields['passwd'] = PasswordField('passwd',
+                                              settings.get('passwd', ''),
+                                              width = 36)
+        self.fields['passwd2'] = PasswordField('passwd2',
+                                               settings.get('passwd', ''),
+                                               width = 36)
+        self.fields['startvm'] = CheckboxField('startvm',
+                                               bool(settings.get('startvm', '')),
+                                               display_name = 'Start VM')
+        self.fields['onboot'] = CheckboxField('onboot',
+                                              bool(settings.get('onboot', '')),
+                                              display_name = 'Start on boot')
+        self.labels['disk_max'] = str(settings.get('disk_max', ''))
+        self.labels['disk_min'] = str(settings.get('disk_min', ''))
+        self.labels['swap_max'] = str(settings.get('swap_max', ''))
+        self.labels['swap_min'] = str(settings.get('swap_min', ''))
+        self.labels['memory_max'] = str(settings.get('memory_max', ''))
+        self.labels['memory_min'] = str(settings.get('memory_min', ''))
+        self.labels['vcpu_min'] = str(settings.get('vcpu_min', ''))
+        self.labels['vcpu_max'] = str(settings.get('vcpu_max', ''))
+        Form.__init__(self, screen, title, self.fields)
+
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM', 1, 8)
+        profile_items = [('Custom', 1)]
+        storage_items = [('Local: /storage/local', 1),]
+        cl = OneLineListbox(profile_items, width=36)
+
+        label1 = Label('* VM Resources')
+        label1.setColors(colorsets['BORDER'])
+        self.gf.add(label1, 0, 0, anchorLeft=1, padding=(0, 0, 0, 0))
+
+        g2 = Grid(3, 2)
+        g2.setField(self.fields['memory'], 0, 0)
+        g2.setField(Label('VSwap (%s .. %s GB):' % (self.labels['swap_min'],
+                                                    self.labels['swap_max'])),
+                    1, 0, padding = (1, 0, 1, 0), anchorLeft=1)
+        g2.setField(self.fields['swap'], 2, 0)
+        g2.setField(self.fields['disk'], 0, 1)
+        g2.setField(Label('CPUs (%s..%s):' % (self.labels['vcpu_min'],
+                                              self.labels['vcpu_max'])),
+                    1, 1, padding = (1, 0, 1, 0), anchorLeft=1)
+        g2.setField(self.fields['vcpu'], 2, 1)
+
+        g1 = HBox(4)
+        g1.append(cl, growx=1)
+        g1.append(g2)
+
+        l2 = OneLineListbox(storage_items, width=36)
+        g1.append(l2)
+
+        g4 = HBox(4)
+        g4.append(Label('VM Profile'), anchorLeft=1, padding=(0, 0, 1, 0))
+        memory_str = 'Memory (%s .. %s GB):' % (self.labels['memory_min'],
+                                                self.labels['memory_max'])
+        if len(memory_str) < 27:
+            memory_str = memory_str.ljust(27, ' ')
+        g4.append(Label(memory_str), anchorLeft=1, padding=(0, 0, 1, 0))
+        g4.append(Label('Disk (%s..%sGB):' % (self.labels['disk_min'],
+                                              self.labels['disk_max'])),
+                  anchorLeft=1, padding=(0, 0, 1, 0))
+        g4.append(Label('Sorage location:'), anchorLeft=1, padding=(0, 0, 1, 0))
+
+        g3 = VBox(2)
+        g3.append(g4)
+        g3.append(g1)
+
+        self.gf.add(g3, 0, 2)
+
+        label2 = Label('* Network')
+        label2.setColors(colorsets['BORDER'])
+        self.gf.add(label2, 0, 3, anchorLeft=1)
+
+        g5 = VBox(3)
+        g5.append(self.fields['hostname'])
+        g5.append(Label('IP:'), padding=(1, 0, 1, 0))
+        g5.append(self.fields['ip_address'])
+
+        g6 = HBox(2)
+        g6.append(g5)
+        g6.append(self.fields['nameserver'])
+        g7 = HBox(2)
+        g7.append(Label('Hostname:'), anchorLeft=1, growx=1)
+        g7.append(Label('Nameservers:           '), anchorLeft=1, growx=1)
+
+        g8 = VBox(2)
+        g8.append(g7)
+        g8.append(g6)
+
+        self.gf.add(g8, 0, 4, anchorLeft=1, growx=1)
+
+        label3 = Label('* Misc')
+        label3.setColors(colorsets['BORDER'])
+        self.gf.add(label3, 0, 5, anchorLeft=1)
+
+        g9 = HBox(3)
+        g9.append(self.fields['passwd'], anchorLeft=1)
+        g9.append(self.fields['passwd2'], anchorLeft=1)
+        g12 = VBox(2)
+        g12.append(self.fields['startvm'], anchorLeft=1, padding=(0, 0, 3, 0))
+        g12.append(self.fields['onboot'], anchorRight=1, padding=(4, 0, 0, 0))
+        g9.append(g12)
+        g10 = HBox(3)
+        g10.append(Label('Root password'),  anchorLeft=1)
+        g10.append(Label('Root password (x2)     '), anchorLeft=1)
+        g11 = VBox(2)
+        g11.append(g10)
+        g11.append(g9)
+        self.gf.add(g11, 0, 6, anchorLeft=1, growx=1)
+        bb = ButtonBar(self.screen, (('Menu', 'menu', 'F12'), 'Create', 'Storage', 'Resources', 'Network'))
+        self.gf.add(bb, 0, 7, padding=(0, 1, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def validate(self):
+        Form.validate(self)
+        if (self.fields['passwd'].validate() and self.fields['passwd2'].validate() and
+                self.fields['passwd'].value() != self.fields['passwd2'].value()):
+            self.errors.append(("passwd", "Passwords don't match."))
+        return not self.errors
+
+
+class NetworkSettings(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        self.fields['hostname'] = StringField('hostname',
+                                              settings.get('hostname', ''),
+                                              width = 18)
+        self.fields['ipv6'] = CheckboxField('ipv6',
+                                            bool(settings.get('ipv6', '')),
+                                            display_name = 'IPv6 Enabled')
+        self.fields['nameserver'] = IpField('nameserver',
+                                            settings.get('nameserver', ''),
+                                            width = 36)
+
+    def display(self):
+        self.gf = GridForm(self.screen, 'CreateVM > Network Settings', 1, 7)
+        label1 = Label('* General')
+        label1.setColors(colorsets['BORDER'])
+        self.gf.add(label1, 0, 0, anchorLeft=1)
+
+        g1 = VBox(2)
+        g1.append(self.fields['hostname'])
+        g1.append(self.fields['ipv6'], padding=(2, 0, 0, 0), anchorRight=1)
+
+        g2 = HBox(2)
+        g2.append(g1)
+        g2.append(self.fields['nameserver'])
+
+        g3 = HBox(2)
+        g3.append(Label('Hostname:'), anchorLeft=1)
+        g3.append(Label('Nameservers:'), anchorLeft=1, padding=(0, 0, 3, 0))
+
+        g4 = VBox(2)
+        g4.append(g3)
+        g4.append(g2)
+
+        self.gf.add(g4, 0, 1)
+
+        label2 = Label('* Virtual Interfaces (VIF)')
+        label2.setColors(colorsets['BORDER'])
+        self.gf.add(label2, 0, 2, anchorLeft=True, padding=(0, 1, 0, 0))
+
+        cbt = CheckboxTree(4, scroll=1)
+        #cbt.addItem('VLAN1\tvnet0:0\t192.168.20.100/32', '')
+        cbt.append('VLAN1  vnet0:0   192.168.20.100/32', 0, 0)
+        cbt.append('VLAN5  eth0      10.10.1.10          gw: 10.10.1.254', 1, 0)
+        cbt.append('VLAN5  eth0:0    192.168.5.10/24', 2, 0)
+        cbt.append('VLAN7  eth1      10.30.5.75/24       gw: 10.30.5.254', 3, 0)
+
+        self.gf.add(cbt, 0, 3)
+
+        label3 = Label('* Default Route')
+        label3.setColors(colorsets['BORDER'])
+        self.gf.add(label3, 0, 4, anchorLeft=True, padding=(0, 1, 0, 0))
+        self.gf.add(Label('default via 10.10.1.254 dev eth0'), 0, 5, anchorLeft=True)
+
+        bb = ButtonBar(self.screen, (('Back', 'back', 'F12'), ('Save', ' ns_save'), ('Add VIF', 'addvif'), ('Edit VIF', 'editvif'), ('Set Default RT', 'route')))
+
+        self.gf.add(bb, 0, 6, anchorLeft=True, padding=(0, 1, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
+
+
+class AddVIF(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Network Settings > Add VIF', 1, 1)
+        label = Label('* Choose VIF type')
+        items = [('VENET (P-t-P IP)', 0),
+                 ('VETH (ether IP)', 1),
+                 ('VETH (alias IP)', 2),]
+        listbox = Listbox(3, width=30, scroll=1)
+        for (k, v) in items:
+            listbox.append(k, v)
+        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), ('Ok', 'network')))
+        hbox = HBox(3)
+        hbox.append(label, anchorLeft=1, padding=(0, 0, 0, 1))
+        hbox.append(listbox)
+        hbox.append(bb, padding=(0, 1, 0, 0))
+        self.gf.add(hbox, 0, 0)
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
+
+
+class EditVIF(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        #self.fields['hostname'] = StringField('hostname', 
+        
+
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Network Settings > Add VIF > eth2 (ether IP)', 1, 5)
+
+        label1 = Label('* VIF Settings')
+        label1.setColors(colorsets['BORDER'])
+        self.gf.add(label1, 0, 0, anchorLeft=1)
+
+        hbrr = HBox(4)
+        hbrr.append(Checkbox('Manged'), anchorLeft=1)
+        hbrr.append(Label('Host bridge: vmbr0'), anchorLeft=1)
+        vif_mac_entry=Entry(18, '00:1 (disabled) 5')
+        vif_mac_entry.setFlags(FLAG_DISABLED, 0)
+        hbrr.append(vif_mac_entry)
+        hbrr.append(Entry(18,   '66:77:88:99:00:11'))
+        hbrl = HBox(4)
+        hbrl.append(Label(''))
+        hbrl.append(Label(''))
+        hbrl.append(Label('VIF MAC:'), anchorRight=1, padding=(2, 0, 1, 0))
+        hbrl.append(Label('Host MAC:'), anchorRight=1, padding=(2, 0, 1, 0))
+        hbll = HBox(3)
+        hbll.append(Label('IP Addr:'), anchorLeft=1, padding=(0, 0, 1, 0))
+        hbll.append(Label('Netbask:'), anchorLeft=1, padding=(0, 0, 1, 0))
+        hbll.append(Label('Gateway:'), anchorLeft=1, padding=(0, 0, 1, 0))
+        hblr = HBox(3)
+        hblr.append(Entry(16, '192.168.200.25'))
+        hblr.append(Entry(16, '255.255.255.0'))
+        hblr.append(Entry(16, '192.168.200.254'))
+        vbl = VBox(2)
+        vbl.append(hbll)
+        vbl.append(hblr)
+        hbl = HBox(2)
+        hbl.append(Label('Device name: eth2'), anchorLeft=1)
+        hbl.append(vbl)
+        vb = VBox(3)
+        vb.append(hbl)
+        vb.append(hbrl)
+        vb.append(hbrr)
+        self.gf.add(vb, 0, 1)
+        label2 = Label('* VIF Rules')
+        label2.setColors(colorsets['BORDER'])
+        self.gf.add(label2, 0, 2, anchorLeft=1, padding=(0, 1, 0, 0))
+        vb = VBox(6)
+        vb.append(Label('VLAN ID:'), padding=(0, 0, 1, 0))
+        vb.append(Entry(3, '15'), padding=(0, 0, 2, 0))
+        vb.append(Label('BW Limit (Mbps):'), padding=(0, 0, 1, 0))
+        vb.append(Entry(3, '10'), padding=(0, 0, 2, 0))
+        vb.append(Label('BW Burst (Mbps):'), padding=(0, 0, 1, 0))
+        vb.append(Entry(3, '1'))
+        self.gf.add(vb, 0, 3)
+        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), ('Ok', 'network')))
+        self.gf.add(bb, 0, 4, padding=(0, 2, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
+
+
+class VenetSettings(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Network Settings > Add VIF > venet (P-t-P IP)', 1, 4)
+        label = Label('* VIF Settings')
+        label.setColors(colorsets['BORDER'])
+        self.gf.add(label, 0, 0, anchorLeft=1, padding=(0, 0, 0, 1))
+        self.gf.add(Label('Device name: venet0:1'), 0, 1, anchorLeft=1)
+        vbox = VBox(2)
+        vbox.append(Label('IP Addr:'), padding=(0, 0, 2, 0))
+        vbox.append(Entry(16, '192.168.200.25'))
+        self.gf.add(vbox, 0, 2, anchorLeft=1)
+        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), ('Ok', 'network')))
+        self.gf.add(bb, 0, 3, padding=(0, 2, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
+
+
+class Resources(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+        
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Resources', 1, 7)
+        label1 = Label('* CPU limits')
+        label1.setColors(colorsets['BORDER'])
+        label2 = Label('* Primary UBC limits')
+        label2.setColors(colorsets['BORDER'])
+        label3 = Label('* VM boot params')
+        label3.setColors(colorsets['BORDER'])
+        self.gf.add(label1, 0, 0, anchorLeft=1)
+        self.gf.add(label2, 0, 2, anchorLeft=1, padding=(0, 0, 0, 0))
+        self.gf.add(label3, 0, 4, anchorLeft=1, padding=(0, 0, 0, 0))
+        hbll = HBox(2)
+        hbll.append(Label('CPUs (1..8):'), anchorLeft=1)
+        hbll.append(Label('CPU usage limit (%):'), anchorLeft=1)
+        hblr = HBox(2)
+        hblr.append(Entry(4, '2'))
+        hblr.append(Entry(4, '100'))
+        hbrl = HBox(2)
+        hbrl.append(Label('CPU Priority:'), anchorRight=1)
+        hbrl.append(Label('CPU mask (1..8):'), anchorRight=1)
+        hbrr = HBox(2)
+        prios = [('Low', 0),
+                 ('Default', 1),
+                 ('High', 2),]
+        lb = OneLineListbox(prios, width=14)
+        hbrr.append(lb)
+        hbrr.append(Entry(14, '1-3,5'))
+        vb_cpu = VBox(4)
+        vb_cpu.append(hbll, padding=(0, 0, 1, 0))
+        vb_cpu.append(hblr, padding=(0, 0, 1, 0))
+        vb_cpu.append(hbrl, padding=(0, 0, 1, 0))
+        vb_cpu.append(hbrr)
+        self.gf.add(vb_cpu, 0, 1)
+
+        hbll = HBox(5)
+        hbll.append(Label('Parameter'), anchorLeft=1)
+        hbll.append(Label('NUMPROC:'), anchorLeft=1)
+        hbll.append(Label('NUMTCPSOCK:'), anchorLeft=1)
+        hbll.append(Label('NUMOTEHRSOCK:'), anchorLeft=1)
+        hbll.append(Label('VMGUARPAGES:'), anchorLeft=1)
+        hblr = HBox(5)
+        hblr.append(Label('Barrier'), anchorLeft=1)
+        hblr.append(Entry(12, 'UNLIMITED'))
+        hblr.append(Entry(12, 'UNLIMITED'))
+        hblr.append(Entry(12, 'UNLIMITED'))
+        hblr.append(Entry(12, 'UNLIMITED'))
+        hbrl = HBox(5)
+        hbrl.append(Label('Limit'), anchorLeft=1)
+        hbrl.append(Entry(12, 'UNLIMITED'))
+        hbrl.append(Entry(12, 'UNLIMITED'))
+        hbrl.append(Entry(12, 'UNLIMITED'))
+        hbrl.append(Entry(12, 'UNLIMITED'))
+        hbrr = HBox(5)
+        labelf = Label('Failcnt')
+        labelf.setColors(colorsets['BUTTON'])
+        hbrr.append(labelf)
+        entry1 = Entry(8, '0')
+        entry1.setFlags(FLAG_DISABLED, 0)
+        entry2 = Entry(8, '0')
+        entry2.setFlags(FLAG_DISABLED, 0)
+        entry3 = Entry(8, '0')
+        entry3.setFlags(FLAG_DISABLED, 0)
+        entry4 = Entry(8, '0')
+        entry4.setFlags(FLAG_DISABLED, 0)
+        hbrr.append(entry1)
+        hbrr.append(entry2)
+        hbrr.append(entry3)
+        hbrr.append(entry4)
+        vb_ubc = VBox(4)
+        vb_ubc.append(hbll, padding=(0, 0, 4, 0))
+        vb_ubc.append(hblr, padding=(0, 0, 2, 0))
+        vb_ubc.append(hbrl, padding=(0, 0, 2, 0))
+        vb_ubc.append(hbrr, padding=(0, 0, 2, 0))
+        self.gf.add(vb_ubc, 0, 3)
+
+        vb_boot = VBox(4)
+        vb_boot.append(Checkbox('Start VM'), padding=(0, 0, 2, 0))
+        vb_boot.append(Checkbox('Start on boot'), padding=(0, 0, 2, 0))
+        vb_boot.append(Label('Boot order (1..999)'), padding=(0, 0, 2, 0))
+        vb_boot.append(Entry(4, '30'))
+        self.gf.add(vb_boot, 0, 5)
+
+        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), 'Save'))
+        self.gf.add(bb, 0, 6, padding=(0, 1, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
+
+
+class Storage(Form):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Storage', 1, 6)
+        label1 = Label('Bind mounts')
+        label1.setColors(colorsets['BORDER'])
+        label2 = Label('IO Priority')
+        label2.setColors(colorsets['BORDER'])
+        io_prio_values = [('Low', 0),
+                          ('Default', 4),
+                          ('High', 7)]
+        io_prio = OneLineListbox(io_prio_values, 25)
+        self.gf.add(label1, 0, 0, anchorLeft=1)
+        self.gf.add(Entry(25, '/mnt,/dest'), 0, 1, anchorLeft=1, padding=(0, 0, 0, 0))
+        self.gf.add(Label('/src1,/dest1;/srcN,/destN'), 0, 2, anchorLeft=1)
+        self.gf.add(label2, 0, 3, anchorLeft=1, padding=(0, 1, 0, 0))
+        self.gf.add(io_prio, 0, 4, anchorLeft=1, padding=(0, 0, 0, 0))
+        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), 'Ok'))
+        self.gf.add(bb, 0, 5, padding=(0, 1, 0, 0))
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+
+    def runOnce(self):
+        self.gf.runOnce()
 
 class KvmForm(Form):
 
@@ -507,3 +1022,30 @@ def validate_range(name, value, min_value, max_value, expected_type):
         return [(name, "%s is larger than template limits (%s > %s)." %
                  (name.capitalize(), value, max_value))]
     return []
+
+class SetDefaultRoute(object):
+    def __init__(self, screen, title, settings):
+        self.screen = screen
+        self.fields = {}
+        self.labels = {}
+            
+    def display(self):
+        self.gf = GridForm(self.screen, 'Create VM > Network Settings > Add VIF', 1, 1)
+        label = Label('* Choose VIF type')
+        items = [('VENET (P-t-P IP)', 0),
+                 ('VETH (ether IP)', 1),
+                 ('VETH (alias IP)', 2),]
+        listbox = Listbox(3, width=30, scroll=1)
+        for (k, v) in items:
+            listbox.append(k, v)
+            bb = ButtonBar(self.screen, (('Cancel', 'cance', 'F12'), 'Ok'))
+            hbox = HBox(3)
+            hbox.append(label, anchorLeft=1, padding=(0, 0, 0, 1))
+            hbox.append(listbox)
+            hbox.append(bb, padding=(0, 1, 0, 0))
+            self.gf.add(hbox, 0, 0)
+        rv = self.gf.runOnce()
+        return bb.buttonPressed(rv)
+                    
+    def runOnce(self):
+        self.gf.runOnce()
