@@ -194,6 +194,8 @@ class OpenNodeTUI(object):
     def display_select_storage_pool(self, default=None):
         if not default:
             default = get_config().getstring('general', 'default-storage-pool')
+            if len(default) == 0:
+                default = None
         storage_pools = [("%s (%s)" % (p[0], p[1]), p[0]) for p in actions.storage.list_pools()]
         return display_selection(self.screen, TITLE, storage_pools,
                                  'Select a storage pool to use:',
