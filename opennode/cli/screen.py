@@ -670,8 +670,8 @@ class OpenNodeTUI(object):
             form = KvmForm(self.screen, TITLE, template_settings)
         else:
             raise ValueError("Unsupported vm type '%s'" % vm_type)
-        while 1:
-            if vm_type == 'openvz':
+        if vm_type == 'openvz':
+            while 1:
                 rv = form.display()
                 if rv == 'menu':
                     return None
@@ -689,42 +689,45 @@ class OpenNodeTUI(object):
                     settings = template_settings.copy()
                     settings.update(form.data)
                     template_settings = settings
+                    form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
                 else:
                     errors = form.errors
                     key, msg = errors[0]
                     display_info(self.screen, TITLE, msg, width=75)
                     continue
-                while 1:
-                    with open('/root/settings.txt', 'a+t') as f:
-                        from pprint import pformat
-                        f.write(pformat(template_settings))
-                        f.write('\n')
-                        f.write('='*50)
-                        f.write('\n')
-                    new_form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
-                    rv = new_form.display()
-                    if new_form.validate():
-                        settings = template_settings.copy()
-                        settings.update(new_form.data)
-                        template_settings = settings
-                    else:
-                        errors = form.errors
-                        key, msg = errors[0]
-                        display_info(self.screen, TITLE, msg, width=75)
-                        continue
-                    if rv == 'back' or rv == 'menu':
-                        break
-                    else:
-                        if new_form.validate():
-                            settings = template_settings.copy()
-                            settings.update(new_form.data)
-                            template_settings = settings
-                        else:
-                            errors = form.errors
-                            key, msg = errors[0]
-                            display_info(self.screen, TITLE, msg, width=75)
-                        continue
-            else:
+
+                # while 1:
+                #     with open('/root/settings.txt', 'a+t') as f:
+                #         from pprint import pformat
+                #         f.write(pformat(template_settings))
+                #         f.write('\n')
+                #         f.write('='*50)
+                #         f.write('\n')
+                #     new_form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
+                #     rv = new_form.display()
+                #     if new_form.validate():
+                #         settings = template_settings.copy()
+                #         settings.update(new_form.data)
+                #         template_settings = settings
+                #     else:
+                #         errors = form.errors
+                #         key, msg = errors[0]
+                #         display_info(self.screen, TITLE, msg, width=75)
+                #         continue
+                #     if rv == 'back' or rv == 'menu':
+                #         break
+                #     else:
+                #         if new_form.validate():
+                #             settings = template_settings.copy()
+                #             settings.update(new_form.data)
+                #             template_settings = settings
+                #         else:
+                #             errors = form.errors
+                #             key, msg = errors[0]
+                #             display_info(self.screen, TITLE, msg, width=75)
+                #         continue
+        else:
+            while 1:
                 if not form.display():
                     return None
                 if form.validate():
