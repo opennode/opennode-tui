@@ -11,9 +11,9 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_template_edit_form)
 from opennode.cli import actions
 from opennode.cli.config import get_config
-from opennode.cli.forms2 import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                 OpenvzModificationForm, OpenVZMigrationForm)
-from opennode.cli.forms import (CreateVM, NetworkSettings, Storage, Resources,
+from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
+                                OpenvzModificationForm, OpenVZMigrationForm,
+                                CreateVM, NetworkSettings, Storage, Resources,
                                 AddVIF, EditVIF, SetDefaultRoute)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
