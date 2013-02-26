@@ -106,6 +106,8 @@ def _dump_state(conn, filename):
 
 
 def dom_dom(conn, uuid):
+    with open('/root/elementtree.xml', 'wt') as f:
+        f.write(conn.lookupByUUIDString(uuid).XMLDesc(0))
     return ElementTree.fromstring(conn.lookupByUUIDString(uuid).XMLDesc(0))
 
 

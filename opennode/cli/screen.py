@@ -14,7 +14,7 @@ from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm,
                                 CreateVM, NetworkSettings, Storage, Resources,
-                                AddVIF, EditVIF, SetDefaultRoute)
+                                AddVIF, EditVIF, SetDefaultRoute, EditVM)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
@@ -583,7 +583,13 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
-                form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+                #form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+                available_vms[vm_id]["memory"] = available_vms[vm_id]["memory"] / 1024.0
+                available_vms[vm_id]["swap"] = available_vms[vm_id]["swap"] / 1024.0
+                with open('/root/edit.txt', 'wt') as f:
+                    from pprint import pformat
+                    f.write(pformat(available_vms[vm_id]))
+                form = EditVM(self.screen, TITLE, available_vms[vm_id], edit=True)
             else:
                 display_info(self.screen, TITLE,
                     "Editing of '%s' VMs is not currently supported." % vm_type)
@@ -671,14 +677,17 @@ class OpenNodeTUI(object):
         else:
             raise ValueError("Unsupported vm type '%s'" % vm_type)
         if vm_type == 'openvz':
+            settings = template_settings.copy()
             while 1:
                 rv = form.display()
                 if rv == 'menu':
                     return None
                 if rv == 'create':
                     if form.validate():
-                        settings = template_settings.copy()
                         settings.update(form.data)
+                        with open('/root/create.txt', 'wt') as f:
+                            from pprint import pformat
+                            f.write(pformat(settings))
                         return settings
                     else:
                         errors = form.errors
@@ -686,46 +695,13 @@ class OpenNodeTUI(object):
                         display_info(self.screen, TITLE, msg, width=75)
                         continue
                 if form.validate():
-                    settings = template_settings.copy()
                     settings.update(form.data)
-                    template_settings = settings
-                    form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
+                    form = logic.get(rv, CreateVM)(self.screen, TITLE, settings)
                 else:
                     errors = form.errors
                     key, msg = errors[0]
                     display_info(self.screen, TITLE, msg, width=75)
                     continue
-
-                # while 1:
-                #     with open('/root/settings.txt', 'a+t') as f:
-                #         from pprint import pformat
-                #         f.write(pformat(template_settings))
-                #         f.write('\n')
-                #         f.write('='*50)
-                #         f.write('\n')
-                #     new_form = logic.get(rv, CreateVM)(self.screen, TITLE, template_settings)
-                #     rv = new_form.display()
-                #     if new_form.validate():
-                #         settings = template_settings.copy()
-                #         settings.update(new_form.data)
-                #         template_settings = settings
-                #     else:
-                #         errors = form.errors
-                #         key, msg = errors[0]
-                #         display_info(self.screen, TITLE, msg, width=75)
-                #         continue
-                #     if rv == 'back' or rv == 'menu':
-                #         break
-                #     else:
-                #         if new_form.validate():
-                #             settings = template_settings.copy()
-                #             settings.update(new_form.data)
-                #             template_settings = settings
-                #         else:
-                #             errors = form.errors
-                #             key, msg = errors[0]
-                #             display_info(self.screen, TITLE, msg, width=75)
-                #         continue
         else:
             while 1:
                 if not form.display():
