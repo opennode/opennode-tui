@@ -377,7 +377,11 @@ def _vm_interfaces(conn, uuid):
 
         alias = i.find('alias')
         if alias is None:
-            alias = 'eth%s' % idx
+            # Refer to Jira TUI-49
+            if mac == '00:00:00:00:00:00':
+                alias = 'venet0:%s' % idx
+            else:
+                alias = 'eth%s' % idx
         else:
             alias = alias.attrib.get('name', None)
 
@@ -386,8 +390,6 @@ def _vm_interfaces(conn, uuid):
         ip = i.find('ip')
         if ip is not None:
             res['ipv4_address'] = ip.attrib.get('address', None)
-            if not '/' in res['ipv4_address']:
-                res['ipv4_address'] += '/24'
 
         return res
 
