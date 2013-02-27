@@ -611,6 +611,44 @@ def get_ioprio(ctid):
     else:
         return value[rv]
 
+def get_edit_form_extras(vm_settings):
+    ctid = vm_settings['consoles'][0]['cid']
+    rv = execute("vzlist %s -H -o ip" % ctid).strip()
+    venets = {}
+    if rv != '-':
+        for idx, ip in enumerate(rv.split(' ')):
+            venets['venet0:%s' % idx] = ip
+    on_netifs = {}
+    iface_dec = get_from_config_by_ctid(ctid, 'ON_NETIF')
+    if iface_dec:
+        for iface in iface_dec.split(';'):
+            matched = []
+            for item in iface.split(','):
+                matched.append((item.split('=')))
+            tmp_dict = dict(matched)
+            on_netifs[tmp_dict['ifname']] = tmp_dict
+    netifs = {}
+    iface_dec = get_from_config_by_ctid(ctid, 'NETIF')
+    if iface_dec:
+        for iface in iface_dec.split(';'):
+            matched = []
+            for item in iface.split(','):
+                matched.append((item.split('=')))
+            tmp_dict = dict(matched)
+            netifs[tmp_dict['ifname']] = tmp_dict
+    for key in on_netifs.keys():
+        on_netifs[key].update(netifs[key])
+    for idx, iface in enumerate(vm_settings['interfaces']):
+        if iface['mac'] != '00:00:00:00:00:00': 
+            for netif in on_netifs:
+                # We should match with something other than MAC as it could change
+                # on running VM and it will not mirror on conf
+                if on_netifs[netif]['mac'].lower() == iface['mac'].lower():
+                    vm_settings['interfaces'][idx].update(on_netifs[netif])
+    vm_settings['onboot'] = get_onboot(ctid)
+    vm_settings['bind_mounts'] = get_bmounts(ctid)
+    return vm_settings
+
 
 def _update_bmounts(vm_id, bind_mounts):
     conf_fnm = '/etc/vz/conf/%s.conf' % vm_id
@@ -679,6 +717,20 @@ def get_ctid_by_uuid(uuid, backend='openvz:///system'):
     conn = libvirt.open(backend)
     return conn.lookupByUUIDString(uuid).name()
 
+
+def get_from_config_by_ctid(ctid, key):
+    # Generic $VEID.conf file reader
+    parser = SimpleConfigParser()
+    try:
+        parser.read('/etc/vz/conf/%s.conf' % ctid)
+    except IOError:
+        return ''
+    conf = parser.items()
+    if conf.has_key(key):
+        return conf[key].rstrip('"').lstrip('"')
+    else:
+        return ''
+    
 
 def get_bmounts(ctid):
     """Return ON_BMOUNT for the VM with given CTID"""

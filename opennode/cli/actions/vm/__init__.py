@@ -106,8 +106,6 @@ def _dump_state(conn, filename):
 
 
 def dom_dom(conn, uuid):
-    with open('/root/elementtree.xml', 'wt') as f:
-        f.write(conn.lookupByUUIDString(uuid).XMLDesc(0))
     return ElementTree.fromstring(conn.lookupByUUIDString(uuid).XMLDesc(0))
 
 
@@ -381,17 +379,20 @@ def _vm_interfaces(conn, uuid):
 
         alias = i.find('alias')
         if alias is None:
-            alias = 'eth%s' % idx
+            # Refer to Jira TUI-49
+            if mac == '00:00:00:00:00:00':
+                alias = 'venet0:%s' % idx
+            else:
+                alias = 'eth%s' % idx
         else:
             alias = alias.attrib.get('name', None)
+
 
         res = dict(mac=mac, name=alias, type=type)
 
         ip = i.find('ip')
         if ip is not None:
             res['ipv4_address'] = ip.attrib.get('address', None)
-            if not '/' in res['ipv4_address']:
-                res['ipv4_address'] += '/24'
 
         return res
 

@@ -584,12 +584,15 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
                 #form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
-                available_vms[vm_id]["memory"] = available_vms[vm_id]["memory"] / 1024.0
-                available_vms[vm_id]["swap"] = available_vms[vm_id]["swap"] / 1024.0
+
+                settings = available_vms[vm_id].copy()
+                settings.update(vm.get_edit_form_extras(available_vms[vm_id]))
+
                 with open('/root/edit.txt', 'wt') as f:
                     from pprint import pformat
-                    f.write(pformat(available_vms[vm_id]))
-                form = EditVM(self.screen, TITLE, available_vms[vm_id], edit=True)
+                    f.write(pformat(settings))
+
+                form = EditVM(self.screen, TITLE, settings, edit=True)
             else:
                 display_info(self.screen, TITLE,
                     "Editing of '%s' VMs is not currently supported." % vm_type)

@@ -234,21 +234,21 @@ class EditVM(Form):
         self.fields = {}
         self.labels = {}
         self.fields['memory'] = FloatField('memory',
-                                           settings.get('memory', ''),
+                                           '%.6g' % (float(settings['memory']) / 1024.0),
                                            settings.get('memory_min', 0.1),
                                            settings.get('memory_max',
                                                         min(sysres.get_ram_size_gb(),
                                                             float(settings.get("memory_max", 10 ** 30)))),
                                            width=6)
         self.fields['swap'] = FloatField('swap',
-                                         settings.get('swap', ''),
+                                         '%.6g' % (float(settings['swap']) / 1024.0),
                                          settings.get('swap_min', 0),
                                          settings.get('swap_max',
                                                       min(sysres.get_swap_size_gb(),
                                                           float(settings.get("swap_max", 10 ** 30)))),
                                          width=6)
         self.fields['diskspace'] = FloatField('diskspace',
-                                              float(settings['diskspace']['/']) / 1024.0,
+                                              '%.6g' % (float(settings['diskspace']['/']) / 1024.0),
                                               settings.get('disk_min', 2.0),
                                               settings.get('disk_max',
                                                            min(sysres.get_disc_space_gb(),
@@ -270,9 +270,6 @@ class EditVM(Form):
         self.fields['nameserver'] = IpField('nameserver',
                                             settings.get('nameserver', ''),
                                             width = 36)
-        self.fields['startvm'] = CheckboxField('startvm',
-                                               bool(settings.get('startvm', '')),
-                                               display_name = 'Start VM')
         self.fields['onboot'] = CheckboxField('onboot',
                                               bool(settings.get('onboot', '')),
                                               display_name = 'Start on boot')
@@ -369,7 +366,6 @@ class EditVM(Form):
         g9 = HBox(2)
         g9.append(Label('                       '))
         g10 = HBox(2)
-        g10.append(self.fields['startvm'], anchorRight=1, padding=(0, 0, 3, 0))
         g10.append(self.fields['onboot'], anchorLeft=1, padding=(4, 0, 0, 0))
         g9.append(g10) 
         self.gf.add(g9, 0, 6, anchorLeft=1, growx=1)
@@ -392,8 +388,8 @@ class NetworkSettings(Form):
         self.fields['nameserver'] = IpField('nameserver',
                                             settings.get('nameserver', ''), 
                                             width = 36)
-        if not 'on_netif' in settings:
-            settings['on_netif'] = []
+        if not 'interfaces' in settings:
+            settings['interfaces'] = []
         Form.__init__(self, screen, title, self.fields)
 
     def display(self):
