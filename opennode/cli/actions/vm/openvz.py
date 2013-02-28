@@ -1,27 +1,27 @@
-import os
-import operator
-import datetime
-import tarfile
-from os import path
-from hashlib import sha1
-import errno
 from contextlib import closing
+from hashlib import sha1
+from os import path
+import datetime
+import errno
+import operator
+import os
+import tarfile
 
 import libvirt
 
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
-from opennode.cli.config import get_config
-from opennode.cli.log import get_logger
 from opennode.cli.actions import sysresources as sysres
-from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import oms
 from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
                                         CommandException, TemplateException, test_passwordless_ssh, execute2,
                                         save_to_tar)
+from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
+from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 import shutil
 
 
