@@ -153,7 +153,7 @@ def _render_vm(conn, vm):
     def vm_memory(vm):
         # libvirt doesn't work with openvz
         if conn.getType() == 'OpenVZ':
-            return openvz.get_memory(vm.name())
+            return openvz.get_memory(vm.name()) / 1024.0
         # XXX: todo use libvirt
         return 0
 
@@ -174,7 +174,7 @@ def _render_vm(conn, vm):
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
-            return openvz.get_swap(vm.name())
+            return openvz.get_swap(vm.name()) / 1024.0
         # XXX use libvirt
         return 0
 

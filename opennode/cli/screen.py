@@ -14,7 +14,7 @@ from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm,
                                 CreateVM, NetworkSettings, Storage, Resources,
-                                AddVIF, EditVIF, SetDefaultRoute, EditVM)
+                                AddVIF, EditVIF, SetDefaultRoute, EditVM, VenetSettings)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
@@ -567,6 +567,16 @@ class OpenNodeTUI(object):
             return self.display_vm_manage()
 
         if action is None or action == 'edit':
+            logic = {'network': NetworkSettings,
+                     'storage': Storage,
+                     'resources': Resources,
+                     'back': EditVM,
+                     'addvif': AddVIF,
+                     'editvif': EditVIF,
+                     'route': SetDefaultRoute,
+                     'venet': VenetSettings,
+                     'veth': EditVIF,
+                     }
             vm_type = available_vms[vm_id]['vm_type']
 
             if vm_type == 'openvz':
@@ -583,23 +593,53 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
-                #form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
 
                 settings = available_vms[vm_id].copy()
+                settings["memory"] /= 1024.0
+                settings["swap"] /= 1024.0
+                settings["diskspace"]["/"] /= 1024.0
                 settings.update(vm.get_edit_form_extras(available_vms[vm_id]))
 
-                with open('/root/edit.txt', 'wt') as f:
-                    from pprint import pformat
-                    f.write(pformat(settings))
-
-                form = EditVM(self.screen, TITLE, settings, edit=True)
+                form = EditVM(self.screen, TITLE, settings)
             else:
                 display_info(self.screen, TITLE,
                     "Editing of '%s' VMs is not currently supported." % vm_type)
                 return self.display_vm_manage()
 
             # TODO KVM specific form
-            user_settings = self._display_custom_form(form, available_vms[vm_id])
+            while 1:
+                rv = form.display()
+                self.screen.finish()
+                print rv
+                self.screen = SnackScreen()
+                if rv == 'menu':
+                    user_settings = None
+                    break
+                if rv == 'back':
+                    form = logic[rv](self.screen, TITLE, settings)
+                    continue
+                if rv == 'commit':
+                    if form.validate():
+                        settings.update(form.data)
+                        user_settings = settings
+                        break
+                    else:
+                        errors = form.errors
+                        key, msg = errors[0]
+                        display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                if isinstance(form, VenetSettings):
+                    if form.validate():
+                        settings['interfaces'].append(form.data['interfaces'])
+                        form = logic['network'](self.screen, TITLE, settings)
+                if form.validate():
+                    settings.update(form.data)
+                    form = logic.get(rv, EditVM)(self.screen, TITLE, settings)
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
 
             if user_settings is None:
                 return self.display_vm_manage()
@@ -688,9 +728,6 @@ class OpenNodeTUI(object):
                 if rv == 'create':
                     if form.validate():
                         settings.update(form.data)
-                        with open('/root/create.txt', 'wt') as f:
-                            from pprint import pformat
-                            f.write(pformat(settings))
                         return settings
                     else:
                         errors = form.errors

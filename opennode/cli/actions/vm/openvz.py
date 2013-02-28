@@ -612,41 +612,43 @@ def get_ioprio(ctid):
         return value[rv]
 
 def get_edit_form_extras(vm_settings):
+    # Return all settings needed for new edit form.
+    # vm_settings is dict containing settings prefilled from libvirt calls and then some
     ctid = vm_settings['consoles'][0]['cid']
     rv = execute("vzlist %s -H -o ip" % ctid).strip()
     venets = {}
     if rv != '-':
         for idx, ip in enumerate(rv.split(' ')):
             venets['venet0:%s' % idx] = ip
-    on_netifs = {}
-    iface_dec = get_from_config_by_ctid(ctid, 'ON_NETIF')
-    if iface_dec:
-        for iface in iface_dec.split(';'):
-            matched = []
-            for item in iface.split(','):
-                matched.append((item.split('=')))
-            tmp_dict = dict(matched)
-            on_netifs[tmp_dict['ifname']] = tmp_dict
-    netifs = {}
-    iface_dec = get_from_config_by_ctid(ctid, 'NETIF')
-    if iface_dec:
-        for iface in iface_dec.split(';'):
-            matched = []
-            for item in iface.split(','):
-                matched.append((item.split('=')))
-            tmp_dict = dict(matched)
-            netifs[tmp_dict['ifname']] = tmp_dict
+    netifs_dict = get_netifaces_by_ctid(ctid)
+    on_netifs = netifs_dict['on_netif']
+    netifs = netifs_dict['netif']
     for key in on_netifs.keys():
         on_netifs[key].update(netifs[key])
+    vm_settings['num_venet'] = 0
+    vm_settings['num_veth'] = 0
     for idx, iface in enumerate(vm_settings['interfaces']):
+        # Update interfaces list and get rid of ipv4_address field (replaced by ipaddr)
         if iface['mac'] != '00:00:00:00:00:00': 
             for netif in on_netifs:
                 # We should match with something other than MAC as it could change
                 # on running VM and it will not mirror on conf
                 if on_netifs[netif]['mac'].lower() == iface['mac'].lower():
                     vm_settings['interfaces'][idx].update(on_netifs[netif])
-    vm_settings['onboot'] = get_onboot(ctid)
+                    vm_settings['interfaces'][idx]['name'] = on_netifs[netif]['ifname']
+                    if vm_settings['interfaces'][idx].get('ipv4_address', None):
+                        vm_settings['interfaces'][idx]['ipaddr'] = vm_settings['interfaces'][idx]['ipv4_address']
+                        del (vm_settings['interfaces'][idx]['ipv4_address'])
+                    vm_settings['num_veth'] += 1
+        else:
+            if vm_settings['interfaces'][idx].get('ipv4_address', None):
+                vm_settings['interfaces'][idx]['ipaddr'] = vm_settings['interfaces'][idx]['ipv4_address']
+                del (vm_settings['interfaces'][idx]['ipv4_address'])
+            vm_settings['num_venet'] += 1
     vm_settings['bind_mounts'] = get_bmounts(ctid)
+    vm_settings['hostname'] = get_hostname(ctid)
+    vm_settings['nameserver'] = get_from_config_by_ctid(ctid, 'NAMESERVER')
+    vm_settings['bootorder'] = get_from_config_by_ctid(ctid, 'BOOTORDER')
     return vm_settings
 
 
@@ -669,10 +671,13 @@ def _update_bmounts(vm_id, bind_mounts):
 
 
 def update_vm(settings):
+    with open('/root/update_vm.txt', 'wt') as f:
+        from pprint import pformat
+        f.write(pformat(settings))
     """Perform modifications to the VM virtual hardware"""
     vm_id = get_ctid_by_uuid(settings["uuid"])
     if settings.get("diskspace"):
-        disk = float(settings["diskspace"])
+        disk = float(settings["diskspace"]["/"])
         execute("vzctl set %s --diskspace %sG --save" % (vm_id, disk))
     if settings.get("vcpu"):
         execute("vzctl set %s --cpus %s --save" % (vm_id, int(settings.get("vcpu"))))
@@ -698,6 +703,9 @@ def update_vm(settings):
     if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
 
+    if settings.get("name", ""):
+        execute("vzctl set %s --hostname %s --save" % (vm_id, settings.get("name")))
+
     if settings.get("ioprio") is not None:
         ioprio = int(settings.get("ioprio"))
         if settings.get("ioprio_old") is not None:
@@ -705,6 +713,15 @@ def update_vm(settings):
                 execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
         else:
             execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
+
+    if settings.get("interfaces", ""):
+        edited_ifaces = settings['interfaces']
+        conf_ifaces = get_netifaces_by_ctid(vm_id)
+        with open('/root/spam.txt', 'wt') as f:
+            from pprint import pformat
+            f.write(pformat(edited_ifaces))
+            f.write('\n\n\n\n')
+            f.write(pformat(conf_ifaces))
 
 
 def get_uuid_by_ctid(ctid):
@@ -730,7 +747,29 @@ def get_from_config_by_ctid(ctid, key):
         return conf[key].rstrip('"').lstrip('"')
     else:
         return ''
-    
+
+
+def get_netifaces_by_ctid(ctid):
+    netif = get_from_config_by_ctid(ctid, 'NETIF')
+    on_netif = get_from_config_by_ctid(ctid, 'ON_NETIF')
+    netif_dict = {}
+    on_netif_dict = {}
+    if netif:
+        for iface in netif.split(';'):
+            matched = []
+            for item in iface.split(','):
+                matched.append((item.split('=')))
+            tmp_dict = dict(matched)
+            netif_dict[tmp_dict['ifname']] = tmp_dict
+    if on_netif:
+        for iface in on_netif.split(';'):
+            matched = []
+            for item in iface.split(','):
+                matched.append((item.split('=')))
+            tmp_dict = dict(matched)
+            on_netif_dict[tmp_dict['ifname']] = tmp_dict
+    return {'netif': netif_dict, 'on_netif': on_netif_dict}
+
 
 def get_bmounts(ctid):
     """Return ON_BMOUNT for the VM with given CTID"""
