@@ -217,37 +217,33 @@ class EditVM(Form):
     def __init__(self, screen, title, settings):
         self.fields = {}
         self.labels = {}
-        with open('/root/editvm.txt', 'wt') as f:
-            from pprint import pformat
-            f.write(pformat(settings))
         memory_max = min(sysres.get_ram_size_gb(),
                          float(settings.get("memory_max", 10 ** 30)))
+        swap_max = min(sysres.get_swap_size_gb(),
+                       float(settings.get("swap_max", 10 ** 30)))
+        disk_max = min(sysres.get_disc_space_gb(),
+                       float(settings.get("disk_max", 10 ** 30)))
+        vcpu_max = min(sysres.get_cpu_count(),
+                       int(settings.get("vcpu_max", 10 ** 10)))
         self.fields['memory'] = FloatField('memory',
                                            '%.6g' % float(settings['memory']),
                                            settings.get('memory_min', 0.1),
-                                           settings.get('memory_max',
-                                                        memory_max),
+                                           settings.get('memory_max', memory_max),
                                            width=6)
         self.fields['swap'] = FloatField('swap',
                                          '%.6g' % float(settings['swap']),
                                          settings.get('swap_min', 0),
-                                         settings.get('swap_max',
-                                                      min(sysres.get_swap_size_gb(),
-                                                          float(settings.get("swap_max", 10 ** 30)))),
+                                         settings.get('swap_max', swap_max),
                                          width=6)
         self.fields['diskspace'] = FloatField('diskspace',
                                               '%.6g' % float(settings['diskspace']['/']),
                                               settings.get('disk_min', 2.0),
-                                              settings.get('disk_max',
-                                                           min(sysres.get_disc_space_gb(),
-                                                               float(settings.get("disk_max", 10 ** 30)))),
+                                              settings.get('disk_max', disk_max),
                                               width=6)
         self.fields['vcpu'] = IntegerField('vcpu',
                                            settings.get('vcpu', ''),
                                            settings.get('vcpu_min', 1),
-                                           settings.get('vcpu_max',
-                                                        min(sysres.get_cpu_count(),
-                                                            int(settings.get("vcpu_max", 10 ** 10)))),
+                                           settings.get('vcpu_max', vcpu_max),
                                            width = 6)
         self.fields['name'] = StringField('name',
                                           settings.get('name', ''),
@@ -365,8 +361,6 @@ class EditVM(Form):
     def validate(self):
         Form.validate(self)
         self.data['diskspace'] = {'/': float(self.fields['diskspace'].value()) }
-        # self.data['memory'] = float(self.fields['memory'].value())
-        # self.data['swap'] = float(self.fields['swap'].value())
         return not self.errors
 
 

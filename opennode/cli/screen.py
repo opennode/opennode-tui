@@ -595,11 +595,10 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
 
                 settings = available_vms[vm_id].copy()
-                settings["memory"] /= 1024.0
-                settings["swap"] /= 1024.0
-                settings["diskspace"]["/"] /= 1024.0
                 settings.update(vm.get_edit_form_extras(available_vms[vm_id]))
-
+                settings["memory"] = settings["memory"] / 1024.0
+                settings["swap"] = settings["swap"] / 1024.0
+                settings["diskspace"]["/"] /= 1024.0
                 form = EditVM(self.screen, TITLE, settings)
             else:
                 display_info(self.screen, TITLE,
@@ -607,6 +606,7 @@ class OpenNodeTUI(object):
                 return self.display_vm_manage()
 
             # TODO KVM specific form
+
             while 1:
                 rv = form.display()
                 self.screen.finish()
