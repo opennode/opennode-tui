@@ -497,7 +497,7 @@ def _generate_ovf_file(vm_settings):
     virtualSystem = ovf.createVirtualSystem(ident=vm_settings["template_name"],
                                             info="KVM OpenNode template")
     hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem,
-                                ident="virtual_hadrware",
+                                ident="virtual_hardware",
                                 info="Virtual hardware requirements for a virtual machine")
 
     # add virtual system
