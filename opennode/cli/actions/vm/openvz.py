@@ -468,7 +468,7 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
                               description=vm_settings.get('ostemplate', 'linux'))
 
     hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem,
-                                ident="virtual_hadrware",
+                                ident="virtual_hardware",
                                 info="Virtual hardware requirements for a virtual machine")
     ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId),
                      {"VirtualSystemType": "openvz"})
