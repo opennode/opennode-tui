@@ -140,6 +140,7 @@ def _render_vm(conn, vm):
 
     info = vm.info()
 
+    # TODO: This needs refactoring!
     def vm_name(vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_hostname(vm.name())
@@ -183,7 +184,14 @@ def _render_vm(conn, vm):
             return openvz.get_bmounts(vm.name())
         return ''
 
-    return {"uuid": get_uuid(vm), "name": vm_name(vm), "memory": vm_memory(vm),
+    def vm_ctid(vm):
+        if conn.getType() == 'OpenVZ':
+            return openvz.get_ctid_by_uuid(get_uuid(vm))
+        return None
+
+    return {"uuid": get_uuid(vm),
+            "name": vm_name(vm),
+            "memory": vm_memory(vm),
             "uptime": vm_uptime(vm, STATE_MAP[info[0]]),
             "diskspace": vm_diskspace(vm),
             "bind_mounts": vm_bmounts(vm),
@@ -195,7 +203,8 @@ def _render_vm(conn, vm):
             "vcpu": vm.info()[3],
             'consoles': [i for i in [_vm_console_vnc(conn, get_uuid(vm)),
                                      _vm_console_pty(conn, get_uuid(vm))] if i],
-            'interfaces': _vm_interfaces(conn, get_uuid(vm))}
+            'interfaces': _vm_interfaces(conn, get_uuid(vm)),
+            'ctid': vm_ctid(vm)}
 
 
 def _list_vms(conn):
@@ -307,12 +316,10 @@ def resume_vm(conn, uuid):
 
 @vm_method
 def deploy_vm(conn, vm_parameters):
-    # XXX Disabled logger for now. In it's current form it introduces dependency
-    # on the func architecture, actions should have their own logging system,
-    # which can be set to use func's logging
     try:
+        vm_parameters = eval(vm_parameters) if type(vm_parameters) is str else vm_parameters
         _deploy_vm(vm_parameters)
-    except Exception as e:
+    except Exception:
         raise
     return "OK"
 
@@ -468,17 +475,16 @@ def _deploy_vm(vm_parameters, logger=None):
     from opennode.cli import actions
     storage_pool = actions.storage.get_default_pool()
     if storage_pool is None:
-        raise  Exception("Storage pool not defined")
+        raise Exception("Storage pool not defined")
 
+    assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
     vm_type = vm_parameters['vm_type']
-
     template = vm_parameters['template_name']
 
     if not template:
         if logger:
             logger("Cannot deploy because template is '%s'" % (template))
         raise Exception("Cannot deploy because template is '%s'" % (template))
-        return
 
     ovf_file = OvfFile(os.path.join(get_config().getstring("general", "storage-endpoint"),
                                     storage_pool, vm_type, "unpacked",
@@ -519,8 +525,8 @@ def update_vm(conn, uuid, *args, **kwargs):
     Update VM parameters
     """
     settings = kwargs
-    # allows mixed passing via a dict and keyword args
-    settings.update(args[0] if len(args) == 1 else {})
+    # allows mixed passing via a dict and/or keyword args
+    settings.update(args[0] if (len(args) == 1 and type(args[0]) is dict) else {})
 
     if conn.getType() == 'OpenVZ':
         param_name_map = {'cpu_limit': 'vcpulimit',

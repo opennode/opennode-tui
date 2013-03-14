@@ -66,7 +66,7 @@ def execute(cmd):
     if status != 0:
         if cmd.startswith('vzctl'):
             raise CommandException("Failed to execute command '%s'. Status: '%s'. Message: '%s'. Output: '%s'"
-                                   % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]], output), status>>8)
+                                   % (cmd, status>>8, OpenVZ_EXIT_STATUS[cmd.split(' ')[0]][status>>8], output), status>>8)
         raise CommandException("Failed to execute command '%s'. Status: '%s'. Output: '%s'"
                                % (cmd, status, output), status)
     get_logger().debug('execute returned: %s', output)
@@ -170,13 +170,16 @@ class BasicURLOpener(urllib.FancyURLopener):
         return (self.username, self.password)
 
 
-def download(remote, local):
+def download(remote, local, continue_=False):
     """Download a remote file to a local file, using optional username/password
     for basic HTTP authentication. Using cURL as external dependency"""
     msg = "Getting remote file %s" % remote
     get_logger().info(msg)
     print msg
     url = urlparse.urlsplit(remote)
+    curl_cmd = ['curl']
+    curl_file_args = ['-o', '%s' % local, '%s' % remote]
+
     if url.username:
         if 'http_proxy' in os.environ:
             if url.password:
@@ -185,11 +188,14 @@ def download(remote, local):
             else:
                 remote = remote.replace('%s@' % url.username, '')
                 userauth = url.username
-            subprocess.call(['curl', '--anyauth', 
-                             '--user', userauth,
-                             '-C', '-', '-o', '%s' % local, '%s' % remote])
+            curl_cmd += ['--anyauth', '--user', userauth]
     else:
-        subprocess.call(['curl', '-C', '-', '-o', '%s' % local, '%s' % remote])
+        curl_cmd.append('-L')
+
+    if continue_:
+        curl_cmd += ['-C', '-']
+
+    subprocess.call(curl_cmd + curl_file_args)
 
 
 def urlopen(remote):

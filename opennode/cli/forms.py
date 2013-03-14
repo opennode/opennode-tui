@@ -910,7 +910,7 @@ class OpenvzTemplateForm(Form):
                                             self.disk, self.ostemplate])
 
     def display(self):
-        button_save, button_exit = Button("Create VM"), Button("Back")
+        button_save, button_exit = Button("Create"), Button("Back")
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         rows = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),

@@ -43,11 +43,13 @@ def create_select_checkbox(screen, title, text, items, buttons=(('Cancel', 'canc
             width=40, scroll=0, height=-1, help=None):
     """Helper class for displaying a windows with a checkbox list.
     On exit, list of selected items is returned"""
-    if (height == -1): height = len(items)
-    if len(items) > height: scroll = 1
+    if (height == -1):
+        height = len(items)
+    if len(items) > height:
+        scroll = 1
     bb = ButtonBar(screen, buttons)
     t = TextboxReflowed(width, text)
-    cb = CheckboxTree(height, scroll = scroll)
+    cb = CheckboxTree(height, scroll=scroll)
     count = 0
     for count, item in enumerate(items):
         if isinstance(item, types.TupleType):
@@ -61,8 +63,8 @@ def create_select_checkbox(screen, title, text, items, buttons=(('Cancel', 'canc
 
     g = GridFormHelp(screen, title, help, 1, 3)
     g.add(t, 0, 0)
-    g.add(cb, 0, 1, padding = (0, 1, 0, 1))
-    g.add(bb, 0, 2, growx = 1)
+    g.add(cb, 0, 1, padding=(0, 1, 0, 1))
+    g.add(bb, 0, 2, growx=1)
     rc = g.runOnce()
     return (bb.buttonPressed(rc), cb.getSelection())
 
@@ -97,8 +99,8 @@ def display_create_template(screen, title, vm_type, templates, help=None):
     return (bb.buttonPressed(form_result), str(base_tmpl.current()), tmpl_name)
 
 
-def display_selection(screen, title, list_of_items, subtitle, default = None,
-                      buttons = [('Back', 'back', 'F12'), 'Ok']):
+def display_selection(screen, title, list_of_items, subtitle, default=None,
+                      buttons=[('Back', 'back', 'F12'), 'Ok']):
     """Display a list of items, return selected one or None, if nothing was selected"""
     #if len(list_of_items) == 1:
         # shortcut if there's only one item for choosing
@@ -111,12 +113,12 @@ def display_selection(screen, title, list_of_items, subtitle, default = None,
         height = 10
         scroll = 1 if len(list_of_items) > height else 0
         action, selection = ListboxChoiceWindow(screen, title, subtitle, list_of_items,
-                            buttons, scroll = scroll, height = height, default = default)
+                            buttons, scroll=scroll, height=height, default=default)
         if buttons == [('Back', 'back', 'F12'), 'Ok'] or buttons == [('Menu', 'back', 'F12'), 'Ok']:
             if action != 'back':
                 return selection
         else:
-            return (action, selection) # customized buttons
+            return (action, selection)  # customized buttons
     else:
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
     return None
@@ -127,7 +129,7 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
         action, selection = create_select_checkbox(screen, title, subtitle,
                                                    list_of_items,
                                                    ['Ok', 'Back'],
-                                                   height = 10)
+                                                   height=10)
         if action != 'back':
             return selection
     else:
@@ -144,16 +146,26 @@ def display_vm_type_select(screen, title):
                              buttons=[('Menu', 'back', 'F12'), 'Ok'])
 
 
+def display_yesno(screen, title, question_text="Yes / No", width=50, height=2):
+    """Display yes/no dialog. Return True on yes and False on no."""
+    g = GridFormHelp(screen, title, help, 1, 2)
+    bb = ButtonBar(screen, (('No', 'no', 'F12'), 'Yes'))
+    g.add(Textbox(width, height, question_text, 0, 0), 0, 0, padding=(0, 1, 0, 1))
+    g.add(bb, 0, 1)
+    rc = g.runOnce()
+    return bb.buttonPressed(rc) == 'yes'
+
+
 def display_info(screen, title, info_text="Close me, please.", width=50, height=2):
     """Display information message on information screen"""
     g = GridFormHelp(screen, title, help, 1, 2)
-    g.add(Textbox(width, height, info_text, 0, 0), 0, 0, padding = (0, 1, 0, 1))
+    g.add(Textbox(width, height, info_text, 0, 0), 0, 0, padding=(0, 1, 0, 1))
     g.add(Button("OK"), 0, 1)
     g.runOnce()
 
 
 def display_template_edit_form(screen, title, settings):
-    buttons=(('Cancel', 'cancel', 'F12'), 'Ok')
+    buttons = (('Cancel', 'cancel', 'F12'), 'Ok')
     label_mincpu = Label('Minimal cpus')
     label_normcpu = Label('Default cpus')
     label_minmem = Label('Minimal memory (GB)')

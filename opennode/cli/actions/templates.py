@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import tarfile
+import urlparse
 
 from ovf.OvfFile import OvfFile
 
@@ -36,7 +37,7 @@ def get_template_repos():
     return result
 
 
-# Dead code for TUI. 
+# Dead code for TUI.
 # get_template_repos and get_template_repos_info are exactly the same
 # and get_template_repos_info is used nowhere.
 def get_template_repos_info():
@@ -55,7 +56,8 @@ def get_template_repos_info():
 def get_template_list(remote_repo):
     """Retrieves a tmpl_list of templates from the specified repository"""
     url = get_config().getstring(remote_repo, 'url')
-    tmpl_list = urlopen("%s/templatelist.txt" % url)
+    url = url.rstrip('/') + '/'
+    tmpl_list = urlopen(urlparse.urljoin(url, 'templatelist.txt'))
     templates = [template.strip() for template in tmpl_list]
     tmpl_list.close()
     return templates
@@ -100,17 +102,29 @@ def sync_template(remote_repo, template, storage_pool):
     vm_type = config.getstring(remote_repo, 'type')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
-    remotefile = os.path.join(url, template)
+    remotefile = urlparse.urljoin(url.rstrip('/') + '/', template)
+
     # only download if we don't already have a fresh copy
-    if not is_fresh(localfile, remotefile):
+    if is_fresh(localfile, remotefile):
+        return
+
+    unfinished_local = "%s.tar.unfinished" % localfile
+    unfinished_local_hash = "%s.tar.pfff.unfinished" % localfile
+
+    retries = 5
+    retry = 0
+    while not is_fresh(localfile, remotefile, unfinished=True) and retries > retry:
         # for resilience
+        retry += 1
         storage.prepare_storage_pool(storage_pool)
-        download("%s.tar" % remotefile, "%s.tar" % localfile)
-        for h in ['pfff']:
-            r_template_hash = "%s.tar.%s" % (remotefile, h)
-            l_template_hash = "%s.tar.%s" % (localfile, h)
-            download(r_template_hash, l_template_hash)
-        unpack_template(storage_pool, vm_type, localfile)
+        download("%s.tar" % remotefile, unfinished_local, continue_=True)
+        r_template_hash = "%s.tar.pfff" % remotefile
+        download(r_template_hash, unfinished_local_hash, continue_=True)
+
+    os.rename(unfinished_local, '%s.tar' % localfile)
+    os.rename(unfinished_local_hash, '%s.tar.pfff' % localfile)
+
+    unpack_template(storage_pool, vm_type, localfile)
 
 
 def import_template(template, vm_type, storage_pool = None):
@@ -158,7 +172,7 @@ def delete_template(storage_pool, vm_type, template):
 
 
 def unpack_template(storage_pool, vm_type, tmpl_name):
-    """Unpacks template into the 'unpacked' folder of the storage pool. 
+    """Unpacks template into the 'unpacked' folder of the storage pool.
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
     basedir = os.path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, vm_type)
@@ -195,19 +209,19 @@ def sync_oms_template(storage_pool=None):
     sync_template(repo, tmpl, storage_pool)
 
 
-def is_fresh(localfile, remotefile):
+def is_fresh(localfile, remotefile, unfinished=False):
     """Checks whether local copy matches remote file"""
     # get remote hash
-    remote_hashfile = urlopen("%s.tar.pfff" % remotefile)
+    remote_hashfile = urlopen("%s.tar.pfff" % (remotefile))
     remote_hash = remote_hashfile.read()
     remote_hashfile.close()
     # get a local one
     try:
-        with open("%s.tar.pfff" % localfile, 'r') as f:
+        with open("%s.tar.pfff%s" % (localfile, '.unfinished' if unfinished else ''), 'r') as f:
             local_hash = f.read()
     except IOError:
         # no local hash found
-        return False 
+        return False
     return remote_hash == local_hash
 
 

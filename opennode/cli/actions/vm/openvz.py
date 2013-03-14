@@ -1,26 +1,27 @@
-import os
-import operator
-import datetime
-import tarfile
-from os import path
-from hashlib import sha1
-import errno
 from contextlib import closing
+from hashlib import sha1
+from os import path
+import datetime
+import errno
+import operator
+import os
+import tarfile
 
 import libvirt
 
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
-from opennode.cli.config import get_config
-from opennode.cli.log import get_logger
 from opennode.cli.actions import sysresources as sysres
-from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import oms
 from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
-                                        CommandException, TemplateException, test_passwordless_ssh, execute2)
+                                        CommandException, TemplateException, test_passwordless_ssh, execute2,
+                                        save_to_tar)
+from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
+from opennode.cli.config import get_config
+from opennode.cli.log import get_logger
 import shutil
 
 
@@ -468,7 +469,7 @@ def _generate_ovf_file(vm_settings, ct_archive_fnm):
                               description=vm_settings.get('ostemplate', 'linux'))
 
     hardwareSection = ovf.createVirtualHardwareSection(node=virtualSystem,
-                                ident="virtual_hadrware",
+                                ident="virtual_hardware",
                                 info="Virtual hardware requirements for a virtual machine")
     ovf.createSystem(hardwareSection, "Virtual Hardware Family", str(instanceId),
                      {"VirtualSystemType": "openvz"})
@@ -819,6 +820,10 @@ def migrate(uid, target_host, live=False, print_=True):
     """Migrate given container to a target_host"""
     if not test_passwordless_ssh(target_host):
         raise CommandException("Public key ssh connection with the target host could not be established")
+    log = get_logger()
+    # a workaround for the megadynamic nature of python variable type when called via an agent
+    live = live == 'True' if type(live) is str else live
+    print_ = print_ == 'True' if type(print_) is str else print_
     # is ctid present on the target host?
     ctid = get_ctid_by_uuid(uid)
     try:
@@ -828,11 +833,58 @@ def migrate(uid, target_host, live=False, print_=True):
         if ce.code != 256:
             raise
     msg = "Initiating migration to %s..." % target_host
-    get_logger().info(msg)
+    log.info(msg)
     if print_:
         print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
-        get_logger().info(line)
-        if print_:
+        log.info(line)
+        if print_ and line:
             print line
+
+
+def update_template_and_name(ovf_file, settings, new_name):
+    """ update .ovf and rename template
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    @param new_name: new name for template
+    """
+    unpacked_base = ovfutil._get_unpacked_base('openvz')
+    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.tar')):
+        return None
+    ovf_file = ovfutil.update_referenced_files(ovf_file, settings['template_name'],
+                                               new_name)
+    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base,
+                                                                 new_name + '.ovf'))
+    os.unlink(ovf_file.path)
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.scripts.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.tar.gz'))
+    _package_files(settings['template_name'], new_name)
+
+
+def update_template(ovf_file, settings):
+    """ update .ovf and recreate tar archive
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    """
+    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings)
+    template = settings['template_name']
+    _package_files(template)
+
+
+def _package_files(template_name, new_name=None):
+    """ Package files to template and calculate hash.
+    @param template_name: name of the existing template
+    @param new_name: name for new template. Optional
+    """
+    if new_name is None:
+        new_name = template_name
+    unpacked_base = ovfutil._get_unpacked_base('openvz')
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar'))
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar.pfff'))
+    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.tar')
+    filelist = ovfutil.generate_ovf_archive_filelist('openvz', new_name)
+    save_to_tar(tmpl_file, filelist)
+    calculate_hash(tmpl_file)
