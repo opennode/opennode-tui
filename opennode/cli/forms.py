@@ -38,7 +38,7 @@ class HBox(Grid):
         self.setField(widget, self.lastcol, 0, *args, **kwargs)
         self.lastcol += 1
 
-        
+
 class Form(object):
     errors, data = [], {}
 
@@ -351,7 +351,7 @@ class EditVM(Form):
         g9.append(Label('                       '))
         g10 = HBox(2)
         g10.append(self.fields['onboot'], anchorLeft=1, padding=(4, 0, 0, 0))
-        g9.append(g10) 
+        g9.append(g10)
         self.gf.add(g9, 0, 6, anchorLeft=1, growx=1)
         bb = ButtonBar(self.screen, (('Menu', 'menu', 'F12'), 'Commit','Storage', 'Resources', 'Network'))
         self.gf.add(bb, 0, 7, padding=(0, 1, 0, 0))
@@ -375,7 +375,7 @@ class NetworkSettings(Form):
                                             bool(settings.get('ipv6', False)),
                                             display_name = 'IPv6 Enabled')
         self.fields['nameserver'] = IpField('nameserver',
-                                             settings.get('nameserver', ''), 
+                                             settings.get('nameserver', ''),
                                              width = 36)
         self.VIFS = Listbox(4, scroll=1)
 
@@ -893,88 +893,49 @@ class OpenvzForm(Form):
         return not self.errors
 
 
-class OpenvzTemplateForm(Form):
+class BaseTemplateForm(Form):
 
-    def __init__(self, screen, title, settings):
+    separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+
+    def _set_fields(self, settings):
         self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory", required=False)
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory", required=False)
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""),
+                                     display_name="min memory", required=False)
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""),
+                                     display_name="max memory", required=False)
         self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
-        self.disk = FloatField("disk", settings["disk"])
-        self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
-        Form.__init__(self, screen, title, [self.memory, self.memory_min,
-                                            self.memory_max, self.vcpu,
-                                            self.vcpu_min, self.vcpu_max,
-                                            self.disk, self.ostemplate])
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""),
+                                   display_name="min vcpu", required=False)
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""),
+                                   display_name="max vcpu", required=False)
+        self.fields = [self.memory, self.memory_min,
+                       self.memory_max, self.vcpu,
+                       self.vcpu_min, self.vcpu_max]
 
-    def display(self):
-        button_save, button_exit = Button("Create"), Button("Back")
-        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
-        rows = [
+        self.button_save = Button("Create")
+        self.button_exit = Button("Back")
+        self.layout = [
             (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
             (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
             (Textbox(20, 1, "Max memory size (GB):", 0, 0), self.memory_max),
-            separator,
+            self.separator,
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
-            separator,
-            (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
-            separator,
-            (Textbox(20, 1, "OS template:", 0, 0), self.ostemplate),
-            separator,
-            (button_exit, button_save)
+            self.separator,
+            (self.button_exit, self.button_save)
         ]
-        form = GridForm(self.screen, self.title, 2, len(rows))
-        for i, row in enumerate(rows):
-            for j, cell in enumerate(row):
-                form.add(cell, j, i)
-        return form.runOnce() != button_exit
-
-    def validate(self):
-        if Form.validate(self):
-            self.errors.extend(validate_range("memory", self.memory.value(),
-                                              self.memory_min.value(),
-                                              self.memory_max.value(), float))
-            self.errors.extend(validate_range("vcpu", self.vcpu.value(),
-                                              self.vcpu_min.value(),
-                                              self.vcpu_max.value(), int))
-        return not self.errors
-
-
-class KvmTemplateForm(Form):
 
     def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory", required=False)
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory", required=False)
-        self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
-        Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max,
-                                            self.vcpu, self.vcpu_min, self.vcpu_max])
+        self.set_fields(settings)
+        Form.__init__(self, screen, title, self.fields)
 
     def display(self):
-        button_save, button_exit = Button("Create"), Button("Back")
-        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
-        rows = [
-            (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
-            (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
-            (Textbox(20, 1, "Max memory size (GB):", 0, 0), self.memory_max),
-            separator,
-            (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
-            (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
-            (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
-            separator,
-            (button_exit, button_save)
-        ]
-        form = GridForm(self.screen, self.title, 2, len(rows))
-        for i, row in enumerate(rows):
+        form = GridForm(self.screen, self.title, 2, len(self.layout))
+        for i, row in enumerate(self.layout):
             for j, cell in enumerate(row):
                 form.add(cell, j, i)
-        return form.runOnce() != button_exit
+        return form.runOnce() != self.button_exit
 
     def validate(self):
         if Form.validate(self):
@@ -989,6 +950,25 @@ class KvmTemplateForm(Form):
                                                   self.vcpu_min.value(),
                                                   self.vcpu_max.value(), int))
         return not self.errors
+
+
+class OpenvzTemplateForm(BaseTemplateForm):
+
+    def _set_fields(self, settings):
+        BaseTemplateForm.set_fields(self, settings)
+        self.disk = FloatField("disk", settings["disk"])
+        self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
+        self.fields.append(self.disk)
+        self.fields.append(self.ostemplate)
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+        self.layout[6:7] = [separator,
+            (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
+            separator,
+            (Textbox(20, 1, "OS template:", 0, 0), self.ostemplate),]
+
+
+class KvmTemplateForm(BaseTemplateForm):
+    pass
 
 
 class OpenvzModificationForm(Form):
@@ -1295,7 +1275,7 @@ class SetDefaultRoute(object):
     def __init__(self, screen, title, settings):
         self.fields = {}
         self.labels = {}
-            
+
     def display(self):
         self.gf = GridForm(self.screen, 'Create VM > Network Settings > Add VIF', 1, 1)
         label = Label('* Choose VIF type')

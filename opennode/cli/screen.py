@@ -11,9 +11,8 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
                                   display_template_edit_form, display_yesno)
 from opennode.cli import actions
 from opennode.cli.config import get_config
-from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                OpenvzModificationForm, OpenVZMigrationForm,
-                                CreateVM, NetworkSettings, Storage, Resources,
+from opennode.cli.forms import (KvmForm, OpenvzTemplateForm, KvmTemplateForm,
+                                OpenVZMigrationForm, CreateVM, NetworkSettings, Storage, Resources,
                                 AddVIF, EditVIF, SetDefaultRoute, EditVM, VenetSettings)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
@@ -38,15 +37,13 @@ class OpenNodeTUI(object):
                  'oms': self.display_oms,
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI', \
-                [('Exit', 'exit', 'F12'),
-                ('Console', 'console'),
-                ('Create VM', 'createvm'),
-                ('Manage', 'manage'),
-                # XXX disable till more sound functionality
-                ('OMS (beta)', 'oms')
-                ],
-                42)
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI',
+                                    [('Exit', 'exit', 'F12'),
+                                     ('Console', 'console'),
+                                     ('Create VM', 'createvm'),
+                                     ('Manage', 'manage'),
+                                     # XXX disable till more sound functionality
+                                     ('OMS (beta)', 'oms')], 42)
         return logic[result]()
 
     def display_manage(self):
@@ -83,7 +80,8 @@ class OpenNodeTUI(object):
             self.screen.finish()
             logic[result]()
             self.screen = SnackScreen()
-            self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> Back / exit ")
+            self.screen.pushHelpLine(
+                "  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> Back / exit ")
             return self.display_console_menu()
         else:
             return self.display_main_screen()
@@ -112,6 +110,7 @@ class OpenNodeTUI(object):
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
                   [('Back', 'main', 'F12'), ('List bind mounts', 'default'),
                    ('Add a bind mount', 'add'), ('Delete a bind mount', 'delete')])
+        return result
 
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
@@ -182,7 +181,8 @@ class OpenNodeTUI(object):
         if bridges is None:
             display_info(self.screen, "Error", "No network bridges found.")
             return self.display_network_bridge()
-        chosen_bridge = display_selection(self.screen, TITLE, bridges, 'Please select the network bridge for modification:')
+        chosen_bridge = display_selection(self.screen, TITLE, bridges,
+                                          'Please select the network bridge for modification:')
         if chosen_bridge is not None:
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         'Are you sure you want to delete "%s"?' %
@@ -291,7 +291,8 @@ class OpenNodeTUI(object):
             repos = actions.templates.get_template_repos()
             if repos is None:
                 return self.display_templates()
-            chosen_repo = display_selection(self.screen, TITLE, repos, 'Please, select template repository from the list')
+            chosen_repo = display_selection(self.screen, TITLE, repos,
+                                            'Please, select template repository from the list')
             if chosen_repo is None:
                 return self.display_templates()
             selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
@@ -304,10 +305,11 @@ class OpenNodeTUI(object):
                 # here comes hack
                 self.screen = SnackScreen()
                 cleanup = ButtonChoiceWindow(self.screen, 'Existing task pool',
-                                               "A task pool is already defined. It could mean\nthat the previous " +
-                                               "synchronisation crashed, or that there is one working already.\n\n" +
-                                               "Would you like to force synchronisation?",
-                                                      ['Yes', 'No'])
+                                             "A task pool is already defined. It could mean\n"
+                                             "that the previous synchronisation crashed, or that there is "
+                                             "one working already.\n\n"
+                                             "Would you like to force synchronisation?",
+                                             ['Yes', 'No'])
                 self.screen.finish()
                 if cleanup == 'yes':
                     actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, force=True)
@@ -327,7 +329,8 @@ class OpenNodeTUI(object):
     def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""
         templates = actions.templates.get_local_templates(vm_type, storage_pool)
-        return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
+        return display_selection(self.screen, TITLE, templates,
+                                 "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_template_create(self):
         storage_pool = actions.storage.get_default_pool()
@@ -392,8 +395,7 @@ class OpenNodeTUI(object):
             return self.display_templates()
         unpacked_base = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                      get_config().getstring('general', 'default-storage-pool'),
-                                     template_type,
-                                     'unpacked')
+                                     template_type, 'unpacked')
         ovf_file_name = os.path.join(unpacked_base, template + '.ovf')
         try:
             ovf_file = OvfFile(ovf_file_name)
@@ -464,8 +466,8 @@ class OpenNodeTUI(object):
 
         if not test_passwordless_ssh(target_host):
             setup_keys = ButtonChoiceWindow(self.screen, "Passwordless SSH",
-                                       "Would you like to setup passwordless SSH to %s?" % target_host,
-                                              ['Yes', 'No'])
+                                            "Would you like to setup passwordless SSH to %s?" % target_host,
+                                            ['Yes', 'No'])
             if setup_keys == 'yes':
                 self.screen.finish()
                 setup_passwordless_ssh(target_host)
@@ -507,7 +509,8 @@ class OpenNodeTUI(object):
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                 "Pick VM for modification:",
-                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
+                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop',
+                                         'Migrate', 'Delete'])
         if res is None:
             return self.display_manage()
         else:
