@@ -395,7 +395,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     if unpack:
         target_dir = path.join(target_dir, 'unpacked')
     # prepare file system
-    msg = "Preparing disks... (This may take a while)" 
+    msg = "Preparing disks... (This may take a while)"
     log.info(msg)
     print msg
     vm_settings["disks"] = _prepare_disks(vm_settings, target_dir)
@@ -414,7 +414,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     log.info(msg)
     print msg
     arch_location = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
-    ovf_archive_fnm = path.join(arch_location, "%s.tar" % vm_settings["template_name"])
+    ovf_archive_fnm = path.join(arch_location, "%s.ova" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
         for disk in vm_settings["disks"]:
