@@ -159,7 +159,7 @@ def delete_template(storage_pool, vm_type, template):
     templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type,
                                         template)
     if not os.path.exists(templatefile):
-        templatefile = templatefile[:-3] + 'ova'
+        templatefile = os.path.splitext(templatefile)[0] + '.ova'
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
         fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type,
