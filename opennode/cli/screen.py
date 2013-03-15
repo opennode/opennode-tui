@@ -450,7 +450,7 @@ class OpenNodeTUI(object):
                 continue
 
     def _perform_openvz_migration(self, vm_type, vm_id):
-        migration_form = OpenVZMigrationForm(self.screen, TITLE)
+        migration_form = OpenVZMigrationForm(self.screen, TITLE, {})
         while 1:
             if not migration_form.display():
                 return self.display_vm_manage()

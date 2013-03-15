@@ -49,7 +49,8 @@ class Form(object):
         self.errors = reduce(operator.add, [self.fields[field].errors for field in self.fields
                                             if not self.fields[field].validate()], [])
         if not self.errors:
-            self.data = dict([(self.fields[field].name, self.fields[field].value()) for field in self.fields])
+            self.data = dict([(self.fields[field].name, self.fields[field].value())
+                              for field in self.fields])
             return True
         else:
             return False
@@ -58,60 +59,52 @@ class Form(object):
         pass
 
 
-class CreateVM(Form):
-    def __init__(self, screen, title, settings):
+class BaseForm(Form):
+
+    def _set_fields(self, settings):
         self.fields = {}
+
+    def _set_labels(self, settings):
         self.labels = {}
-        self.fields['memory'] = FloatField('memory',
-                                           settings.get('memory', ''),
-                                           settings.get('memory_min', ''),
-                                           settings.get('memory_max', ''),
-                                           width=6)
-        self.fields['swap'] = FloatField('swap',
-                                         settings.get('swap', ''),
-                                         settings.get('swap_min', ''),
-                                         settings.get('swap_max', ''),
-                                         width=6)
-        self.fields['disk'] = FloatField('disk',
-                                         settings.get('disk', ''),
-                                         settings.get('disk_min', ''),
-                                         settings.get('disk_max', ''),
-                                         width=6)
-        self.fields['vcpu'] = IntegerField('vcpu',
-                                           settings.get('vcpu', ''),
-                                           settings.get('vcpu_min', ''),
-                                           settings.get('vcpu_max', ''),
-                                           width = 6)
-        self.fields['hostname'] = StringField('hostname',
-                                              settings.get('hostname', ''),
-                                              width = 15)
-        self.fields['ip_address'] = IpField('ip_address',
-                                            settings.get('ip_address', ''),
-                                            width = 16)
-        self.fields['nameserver'] = IpField('nameserver',
-                                            settings.get('nameserver', ''),
-                                            width = 36)
-        self.fields['passwd'] = PasswordField('passwd',
-                                              settings.get('passwd', ''),
-                                              width = 36)
-        self.fields['passwd2'] = PasswordField('passwd2',
-                                               settings.get('passwd', ''),
-                                               width = 36)
-        self.fields['startvm'] = CheckboxField('startvm',
-                                               bool(settings.get('startvm', '')),
-                                               display_name = 'Start VM')
-        self.fields['onboot'] = CheckboxField('onboot',
-                                              bool(settings.get('onboot', '')),
-                                              display_name = 'Start on boot')
-        self.labels['disk_max'] = str(settings.get('disk_max', ''))
-        self.labels['disk_min'] = str(settings.get('disk_min', ''))
-        self.labels['swap_max'] = str(settings.get('swap_max', ''))
-        self.labels['swap_min'] = str(settings.get('swap_min', ''))
-        self.labels['memory_max'] = str(settings.get('memory_max', ''))
-        self.labels['memory_min'] = str(settings.get('memory_min', ''))
-        self.labels['vcpu_min'] = str(settings.get('vcpu_min', ''))
-        self.labels['vcpu_max'] = str(settings.get('vcpu_max', ''))
+
+    def __init__(self, screen, title, settings):
+        self._set_fields(settings)
+        self._set_labels(settings)
         Form.__init__(self, screen, title, self.fields)
+
+
+class CreateVM(BaseForm):
+
+    def _set_fields(self, settings):
+        self._proto_fields = {
+            'memory': (FloatField, {'width': 6}),
+            'swap': (FloatField, {'width': 6}),
+            'disk': (FloatField, {'width': 6}),
+            'vcpu': (IntegerField, {'width': 6}),
+            'hostname': (StringField,  {'width': 15}),
+            'ip_address': (IpField,  {'width': 16}),
+            'nameserver': (IpField,  {'width': 36}),
+            'passwd': (PasswordField,  {'width': 36}),
+            'passwd2': (PasswordField, {'width':  36}),
+            'startvm': (CheckboxField,  {'display_name': 'Start VM'}),
+            'onboot': (CheckboxField, {'display_name': 'Start on boot'})}
+
+        self.fields = {}
+        for k, v in self.fields:
+            ftype, kw = v
+            self.fields[k] = ftype.create_with_settings(k, settings, **kw)
+
+    def _set_labels(self, settings):
+        self._proto_labels = ['disk_max',
+                              'disk_min',
+                              'swap_max',
+                              'swap_min',
+                              'memory_max',
+                              'memory_min',
+                              'vcpu_min',
+                              'vcpu_max',]
+
+        self.labels = dict([(k, str(settings.get(k, ''))) for k in self._proto_labels])
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 8)
@@ -213,10 +206,9 @@ class CreateVM(Form):
         return not self.errors
 
 
-class EditVM(Form):
-    def __init__(self, screen, title, settings):
-        self.fields = {}
-        self.labels = {}
+class EditVM(BaseForm):
+
+    def _set_fields(self, settings):
         memory_max = min(sysres.get_ram_size_gb(),
                          float(settings.get("memory_max", 10 ** 30)))
         swap_max = min(sysres.get_swap_size_gb(),
@@ -225,55 +217,42 @@ class EditVM(Form):
                        float(settings.get("disk_max", 10 ** 30)))
         vcpu_max = min(sysres.get_cpu_count(),
                        int(settings.get("vcpu_max", 10 ** 10)))
-        self.fields['memory'] = FloatField('memory',
-                                           '%.6g' % float(settings['memory']),
-                                           settings.get('memory_min', 0.1),
-                                           settings.get('memory_max', memory_max),
-                                           width=6)
-        self.fields['swap'] = FloatField('swap',
-                                         '%.6g' % float(settings['swap']),
-                                         settings.get('swap_min', 0),
-                                         settings.get('swap_max', swap_max),
-                                         width=6)
-        self.fields['diskspace'] = FloatField('diskspace',
-                                              '%.6g' % float(settings['diskspace']['/']),
-                                              settings.get('disk_min', 2.0),
-                                              settings.get('disk_max', disk_max),
-                                              width=6)
-        self.fields['vcpu'] = IntegerField('vcpu',
-                                           settings.get('vcpu', ''),
-                                           settings.get('vcpu_min', 1),
-                                           settings.get('vcpu_max', vcpu_max),
-                                           width = 6)
-        self.fields['name'] = StringField('name',
-                                          settings.get('name', ''),
-                                          width = 15)
-        self.fields['ip_address'] = IpField('ip_address',
-                                            settings['interfaces'][0]['ipaddr'],
-                                            width = 16)
-        self.fields['nameserver'] = IpField('nameserver',
-                                            settings.get('nameserver', ''),
-                                            width = 36)
-        self.fields['onboot'] = CheckboxField('onboot',
-                                              bool(settings.get('onboot', '')),
-                                              display_name = 'Start on boot')
-        self.labels['disk_max'] = str(settings.get('disk_max',
-                                                   min(sysres.get_disc_space_gb(),
-                                                       float(settings.get("disk_max", 10 ** 30)))))
-        self.labels['disk_min'] = str(settings.get('disk_min', 2.0))
-        self.labels['swap_max'] = str(settings.get('swap_max',
-                                                   min(sysres.get_swap_size_gb(),
-                                                       float(settings.get("swap_max", 10 ** 30)))))
-        self.labels['swap_min'] = str(settings.get('swap_min', 0))
-        self.labels['memory_max'] = str(settings.get('memory_min', 0.1))
-        self.labels['memory_min'] = str(settings.get('memory_min',
-                                                     min(sysres.get_ram_size_gb(),
-                                                         float(settings.get("memory_max", 10 ** 30)))))
-        self.labels['vcpu_min'] = str(settings.get('vcpu_min', 1))
-        self.labels['vcpu_max'] = str(settings.get('vcpu_max',
-                                                   min(sysres.get_cpu_count(),
-                                                       int(settings.get("vcpu_max", 10 ** 10)))))
-        Form.__init__(self, screen, title, self.fields)
+
+        self._proto_fields = {
+            'memory': (FloatField, {'width': 6, 'memory_max': memory_max,
+                                    'memory': '%.6g' % float(settings['memory'])}),
+            'swap': (FloatField, {'width': 6, 'swap_max': swap_max,
+                                  'swap': '%.6g' % float(settings['swap'])}),
+            'disk': (FloatField, {'width': 6,
+                                  'disk': '%.6g' % float(settings['diskspace']['/']),
+                                  'disk_max': disk_max,
+                                  'disk_min': settings.get('disk_min', 2.0)}),
+            'vcpu': (IntegerField, {'width': 6, 'vcpu_max': vcpu_max}),
+            'name': (StringField,  {'width': 15}),
+            'ip_address': (IpField,  {'width': 16, 'ip_address': settings['interfaces'][0]['ipaddr']}),
+            'nameserver': (IpField,  {'width': 36}),
+            'onboot': (CheckboxField, {'display_name': 'Start on boot'})}
+
+        self.fields = {}
+        for k, v in self.fields:
+            ftype, kw = v
+            self.fields[k] = ftype.create_with_settings(k, settings, **kw)
+
+    def _set_labels(self, settings):
+        self._proto_labels = {'disk_max': min(sysres.get_disc_space_gb(),
+                                              float(settings.get("disk_max", 10 ** 30))),
+                              'disk_min': 2.0,
+                              'swap_max': min(sysres.get_swap_size_gb(),
+                                              float(settings.get("swap_max", 10 ** 30))),
+                              'swap_min': 0,
+                              'memory_max': min(sysres.get_ram_size_gb(),
+                                                float(settings.get("memory_max", 10 ** 30))),
+                              'memory_min': 0.1,
+                              'vcpu_min': 1,
+                              'vcpu_max': min(sysres.get_cpu_count(),
+                                              int(settings.get("vcpu_max", 10 ** 10))),}
+
+        self.labels = dict([(k, str(settings.get(k, v))) for k,v in self._labels])
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 8)
@@ -364,9 +343,12 @@ class EditVM(Form):
         return not self.errors
 
 
-class NetworkSettings(Form):
-    def __init__(self, screen, title, settings):
+class NetworkSettings(BaseForm):
+
+    def _set_fields(self, settings):
         self.fields = {}
+
+    def __init__(self, screen, title, settings):
         self.labels = {}
         self.fields['hostname'] = StringField('hostname',
                                               settings.get('hostname', ''),
@@ -378,6 +360,8 @@ class NetworkSettings(Form):
                                              settings.get('nameserver', ''),
                                              width = 36)
         self.VIFS = Listbox(4, scroll=1)
+
+        BaseForm.__init__(self, screen, title, self.fields)
 
         net_ifaces = []
         self.interfaces = settings.get('interfaces', [])
@@ -392,19 +376,17 @@ class NetworkSettings(Form):
                 else:
                     gw = ''
                 net_ifaces.append(' '.join([vlan, '%-8s' % iface['name'],
-                                            '%-15s' % iface.get('ipaddr',
-                                                                iface.get('ipaddr', '')), gw]))
+                                            '%-15s' % iface.get('ipaddr', iface.get('ipaddr', '')), gw]))
         for nr, iface in enumerate(net_ifaces):
             self.VIFS.insert(iface, nr, 0)
 
         self.labels['default_route'] = ''
         for iface in self.interfaces:
-            if iface.has_key('default'):
-                # TODO: if we have DHCP enabled iface then how to get that gw value
-                if iface['default'] == 'yes' and iface['gw']:
-                    self.labels['default_route'] = 'default via %s dev %s' % (iface['gw'],
-                                                                              iface['ifname'])
-        Form.__init__(self, screen, title, self.fields)
+            # TODO: if we have DHCP enabled iface then how to get that gw value
+            if iface.get('default', '') == 'yes' and iface['gw']:
+                self.labels['default_route'] = 'default via %s dev %s' % (iface['gw'], iface['ifname'])
+                break
+
         self.settings = settings
 
     def display(self):
@@ -463,11 +445,7 @@ class NetworkSettings(Form):
         return not self.errors
 
 
-class AddVIF(Form):
-    def __init__(self, screen, title, settings):
-        self.fields = {}
-        self.labels = {}
-        Form.__init__(self, screen, title, self.fields)
+class AddVIF(BaseForm):
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 1)
@@ -490,28 +468,26 @@ class AddVIF(Form):
         return logic[listbox.current()]
 
 
-class EditVIF(Form):
-    def __init__(self, screen, title, settings):
+class EditVIF(BaseForm):
+
+    def _set_fields(self, settings):
         self.fields = {}
-        self.labels = {}
-        self.settings = settings
-        self.interface = self.settings['interfaces'][settings['editvif']]
         self.fields['managed'] = CheckboxField('managed',
                                                bool(self.interface.get('managed', True)),
-                                               display_name = 'Managed')
+                                               display_name='Managed')
         self.fields['dhcp'] = CheckboxField('dhcp', bool(self.interface.get('dhcp', False)),
-                                            display_name = 'DHCP')
+                                            display_name='DHCP')
         self.fields['vif_mac'] = StringField('vif_mac',
                                              self.interface.get('vif_mac', '(autogenerated)'),
-                                             required = False,
-                                             width = 18)
+                                             required=False,
+                                             width=18)
         self.fields['mac'] = StringField('mac',
                                          self.interface.get('mac', '(autogenerated)'),
                                          required = False,
-                                         width = 18)
+                                         width=18)
         self.fields['ipaddr'] = IpField('ipaddr',
                                         self.interface.get('ipaddr', ''),
-                                        width = 16)
+                                        width=16)
         self.fields['mask'] = IpField('mask',
                                       self.interface.get('mask', ''),
                                       required = False,
@@ -519,11 +495,18 @@ class EditVIF(Form):
         self.fields['gw'] = IpField('gw',
                                     self.interface.get('gw', ''),
                                     required = False,
-                                    width = 16)
+                                    width=16)
+
+    def _set_labels(self, settings):
+        self.labels = {}
         # TODO: add vlan id and bw controls
         self.labels['name'] = self.interface.get('name', '')
         self.labels['host_bridge'] = self.interface.get('host_ifname', '')
-        Form.__init__(self, screen, title, self.fields)
+
+    def __init__(self, screen, title, settings):
+        self.interface = self.settings['interfaces'][settings['editvif']]
+        self.settings = settings
+        BaseForm.__init__(self, screen, title, settings)
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 5)
@@ -598,13 +581,14 @@ class EditVIF(Form):
         return not self.errors
 
 
-class VenetSettings(Form):
-    def __init__(self, screen, title, settings):
+class VenetSettings(BaseForm):
+
+    def _set_fields(self):
         self.fields = {}
-        self.labels = {}
-        self.fields['ipaddr'] = IpField('ipaddr',
-                                        '', width = 16)
-        Form.__init__(self, screen, title, self.fields)
+        self.fields['ipaddr'] = IpField('ipaddr', '', width = 16)
+
+    def __init__(self, screen, title, settings):
+        BaseForm.__init__(self, screen, title, settings)
         self.settings = settings
 
     def display(self):
@@ -633,11 +617,11 @@ class VenetSettings(Form):
         return not self.errors
 
 
-class Resources(Form):
+class Resources(BaseForm):
+
     # TODO: add support for VCPU masks, UBC limits
-    def __init__(self, screen, title, settings):
+    def _set_fields(self, settings):
         self.fields = {}
-        self.labels = {}
         self.fields['vcpu'] = IntegerField('vcpu',
                                            settings.get('vcpu', ''),
                                            settings.get('vcpu_min', 1),
@@ -659,9 +643,11 @@ class Resources(Form):
         self.fields['bootorder'] = IntegerField('bootorder',
                                                 settings.get('bootorder', ''),
                                                 required = False, width = 4)
+
+    def _set_labels(self, settings):
+        self.labels = {}
         self.labels['vcpu_min'] = str(settings.get('vcpu_min', 1))
         self.labels['vcpu_max'] = str(settings.get('vcpu_max', ''))
-        Form.__init__(self, screen, title, self.fields)
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 7)
@@ -751,10 +737,10 @@ class Resources(Form):
         return bb.buttonPressed(rv)
 
 
-class Storage(Form):
-    def __init__(self, screen, title, settings):
+class Storage(BaseForm):
+
+    def _set_fields(self, settings):
         self.fields = {}
-        self.labels = {}
         self.fields['bind_mounts'] = BindMountsField('bind_mounts',
                                                      settings.get('bind_mounts', ''),
                                                      required = False,
@@ -763,7 +749,9 @@ class Storage(Form):
                          ('Default', 4),
                          ('High', 7)]
         self.fields['ioprio'] = OneLineListbox('ioprio', ioprio_values, 25, settings.get('ioprio', None))
-        Form.__init__(self, screen, title, self.fields)
+
+    def _set_labels(self, settings):
+        self.labels = {}
 
     def display(self):
         self.gf = GridForm(self.screen, self.title, 1, 6)
@@ -782,13 +770,14 @@ class Storage(Form):
         return bb.buttonPressed(rv)
 
 
-class KvmForm(Form):
+class KvmForm(BaseForm):
 
-    def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])
-        self.vcpu = IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
-        self.hostname = StringField("hostname", settings.get("hostname", ""))
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname])
+    def _set_fields(self, settings):
+        self.fields = {'memory': FloatField("memory", settings["memory"], settings["memory_min"],
+                                            settings["memory_max"]),
+                       'vcpu': IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"],
+                                            settings["vcpu_max"]),
+                       'hostname': StringField("hostname", settings.get("hostname", ""))}
 
     def display(self):
         button_save, button_exit = Button("Create VM"), Button("Main menu")
@@ -804,26 +793,26 @@ class KvmForm(Form):
             separator,
             (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
             separator,
-            (button_save, button_exit)
-        ]
+            (button_save, button_exit)]
+
         form = GridForm(self.screen, self.title, 2, len(rows))
+
         for i, row in enumerate(rows):
             for j, cell in enumerate(row):
                 form.add(cell, j, i)
         return form.runOnce() != button_exit
 
 
-class OpenvzForm(Form):
+class OpenvzForm(BaseForm):
 
-    def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])
+    def _set_fields(self, settings):
+        self.memory = FloatField("memory", settings["memory"],
+                                 settings["memory_min"], settings["memory_max"])
         self.swap = FloatField("swap", settings["swap"], settings["swap_min"], settings["swap_max"])
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
-        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
+        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"],
+                                      settings["vcpulimit_min"], settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
-        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
-                                                       ('Default', 4, settings["ioprio"] == 4),
-                                                       ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         self.ip_address = IpField("ip_address", settings["ip_address"], display_name="IP address")
@@ -833,13 +822,27 @@ class OpenvzForm(Form):
         self.ostemplate = StringField("ostemplate", settings["ostemplate"], display_name="OS template")
         self.startvm = CheckboxField("startvm", settings.get("startvm", 0), display_name="Start VM")
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
-        Form.__init__(self, screen, title, [self.memory, self.swap, self.vcpu,
-                                            self.vcpulimit, self.disk, self.ioprio,
-                                            self.bind_mounts, self.hostname,
-                                            self.ip_address, self.nameserver,
-                                            self.password, self.password2,
-                                            self.ostemplate, self.startvm,
-                                            self.onboot])
+
+        self.fields = {'memory': self.memory,
+                       'swap': self.swap,
+                       'vcpu': self.vcpu,
+                       'vcpulimit': self.vcpulimit,
+                       'disk': self.disk,
+                       'bind_mounts': self.bind_mounts,
+                       'hostname': self.hostname,
+                       'ip_address': self.ip_address,
+                       'nameserver': self.nameserver,
+                       'password': self.password,
+                       'password2': self.password2,
+                       'ostemplate': self.ostemplate,
+                       'startvm': self.startvm,
+                       'onboot': self.onboot,}
+
+    def __init__(self, screen, title, settings):
+        BaseForm.__init__(self, screen, title, settings)
+        self.fields['ioprio'] = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
+                                                                 ('Default', 4, settings["ioprio"] == 4),
+                                                                 ('High   ', 7, settings["ioprio"] == 7)])
         self.settings = settings  # save passed parameters for convenience
 
     def display(self):
@@ -893,7 +896,7 @@ class OpenvzForm(Form):
         return not self.errors
 
 
-class BaseTemplateForm(Form):
+class BaseTemplateForm(BaseForm):
 
     separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
 
@@ -908,9 +911,13 @@ class BaseTemplateForm(Form):
                                    display_name="min vcpu", required=False)
         self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""),
                                    display_name="max vcpu", required=False)
-        self.fields = [self.memory, self.memory_min,
-                       self.memory_max, self.vcpu,
-                       self.vcpu_min, self.vcpu_max]
+
+        self.fields = {'memory': self.memory,
+                       'memory_min': self.memory_min,
+                       'memory_max': self.memory_max,
+                       'vcpu': self.vcpu,
+                       'vcpu_min': self.vcpu_min,
+                       'vcpu_max': self.vcpu_max,}
 
         self.button_save = Button("Create")
         self.button_exit = Button("Back")
@@ -925,10 +932,6 @@ class BaseTemplateForm(Form):
             self.separator,
             (self.button_exit, self.button_save)
         ]
-
-    def __init__(self, screen, title, settings):
-        self.set_fields(settings)
-        Form.__init__(self, screen, title, self.fields)
 
     def display(self):
         form = GridForm(self.screen, self.title, 2, len(self.layout))
@@ -955,11 +958,11 @@ class BaseTemplateForm(Form):
 class OpenvzTemplateForm(BaseTemplateForm):
 
     def _set_fields(self, settings):
-        BaseTemplateForm.set_fields(self, settings)
+        BaseTemplateForm._set_fields(self, settings)
         self.disk = FloatField("disk", settings["disk"])
         self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
-        self.fields.append(self.disk)
-        self.fields.append(self.ostemplate)
+        self.fields = {'disk' : self.disk,
+                       'ostemplate': self.ostemplate}
         separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
         self.layout[6:7] = [separator,
             (Textbox(20, 1, "Disk size (GB):", 0, 0), self.disk),
@@ -971,24 +974,34 @@ class KvmTemplateForm(BaseTemplateForm):
     pass
 
 
-class OpenvzModificationForm(Form):
+class OpenvzModificationForm(BaseForm):
 
-    def __init__(self, screen, title, settings):
+    def _set_fields(self, settings):
         self.settings = settings
         self.memory = FloatField("memory", float(settings["memory"]) / 1024)
         self.swap = FloatField("swap", float(settings["swap"]) / 1024)
         self.vcpu = IntegerField("vcpu", settings["vcpu"])
         self.bootorder = IntegerField("bootorder", settings.get("bootorder"), required=False)
         self.disk = FloatField("diskspace", float(settings["diskspace"]["/"]) / 1024)
-        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
-                                                       ('Default', 4, settings["ioprio"] == 4),
-                                                       ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio,
-                                            self.bind_mounts, self.swap, self.onboot, self.bootorder,
-                                            self.vcpulimit])
+
+        self.fields = {'memory': self.memory,
+                       'swap': self.swap,
+                       'vcpu': self.vcpu,
+                       'bootorder': self.bootorder,
+                       'disk': self.disk,
+                       'bind_mounts': self.bind_mounts,
+                       'vcpulimit': self.vcpulimit,
+                       'onboot': self.onboot,}
+
+    def __init__(self, screen, title, settings):
+        BaseForm.__init__(self, screen, title, settings)
+        self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
+                                                       ('Default', 4, settings["ioprio"] == 4),
+                                                       ('High   ', 7, settings["ioprio"] == 7)])
+        self.fields.update({'ioprio': self.ioprio})
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -1023,25 +1036,26 @@ class OpenvzModificationForm(Form):
         return form.runOnce() != button_exit
 
     def validate(self):
-        if Form.validate(self):
-            # TODO disallow decrease of disk size, which would break OS
-            pass
+        Form.validate(self)
+        # TODO disallow decrease of disk size, which would break OS
         bm_valid = self.bind_mounts.validate()
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
             self.errors.append(("bind_mounts", "%s" % error_str))
         if self.memory.value() < self.settings["memory_min"]:
-            err_msg = "Memory size can not be lower than minimum defined in template: %s GB" % self.settings["memory_min"]
+            err_msg = ("Memory size can not be lower than minimum defined in template: %s GB" %
+                       self.settings["memory_min"])
             self.errors.append(("memory", err_msg))
         return not self.errors
 
 
-class OpenVZMigrationForm(Form):
+class OpenVZMigrationForm(BaseForm):
 
-    def __init__(self, screen, title):
+    def _set_fields(self, settings):
         self.target = HostnameField("target host", '')
         self.live = CheckboxField("live", default=0, display_name='(risky)')
-        Form.__init__(self, screen, title, [self.target, self.live])
+        self.fields = {'target': self.target,
+                       'live': self.live}
 
     def display(self):
         button_save, button_exit = Button("Migrate"), Button("Back")
@@ -1053,17 +1067,12 @@ class OpenVZMigrationForm(Form):
             separator,
             (button_save, button_exit)
         ]
+
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
             for j, cell in enumerate(row):
                 form.add(cell, j, i)
         return form.runOnce() != button_exit
-
-    def validate(self):
-        if Form.validate(self):
-            pass
-        return not self.errors
-
 
 # ------------- Field widgets --------------
 
@@ -1119,6 +1128,10 @@ class StringField(Field):
                 self.errors = [(self.name, "%s should not include white spaces. Got: '%s'"
                                             % (self.name.capitalize(), self.value()))]
 
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20), **kw)
+
 
 class BindMountsField(Field):
     def __init__(self, name, default, required=True, width=20, display_name=None):
@@ -1146,6 +1159,10 @@ class BindMountsField(Field):
                                         "'%s' is not a valid path."
                                         % (items[0])))
         return self.errors
+
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20), **kw)
 
 
 class RadioBarField(RadioBar):
@@ -1176,6 +1193,10 @@ class IpField(Field):
                 return False
         return True
 
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20), **kw)
+
 
 class HostnameField(Field):
     def __init__(self, name, default, required=True, width=20, display_name=None, port=22):
@@ -1192,6 +1213,10 @@ class HostnameField(Field):
                 return False
         return True
 
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20), **kw)
+
 
 class PasswordField(Field):
     def __init__(self, name, default, required=True, width=20, display_name=None):
@@ -1202,6 +1227,11 @@ class PasswordField(Field):
         # TODO: cracklib?
         return Field.validate(self)
 
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name,kw.get(name, settings.get(name, '')), kw.get('width', 20),
+                     password=1, **kw)
+
 
 class IntegerField(Field):
     def __init__(self, name, default, min_value=None, max_value=None,
@@ -1210,6 +1240,12 @@ class IntegerField(Field):
                        max_value=max_value, expected_type=int, display_name=display_name,
                        required=required)
 
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20),
+                     min_value=settings.get(name+'_min', ''),
+                     max_value=settings.get(name+'_max', ''),
+                     expected_type=int, **kw)
 
 class FloatField(Field):
     def __init__(self, name, default, min_value=None, max_value=None,
@@ -1217,6 +1253,14 @@ class FloatField(Field):
         Field.__init__(self, name, default, width, min_value=min_value,
                        max_value=max_value, expected_type=float, display_name=display_name,
                        required=required)
+
+    @classmethod
+    def create_with_settings(cls, name, settings, **kw):
+        return Field(name, kw.get(name, settings.get(name, '')), kw.get('width', 20),
+                     min_value=settings.get(name+'_min', kw.get(name+'_min', '')),
+                     max_value=settings.get(name+'_max', kw.get(name+'_max', '')),
+                     expected_type=float, **kw)
+
 
 
 class OneLineListbox(Listbox):
