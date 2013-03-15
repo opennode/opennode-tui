@@ -443,7 +443,7 @@ def save_as_ovf(vm_settings, storage_pool):
     msg = "Archiving..."
     log.info(msg)
     print msg
-    ovf_archive_fnm = path.join(dest_dir, "%s.tar" % vm_settings["template_name"])
+    ovf_archive_fnm = path.join(dest_dir, "%s.ova" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
         tar.add(ovf_fnm, arcname=path.basename(ovf_fnm))
@@ -758,7 +758,7 @@ def update_template_and_name(ovf_file, settings, new_name):
     @param new_name: new name for template
     """
     unpacked_base = ovfutil._get_unpacked_base('openvz')
-    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.tar')):
+    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
         return None
     ovf_file = ovfutil.update_referenced_files(ovf_file, settings['template_name'],
                                                new_name)
@@ -790,9 +790,9 @@ def _package_files(template_name, new_name=None):
     if new_name is None:
         new_name = template_name
     unpacked_base = ovfutil._get_unpacked_base('openvz')
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar'))
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar.pfff'))
-    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.tar')
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova'))
+    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova.pfff'))
+    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.ova')
     filelist = ovfutil.generate_ovf_archive_filelist('openvz', new_name)
     save_to_tar(tmpl_file, filelist)
     calculate_hash(tmpl_file)

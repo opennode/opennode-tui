@@ -4,6 +4,7 @@ import re
 import shutil
 import tarfile
 import urlparse
+import httplib
 
 from ovf.OvfFile import OvfFile
 
@@ -11,7 +12,6 @@ from opennode.cli.config import get_config
 from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli.actions.utils import (delete, calculate_hash, execute_in_screen, execute, download,
                                         urlopen, TemplateException)
-
 
 __all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template', 'get_local_templates',
@@ -108,34 +108,37 @@ def sync_template(remote_repo, template, storage_pool):
     if is_fresh(localfile, remotefile):
         return
 
-    unfinished_local = "%s.tar.unfinished" % localfile
-    unfinished_local_hash = "%s.tar.pfff.unfinished" % localfile
+    unfinished_local = "%s.unfinished" % localfile
+    unfinished_local_hash = "%s.pfff.unfinished" % localfile
 
+    extension = "ova" if _url_exists("%s.ova" % remotefile) else "tar"
     retries = 5
     retry = 0
     while not is_fresh(localfile, remotefile, unfinished=True) and retries > retry:
         # for resilience
         retry += 1
         storage.prepare_storage_pool(storage_pool)
-        download("%s.tar" % remotefile, unfinished_local, continue_=True)
-        r_template_hash = "%s.tar.pfff" % remotefile
+        download("%s.%s" % (remotefile, extension),
+                 unfinished_local, continue_=True)
+        r_template_hash = "%s.%s.pfff" % (remotefile, extension)
         download(r_template_hash, unfinished_local_hash, continue_=True)
 
-    os.rename(unfinished_local, '%s.tar' % localfile)
-    os.rename(unfinished_local_hash, '%s.tar.pfff' % localfile)
+    os.rename(unfinished_local, '%s.%s' % (localfile, extension))
+    os.rename(unfinished_local_hash, '%s.%s.pfff' % (localfile, extension))
 
     unpack_template(storage_pool, vm_type, localfile)
 
 
-def import_template(template, vm_type, storage_pool = None):
+def import_template(template, vm_type, storage_pool=None):
     """Import external template into ON storage pool"""
     config = get_config()
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
     if not os.path.exists(template):
         raise RuntimeError("Template not found: %s" % template)
-    if not template.endswith('tar'):
-        raise RuntimeError("Expecting a file ending with .tar for a template")
+    if not template.endswith('tar') or template.endswith('ova'):
+        raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
+    extension = 'ova' if template.endswith('ova') else 'tar'
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage_endpoint, storage_pool, vm_type, tmpl_name)
@@ -144,7 +147,7 @@ def import_template(template, vm_type, storage_pool = None):
     shutil.copyfile(template, target_file)
     calculate_hash(target_file)
     print "Unpacking..."
-    unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.tar'))
+    unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.%s' % extension))
 
 
 def delete_template(storage_pool, vm_type, template):
@@ -155,6 +158,8 @@ def delete_template(storage_pool, vm_type, template):
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type,
                                         template)
+    if not os.path.exists(templatefile):
+        templatefile = templatefile[:-3] + 'ova'
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
         fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type,
@@ -176,7 +181,11 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
     basedir = os.path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, vm_type)
-    tmpl = tarfile.open(os.path.join(basedir, "%s.tar" %tmpl_name))
+    if os.path.exists(os.path.join(basedir, "%s.tar" % tmpl_name)):
+        tar_name = os.path.join(basedir, "%s.tar" % tmpl_name)
+    if os.path.exists(os.path.join(basedir, "%s.ova" % tmpl_name)):
+        tar_name = os.path.join(basedir, "%s.ova" % tmpl_name)
+    tmpl = tarfile.open(tar_name)
     unpacked_dir = os.path.join(basedir, 'unpacked')
     tmpl.extractall(unpacked_dir)
     # special case for openvz vm_type
@@ -196,7 +205,7 @@ def get_local_templates(vm_type, storage_pool=None):
         storage_pool = config.getstring('general', 'default-storage-pool')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
-                                storage_pool, vm_type)) if tmpl.endswith('tar')]
+                                storage_pool, vm_type)) if tmpl.endswith('tar') or tmpl.endswith('ova')]
 
 
 def sync_oms_template(storage_pool=None):
@@ -212,12 +221,13 @@ def sync_oms_template(storage_pool=None):
 def is_fresh(localfile, remotefile, unfinished=False):
     """Checks whether local copy matches remote file"""
     # get remote hash
-    remote_hashfile = urlopen("%s.tar.pfff" % (remotefile))
+    extension = "ova" if _url_exists("%s.ova" % remotefile) else "tar"
+    remote_hashfile = urlopen("%s.%s.pfff" % (remotefile, extension))
     remote_hash = remote_hashfile.read()
     remote_hashfile.close()
     # get a local one
     try:
-        with open("%s.tar.pfff%s" % (localfile, '.unfinished' if unfinished else ''), 'r') as f:
+        with open("%s.%s.pfff%s" % (localfile, extension, '.unfinished' if unfinished else ''), 'r') as f:
             local_hash = f.read()
     except IOError:
         # no local hash found
@@ -309,3 +319,13 @@ def sync_templates_list(sync_tasks_fnm=None):
 def is_syncing():
     """Return true if syncing in progress"""
     return int(execute("screen -ls 2>/dev/null | grep OPENNODE-SYNC| wc -l")) == 1
+
+
+def _url_exists(url):
+    """Check if remote url exists (is not 404)"""
+    parsed_url = urlparse.urlparse(url)
+    conn = httplib.HTTPConnection(parsed_url.netloc)
+    conn.request('HEAD', parsed_url.path)
+    response = conn.getresponse()
+    conn.close()
+    return response.status != 404
