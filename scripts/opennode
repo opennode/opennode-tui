@@ -3,7 +3,7 @@ from sys import exit
 from sys import argv
 from getopt import getopt, GetoptError
 
-from opennode.cli.actions import templates
+from opennode.cli.actions import templates, oms
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
 
@@ -20,9 +20,11 @@ operations = {'list-templates': ('l', 'list-templates',
               'import': ('i', 'import',
                     'Import template archive into a local storage pool.'),
               'sync': ('s', 'sync-template',
-                    'Synchronize template with remote repository.'),
+                    'Synchronize template with a remote repository.'),
               'help': ('h', 'help',
-                    'Display help text.')}
+                    'Display help text.'),
+              'register': ('r', 'register',
+                    'Register with OpenNode Management Server (OMS)')}
 
 parameters = {'template_type': ('t', 'template-type',
                     "Set template type. Supported values: 'openvz', 'kvm'"),
@@ -31,9 +33,14 @@ parameters = {'template_type': ('t', 'template-type',
               'storage_pool': ('p', 'storage-pool',
                     'Set storage pool.'),
               'repo_name': ('r', 'repo-name',
-                    'Set repository name.'),
+                    'Set repository name (as defined in the opennode-tui configuration file)'),
               'log_verbosity': ('v', 'log-verbosity',
-                    'Set log verbosity level. Default is INFO, supported are DEBUG, INFO, WARN')}
+                    'Set log verbosity level. Default is INFO, supported are DEBUG, INFO, WARN'),
+              'oms_hostname': ('o', 'oms_hostname',
+                    'Set OMS hostname to use for sending registration request.'),
+              'oms_port': ('p', 'oms_port',
+                    'Set OMS port to use for sending registration request (default: 4506)'),
+              }
 
 
 def _help():
@@ -42,14 +49,31 @@ NAME
     opennode: OpenNode Terminal User Interface (TUI)
 
 SYNOPSIS
-    opennode [OPTIONS]
+    opennode [ACTION] [PARAMETERS]
 
-OPTIONS
-    ACTIONS
+    List of ACTIONS
 %s
 
-    PARAMETERS
+    List of PARAMETERS
 %s
+
+EXAMPLES:
+
+    Import a new template:
+        opennode --import --template-type openvz --storage-pool local --template-name filename.ova
+        opennode -i -t openvz -p local -n filename.ova
+
+    Synchronize a template named 'opennode-oms':
+        opennode --sync --template-name opennode-oms --storage-pool local --repo-name default-openvz-repo
+        opennode -s -n opennode-oms -p local -r default-openvz-repo
+
+    List local and remote templates:
+        opennode --list-templates
+        opennode -l
+
+    Register HN with OMS:
+        opennode --register --oms_hostname oms.local
+        opennode -r -o oms.local
 
 SEE ALSO:
     OpenNode web page:
@@ -105,6 +129,10 @@ if __name__ == '__main__':
         assert('repo_name' in user_input)
         assert('template_name' in user_input)
         templates.sync_template(user_input['repo_name'], user_input['template_name'], user_input['storage_pool'])
+    elif operation == 'register':
+        assert('oms_hostname' in user_input)
+        oms_port = int(user_input.get('oms_port', 4506))
+        oms.register_oms_server(user_input['oms_hostname'], oms_port)
     elif operation == 'help':
         _help()
     log.info('opennode-tui exiting')

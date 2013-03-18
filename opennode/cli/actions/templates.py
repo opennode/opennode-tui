@@ -74,7 +74,8 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     vm_type = config.getstring(remote_repo, 'type')
     existing_templates = get_local_templates(vm_type, storage_pool)
     # synchronize selected templates
-    if templates is None: templates = []
+    if templates is None:
+        templates = []
     purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
     # might be not order preserving
     for_update = set(templates) - set(purely_local_tmpl)
@@ -112,6 +113,10 @@ def sync_template(remote_repo, template, storage_pool):
     unfinished_local_hash = "%s.pfff.unfinished" % localfile
 
     extension = "ova" if _url_exists("%s.ova" % remotefile) else "tar"
+    remote_url = "%s.%s" % (remotefile, extension)
+    if not _url_exists(remote_url):
+        raise RuntimeError("Remote template was not found: %s" % remote_url)
+
     retries = 5
     retry = 0
     while not is_fresh(localfile, remotefile, unfinished=True) and retries > retry:
@@ -255,7 +260,7 @@ def list_templates():
         print "%s remote templates:" % vm_type.upper()
         print "\t", "Repository:", url
         for tmpl in get_template_list(repo_group):
-            print "\t\t",  tmpl
+            print "\t\t", tmpl
         print
 
 
@@ -265,7 +270,7 @@ def get_purely_local_templates(storage_pool, vm_type, remote_repo):
     return list(set(local_templates) - set(remote_templates))
 
 
-def get_template_info(template_name, vm_type, storage_pool = None):
+def get_template_info(template_name, vm_type, storage_pool=None):
     config = get_config()
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
