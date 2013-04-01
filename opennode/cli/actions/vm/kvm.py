@@ -162,16 +162,18 @@ def prepare_file_system(settings, storage_pool):
                            storage_pool, "images")
     target_dir = path.join(config.getstring("general", "storage-endpoint"),
                            storage_pool, "kvm", "unpacked")
+    diskindex = 1
     for disk in settings.get("disks", []):
         disk_template_path = path.join(target_dir, disk["template_name"])
         if disk["deploy_type"] == "file":
-            volume_name = disk.get("source_file") or "disk"
-            disk["source_file"] = '%s--%s.%s' % (volume_name, settings["uuid"], disk.get('template_format', 'qcow2'))
-            disk_deploy_path = path.join(images_dir, settings["vm_type"] + "-" + disk["source_file"])
+            volume_name = "disk" + str(diskindex)
+            disk["source_file"] = '%s-%s-%s.%s' % (settings["hostname"], settings["uuid"], volume_name, disk.get('template_format', 'qcow2'))
+            disk_deploy_path = path.join(images_dir, disk["source_file"])
             shutil.copy2(disk_template_path, disk_deploy_path)
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
+        diskindex += 1
 
 
 def adjust_setting_to_systems_resources(ovf_template_settings):
@@ -304,7 +306,7 @@ def generate_libvirt_conf(settings):
                                    config.getstring("general", "default-storage-pool"),
                                    "images")
             disk_source_dom.setAttribute("file", path.join(image_path,
-                                                           "%s-%s" % (settings["vm_type"], disk["source_file"])))
+                                                           "%s" % (disk["source_file"])))
             disk_dom.appendChild(disk_source_dom)
             disk_target_dom = libvirt_conf_dom.createElement("target")
             disk_target_dom.setAttribute("dev", disk["target_dev"])
