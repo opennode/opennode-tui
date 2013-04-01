@@ -264,6 +264,10 @@ def generate_libvirt_conf(settings):
     clock_dom = libvirt_conf_dom.createElement("clock")
     clock_dom.setAttribute("offset", settings["clock_offset"])
     domain_dom.appendChild(clock_dom)
+    timer_dom = libvirt_conf_dom.createElement("timer")
+    timer_dom.setAttribute("name", "rtc")
+    timer_dom.setAttribute("tickpolicy", "catchup")
+    clock_dom.appendChild(timer_dom)
 
     on_poweroff_dom = libvirt_conf_dom.createElement("on_poweroff")
     on_poweroff_value = libvirt_conf_dom.createTextNode(settings["on_poweroff"])
@@ -298,6 +302,7 @@ def generate_libvirt_conf(settings):
             driver_dom = libvirt_conf_dom.createElement("driver")
             driver_dom.setAttribute("name", "qemu")
             driver_dom.setAttribute("type", disk.get('template_format', 'qcow2'))
+            driver_dom.setAttribute("cache", "none")
             disk_dom.appendChild(driver_dom)
             disk_source_dom = libvirt_conf_dom.createElement("source")
             config = get_config()

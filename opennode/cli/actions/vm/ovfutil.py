@@ -97,8 +97,8 @@ def get_disks(ovf_file):
             "template_capacity_unit": disk_dom.getAttribute("ovf:capacityAllocationUnits") or "bytes",
             "device": "disk",
             "source_file": fileref_dict[disk_dom.getAttribute("ovf:fileRef")],
-            "target_dev": "hd%s" % chr(ord("a") + i),
-            "target_bus": "ide"
+            "target_dev": "vd%s" % chr(ord("a") + i),
+            "target_bus": "virtio"
         }
         disk_list.append(disk)
     return disk_list
