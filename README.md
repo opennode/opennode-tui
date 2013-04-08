@@ -1,9 +1,11 @@
 OpenNode Textual User Interface (TUI)
 -------------------------------------
 
-Opennode TUI contains a library of typical actions performed on OpenNode node and a ncurses-based user interface for typical operations.
+Opennode TUI contains a library of typical actions performed on OpenNode node and an ncurses-based user interface for typical operations.
 
-Actions are wrapped as Fedora func modules and can be called remotely.
+Actions are wrapped as [Saltstack](http://saltstack.com/) modules and can be called remotely.
+
+[![Build Status](https://gate1.hep.kbfi.ee:10000/job/opennode-tui/badge/icon)](https://gate1.hep.kbfi.ee:10000/job/opennode-tui/)
 
 Installation
 ============
