@@ -13,7 +13,7 @@ from opennode.cli.actions import storage, vm as vm_ops
 from opennode.cli.actions.utils import (delete, calculate_hash, execute_in_screen, execute, download,
                                         urlopen, TemplateException)
 
-__all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
+__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template', 'get_local_templates',
            'sync_oms_template', 'is_fresh', 'is_syncing']
 
@@ -34,22 +34,6 @@ def get_template_repos():
         name = config.getstring(group, 'name')
         vm_type = config.getstring(group, 'type')
         result.append(("%s (%s)" % (name, vm_type), group))
-    return result
-
-
-# Dead code for TUI.
-# get_template_repos and get_template_repos_info are exactly the same
-# and get_template_repos_info is used nowhere.
-def get_template_repos_info():
-    """Return a formatted list of strings describing configured repositories"""
-    config = get_config()
-    repo_groups = config.getstring('general', 'repo-groups').split(',')
-    result = []
-    for r in repo_groups:
-        group = "%s-repo" % r.strip()
-        name = config.getstring(group, 'name')
-        vm_type = config.getstring(group, 'type')
-        result.append(dict(name=name, vm_type=vm_type, group=group))
     return result
 
 
