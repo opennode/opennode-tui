@@ -34,3 +34,4 @@ def get_logger(level=None):
         sherr.setLevel(logging.ERROR)
         sherr.setFormatter(logging.Formatter('%(module)10s:%(lineno)s:%(funcName)s - %(message)s'))
         logger.addHandler(sherr)
+    return logger
