@@ -562,3 +562,19 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
         return
 
     raise NotImplemented
+
+
+@vm_method
+def set_owner(conn, uuid, owner):
+    if conn.getType() == 'OpenVZ':
+        openvz.set_owner(uuid, owner)
+    else:
+        raise NotImplemented
+
+
+@vm_method
+def get_owner(conn, uuid):
+    if conn.getType() == 'OpenVZ':
+        openvz.get_owner(uuid)
+    else:
+        raise NotImplemented
