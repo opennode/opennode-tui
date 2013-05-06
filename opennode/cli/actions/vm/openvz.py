@@ -14,6 +14,7 @@ from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions import oms
+from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
                                         CommandException, TemplateException, test_passwordless_ssh, execute2,
                                         save_to_tar)
@@ -39,9 +40,8 @@ def get_ovf_template_settings(ovf_file):
 
 def get_active_template_settings(vm_name, storage_pool):
     """ Reads ovf settings of the specified VM """
-    ovf_fnm = path.join(get_config().getstring("general", "storage-endpoint"), storage_pool,
-                       "openvz", "unpacked",
-                       get_template_name(vm_name) + ".ovf")
+    ovf_fnm = path.join(get_pool_path(storage_pool), "openvz", "unpacked",
+                        get_template_name(vm_name) + ".ovf")
     if path.exists(ovf_fnm):
         ovf_file = OvfFile(ovf_fnm)
         return get_ovf_template_settings(ovf_file)
@@ -383,9 +383,8 @@ def link_template(storage_pool, tmpl_name, overwrite=True):
     config = get_config()
     if not tmpl_name.endswith('.tar.gz'):
         tmpl_name = tmpl_name + '.tar.gz'
-    source_file = os.path.join(config.getstring('general', 'storage-endpoint'),
-                                                  storage_pool, 'openvz',
-                                                  'unpacked', tmpl_name)
+    source_file = os.path.join(get_pool_path(storage_pool), 'openvz',
+                               'unpacked', tmpl_name)
     dest_file = os.path.join(config.getstring('general', 'openvz-templates'), tmpl_name)
     if overwrite:
         try:
