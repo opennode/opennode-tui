@@ -729,10 +729,7 @@ def get_owner(uuid):
     """
     ctid = get_ctid_by_uuid(uuid)
     parser = SimpleConfigParser()
-    try:
-        parser.read('/etc/vz/conf/%s.conf' % ctid)
-    except IOError:
-        return ''
+    parser.read('/etc/vz/conf/%s.conf' % ctid)
     conf = parser.items()
     return conf['ON_OWNER'].strip().replace('"', '')\
         if 'ON_OWNER' in conf else ''
