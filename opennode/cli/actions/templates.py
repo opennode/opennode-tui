@@ -102,7 +102,8 @@ def sync_template(remote_repo, template, storage_pool):
     url = config.getstring(remote_repo, 'url')
     vm_type = config.getstring(remote_repo, 'type')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
-    localfile = os.path.join(storage_endpoint, storage_pool, vm_type, template)
+    localfile = os.path.join(storage.get_pool_path(storage_pool),
+                             vm_type, template)
     remotefile = urlparse.urljoin(url.rstrip('/') + '/', template)
 
     # only download if we don't already have a fresh copy
@@ -146,7 +147,8 @@ def import_template(template, vm_type, storage_pool=None):
     extension = 'ova' if template.endswith('ova') else 'tar'
     storage_endpoint = config.getstring('general', 'storage-endpoint')
     tmpl_name = os.path.basename(template)
-    target_file = os.path.join(storage_endpoint, storage_pool, vm_type, tmpl_name)
+    target_file = os.path.join(storage.get_pool_path(storage_pool),
+                               vm_type, tmpl_name)
     print "Copying template to the storage pool..."
     print template, target_file
     shutil.copyfile(template, target_file)
@@ -185,7 +187,7 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
     """Unpacks template into the 'unpacked' folder of the storage pool.
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
-    basedir = os.path.join(get_config().getstring('general', 'storage-endpoint'), storage_pool, vm_type)
+    basedir = os.path.join(storage.get_pool_path(storage_pool), vm_type)
     if os.path.exists(os.path.join(basedir, "%s.tar" % tmpl_name)):
         tar_name = os.path.join(basedir, "%s.tar" % tmpl_name)
     if os.path.exists(os.path.join(basedir, "%s.ova" % tmpl_name)):
@@ -209,8 +211,10 @@ def get_local_templates(vm_type, storage_pool=None):
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
     storage_endpoint = config.getstring('general', 'storage-endpoint')
-    return [tmpl[:-4] for tmpl in os.listdir("%s/%s/%s" % (storage_endpoint,
-                                storage_pool, vm_type)) if tmpl.endswith('tar') or tmpl.endswith('ova')]
+    return [tmpl[:-4] for tmpl in
+            os.listdir("%s/%s" % (storage.get_pool_path(storage_pool),
+                                  vm_type))
+            if tmpl.endswith('tar') or tmpl.endswith('ova')]
 
 
 def sync_oms_template(storage_pool=None):
@@ -274,8 +278,8 @@ def get_template_info(template_name, vm_type, storage_pool=None):
     config = get_config()
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
-    ovf_file = OvfFile(os.path.join(config.getstring("general", "storage-endpoint"),
-                                    storage_pool, vm_type, "unpacked",
+    ovf_file = OvfFile(os.path.join(storage.get_pool_path(storage_pool),
+                                    vm_type, "unpacked",
                                     template_name + ".ovf"))
     vm = vm_ops.get_module(vm_type)
     template_settings = vm.get_ovf_template_settings(ovf_file)

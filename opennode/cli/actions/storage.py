@@ -8,7 +8,8 @@ from opennode.cli.log import get_logger
 from opennode.cli.actions.utils import del_folder, execute, mkdir_p, CommandException
 
 
-__all__ = ['list_pools', 'set_default_pool', 'prepare_storage_pool']
+__all__ = ['list_pools', 'set_default_pool', 'prepare_storage_pool',
+           'get_pool_path']
 
 
 def list_pools():
@@ -32,6 +33,7 @@ def is_default_pool_modified():
         config = get_config()
         res = execute("virsh 'pool-dumpxml default'")
         defined_path = parseString(res).getElementsByTagName('path')[0].lastChild.nodeValue
+        # XXX: This will remain as-is right now.
         current_path = os.path.join(config.getstring('general', 'storage-endpoint'),
                                     config.getstring('general', 'default-storage-pool'),
                                     'images')
@@ -79,11 +81,11 @@ def delete_pool(pool_name):
     """Delete a storage pool"""
     try:
         config = get_config()
-        if os.path.join(config.getstring('general', 'storage-endpoint'), pool_name) == '/storage/local':
+        if get_pool_path(pool_name) == '/storage/local':
             raise Exception('/storage/local can not be deleted')
         execute("virsh 'pool-destroy %s'" % pool_name)
         execute("virsh 'pool-undefine %s'" % pool_name)
-        del_folder(os.path.join(config.getstring('general', 'storage-endpoint'), pool_name))
+        del_folder(get_pool_path(pool_name))
         if pool_name == config.getstring('general', 'default-storage-pool'):
             set_default_pool('')
     except Exception, e:
@@ -122,3 +124,7 @@ def prepare_storage_pool(storage_pool=get_default_pool()):
     mkdir_p("%s/openvz/unpacked" % storage_pool)
     mkdir_p("%s/kvm/unpacked" % storage_pool)
 
+
+def get_pool_path(storage_pool):
+    return parseString(execute("virsh 'pool-dumpxml %s'" % storage_pool)).\
+        getElementsByTagName('path')[0].lastChild.nodeValue

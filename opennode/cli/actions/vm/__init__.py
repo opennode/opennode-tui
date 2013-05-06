@@ -11,6 +11,7 @@ from ovf.OvfFile import OvfFile
 from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data, execute
 from opennode.cli.config import get_config
+from opennode.cli.actions.storage import get_pool_path
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
@@ -485,9 +486,8 @@ def _deploy_vm(vm_parameters, logger=None):
             logger("Cannot deploy because template is '%s'" % (template))
         raise Exception("Cannot deploy because template is '%s'" % (template))
 
-    ovf_file = OvfFile(os.path.join(get_config().getstring("general", "storage-endpoint"),
-                                    storage_pool, vm_type, "unpacked",
-                                    template + ".ovf"))
+    ovf_file = OvfFile(os.path.join(get_pool_path(storage_pool),
+                                    vm_type, "unpacked",template + ".ovf"))
     vm = actions.vm.get_module(vm_type)
     settings = vm.get_ovf_template_settings(ovf_file)
 
