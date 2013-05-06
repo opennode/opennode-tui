@@ -212,7 +212,7 @@ def _list_vms(conn):
     online += [_render_vm(conn, vm) for vm in
                (conn.lookupByID(i) for i in _get_running_vm_ids(conn))]
     offline = [_render_vm(conn, vm) for vm in
-               (conn.lookupByName(i) for i in conn.listDefinedDomains())]
+               (conn.lookupByName(i) for i in _get_stopped_vm_ids(conn))]
     return online + offline
 
 
@@ -514,6 +514,15 @@ def _get_running_vm_ids(conn):
     if conn.getType() == 'OpenVZ' and \
         'missing' == execute("vzlist -H > /dev/null 2>&1; if [  $? -eq 1 ]; then echo missing; fi"):
         return []
+    else:
+        return conn.listDomainsID()
+
+
+def _get_stopped_vm_ids(conn):
+    # XXX a workaround for libvirt's  python API listDefinedDomains function not reportng last OpenVZ VM correctly
+    # on rare occasion
+    if conn.getType() == 'OpenVZ':
+        return execute('vzlist -H -S -o ctid').split()
     else:
         return conn.listDomainsID()
 
