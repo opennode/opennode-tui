@@ -630,6 +630,30 @@ def _update_bmounts(vm_id, bind_mounts):
     os.rename(''.join([conf_fnm, '.new']), conf_fnm)
 
 
+def set_owner(uuid, owner):
+    """Set ON_OWNER by uuid.
+    @param uuid: uuid of the VM
+    @param owner: string representing owner
+    """
+    # Seve logic is similar to bmount save logic
+    ctid = get_ctid_by_uuid(uuid)
+    conf_fnm = '/etc/vz/conf/%s.conf' % ctid
+    with file(conf_fnm, 'rt') as f:
+        data = f.read()
+    data = data.split('\n')
+    owner_added = False
+    for line in enumerate(data):
+        if line[1].count('ON_OWNER') and not line[1].strip().startswith('#'):
+            data[line[0]] = 'ON_OWNER="%s"' % owner
+            owner_added = True
+    if not owner_added:
+        data.append('ON_OWNER="%s"' % owner)
+    with file(''.join([conf_fnm, '.new']), 'wt') as f:
+        f.write('\n'.join(data))
+    os.rename(conf_fnm, ''.join([conf_fnm, '.bak']))
+    os.rename(''.join([conf_fnm, '.new']), conf_fnm)
+
+
 def update_vm(settings):
     """Perform modifications to the VM virtual hardware"""
     vm_id = get_ctid_by_uuid(settings["uuid"])
@@ -697,6 +721,18 @@ def get_bmounts(ctid):
         return conf['ON_BMOUNT']
     else:
         return ''
+
+
+def get_owner(uuid):
+    """Get VM onwer by id
+    @param uuid: uuid of the VM
+    """
+    ctid = get_ctid_by_uuid(uuid)
+    parser = SimpleConfigParser()
+    parser.read('/etc/vz/conf/%s.conf' % ctid)
+    conf = parser.items()
+    return conf['ON_OWNER'].strip().replace('"', '')\
+        if 'ON_OWNER' in conf else ''
 
 
 def shutdown_vm(uuid):
