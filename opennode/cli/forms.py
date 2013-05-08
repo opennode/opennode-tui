@@ -330,6 +330,32 @@ class OpenVZMigrationForm(Form):
         return not self.errors
 
 
+class OpenVZChangeCTID(Form):
+
+    def __init__(self, screen, title):
+        self.target = IntegerField("target ctid", '')
+        Form.__init__(self, screen, title, [self.target])
+
+    def display(self):
+        button_save, button_exit = Button("Ok"), Button("Back")
+        separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+        rows = [
+            (Textbox(20, 1, "Target ctid", 0, 0), self.target),
+            separator,
+            (button_save, button_exit)
+        ]
+        form = GridForm(self.screen, self.title, 2, len(rows))
+        for i, row in enumerate(rows):
+            for j, cell in enumerate(row):
+                form.add(cell, j, i)
+        return form.runOnce() != button_exit
+
+    def validate(self):
+        if Form.validate(self):
+            pass
+        return not self.errors
+
+
 # ------------- Field widgets --------------
 
 class CheckboxField(Checkbox):

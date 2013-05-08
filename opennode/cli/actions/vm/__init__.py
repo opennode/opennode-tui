@@ -587,3 +587,13 @@ def get_owner(conn, uuid):
         openvz.get_owner(uuid)
     else:
         raise NotImplemented
+
+
+@vm_method
+def change_ctid(conn, uuid, new_ctid):
+    print 'vm.change_ctid'
+    if conn.getType() == 'OpenVZ':
+        ctid = openvz.get_ctid_by_uuid(uuid)
+        openvz.change_ctid(ctid, new_ctid)
+    else:
+        raise NotImplemented

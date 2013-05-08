@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from optparse import OptionParser
+# from opennnode.cli.action.quota import copy_quota_file, rename_quota_file
+
+# XXX: Online container can't use -C|--copy option!
+# XXX: rsync comand: rsync -av --numeric-ids
+
+def process_ct_list(ct_list):
+    pass
+
+
+def main():
+    usage = """
+%prog <CT List>
+<CT List> = <source_CTID>:<dest_CTID>[:<dest_private>] [...]
+%prog -C <CT List>
+<CT List> = <source_CTID>:<dest_CTID>[:<dest_private>] [...]
+%prog --help"""
+    parser = OptionParser(usage=usage)
+    parser.add_option('-C', '--copy', action='store_true', dest='copy',
+                      default=False, help=('Clones the source Container '
+                      'instead of moving it.'))
+    parser.add_option('-s', '--fast-sid', action='store_true', dest='fast_sid',
+                      default=False, help=('Allows you to speed up the '
+                      'process of cloning the Container.'))
+    parser.add_option('-d', '--destroy-source', action='store_true',
+                      dest='destroy_source', default=False,
+                      help='Destroys the source Container after its cloning.')
+    parser.add_option('-n', '--disable-network', action='store_true',
+                      dest='no_network', default=False,
+                      help=('Disables offline management '
+                      'for the source Container after its cloning.'))
+    parser.add_option('-l', '--skiplock', action='store_true', dest='skiplock',
+                      default=False, help=('Allows you to clone '
+                      'locked Containers.'))
+    parser.add_option('--verbose', action='store_true', dest='verbose',
+                      default=False, help=('Sets log level to maximum possible'
+                      ' value for this vzmlocal session.'))
+    parser.add_option('--quiet', action='store_true', dest='quiet',
+                      default=False, help=('Disables logging to screen and'
+                      ' to the log file.'))
+    (options, args) = parser.parse_args()
+    
+    ct_list = []
+    for arg in args:
+        arg_params = ['ctid', 'new_ctid', 'dest']
+        ct_list.append(dict(zip(arg_params, arg.split(':'))))
+    process_ct_list(ct_list)
+
+
+if __name__ == '__main__':
+    main()

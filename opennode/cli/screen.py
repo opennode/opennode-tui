@@ -12,7 +12,7 @@ from opennode.cli.helpers import (display_create_template, display_checkbox_sele
 from opennode.cli import actions
 from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                OpenvzModificationForm, OpenVZMigrationForm)
+                                OpenvzModificationForm, OpenVZMigrationForm, OpenVZChangeCTID)
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
@@ -505,7 +505,7 @@ class OpenNodeTUI(object):
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                 "Pick VM for modification:",
-                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
+                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop', 'Migrate', 'Delete', 'CTID'])
         if res is None:
             return self.display_manage()
         else:
@@ -564,6 +564,15 @@ class OpenNodeTUI(object):
                     self.screen.finish()
                     actions.vm.undeploy_vm(available_vms[vm_id]['vm_uri'], vm_id)
                     self.screen = SnackScreen()
+            return self.display_vm_manage()
+
+        if action == 'ctid':
+            result = OpenVZChangeCTID(self.screen, TITLE)
+            result.display()
+            result.validate()
+            self.screen.finish()
+            actions.vm.change_ctid(available_vms[vm_id]['vm_uri'], vm_id, result.data['target ctid'])
+            self.screen = SnackScreen()
             return self.display_vm_manage()
 
         if action is None or action == 'edit':
