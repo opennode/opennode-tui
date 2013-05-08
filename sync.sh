@@ -7,7 +7,6 @@ if [ ! $HOST ]; then
 fi
 
 set -e
-sudo chown $USER:$USER -R .
 rsync -av --delete --exclude '*.pyc' opennode/cli/actions/ root@${HOST}:/usr/lib/python2.6/site-packages/salt/modules/onode/
 rsync -av --delete --exclude '*.pyc' opennode/ root@${HOST}:/usr/lib/python2.6/site-packages/opennode/
 rsync -av --delete --exclude '*.pyc' scripts/ root@${HOST}:opennode/
