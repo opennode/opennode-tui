@@ -315,9 +315,14 @@ def resume_vm(conn, uuid):
 
 
 @vm_method
-def deploy_vm(conn, vm_parameters):
+def deploy_vm(conn, *args, **kwargs):
     try:
-        vm_parameters = eval(vm_parameters) if type(vm_parameters) is str else vm_parameters
+        if args:
+            vm_parameters = eval(args[0]) if type(args[0]) is str else args[0]
+            assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
+        else:
+            vm_parameters = {}
+        vm_parameters.update(kwargs)
         _deploy_vm(vm_parameters)
     except Exception:
         raise
