@@ -70,8 +70,7 @@ def calc_checksum(fl):
     return struct.pack('=Q', chksum)
 
 
-def rename_quota_file(ctid, new_ctid):
-    quota_path = '/var/vzquota'
+def copy_quota_file(ctid, new_ctid, quota_path='/var/vzquota'):
     fd = open(os.path.join(quota_path, 'quota.%s' % ctid), 'rb').read()
     if read_header(fd)[0] != magic_v3:
         print 'Only quota file format v3 is supported'
@@ -79,7 +78,6 @@ def rename_quota_file(ctid, new_ctid):
     path_len, path = read_path(fd)
     new_path = os.path.join(os.path.dirname(path), str(new_ctid))
     new_path_len = len(new_path) if len(new_path) > path_len else path_len
-    # Reconstruct new list
     fl = map(ord, fd[:88])
     fl += map(ord, struct.pack('=Q', new_path_len))
     fl += map(ord, [c for c in new_path])
@@ -88,4 +86,8 @@ def rename_quota_file(ctid, new_ctid):
     fl += map(ord, [i for i in chksum])
     with open(os.path.join(quota_path, 'quota.%s' % new_ctid), 'wb') as f:
         f.write(b''.join(map(chr, fl)))
+
+
+def rename_quota_file(ctid, new_ctid, quota_path='/var/vzquota'):
+    copy_quota_file(ctid, new_ctid)
     os.unlink(os.path.join(quota_path, 'quota.%s' % ctid))

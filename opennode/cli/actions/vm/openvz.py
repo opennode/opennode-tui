@@ -806,29 +806,7 @@ def _get_remote_max_ctid(remote_host):
 
 
 def change_ctid(ctid, new_ctid=None):
-    # Example workflow:
-    # vzctl chkpnt 101 --dumpfile /tmp/Dump.101
-    # mv /etc/vz/conf/101.conf /etc/vz/conf/102.conf
-    # mv /vz/private/101 /vz/private/102
-    # mv /vz/root/101 /vz/root/102
-    # vzctl  restore 102 --dumpfile /tmp/Dump.101
-    # First check if new_ctid is available and if not allocate new one
-
-    print ctid, new_ctid
-
-    if new_ctid in _get_openvz_ct_id_list():
-        new_ctid = _get_available_ct_id()
-    # execute('vzctl chkpnt %s --dumpfile /tmp/Dump.%s' % (ctid, ctid))
-    execute('mv /etc/vz/conf/%s.conf /etc/vz/conf/%s.conf' % (ctid, new_ctid))
-    execute('mv /vz/private/%s /vz/private/%s' % (ctid, new_ctid))
-    execute('mv /vz/root/%s /vz/root/%s' % (ctid, new_ctid))
-    print "TODO: smart vzquota move!"
-    rename_quota_file(ctid, new_ctid)
-    print 'After rename quota'
-    # execute('mv /var/vzquota/quota.%s /var/vzquota/quota.%s' % (ctid,
-    #                                                             new_ctid))
-    #execute('vzctl restore %d --dumpfile /tmp/Dump.%s' % (new_ctid, ctid))
-    return new_ctid
+    execute('vzmlocal %s:%s' % (ctid, new_ctid))
 
 
 def update_template_and_name(ovf_file, settings, new_name):
