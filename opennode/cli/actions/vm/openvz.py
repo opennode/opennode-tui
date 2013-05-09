@@ -23,6 +23,7 @@ from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
+from opennode.cli.actions.openvz_utils import get_openvz_all_ctids
 import shutil
 
 
@@ -148,18 +149,7 @@ def _get_available_ct_id():
     @return: Next available ID for new OpenVZ CT
     @rtype: Integer
     """
-    return max(100, max([0] + _get_openvz_ct_id_list())) + 1
-
-
-def _get_openvz_ct_id_list():
-    """
-    Return a list of current OpenVZ CTs (both running and stopped)
-
-    @return: List of OpenVZ containers on current machine
-    @rtype: List
-    """
-    existing = [ctid.strip() for ctid in execute("vzlist --all -H -o ctid").splitlines()]
-    return map(int, existing)
+    return max(100, max([0] + get_openvz_all_ctids())) + 1
 
 
 def _compute_diskspace_hard_limit(soft_limit):
@@ -784,6 +774,28 @@ def migrate(uid, target_host, live=False, print_=True):
         log.info(line)
         if print_ and line:
             print line
+
+
+def _get_remote_ctid_list(remote_host):
+    """Get list of ctid's from remote HN
+    @param remote_host: host to connect to (with username if provided)
+    """
+    data = execute('ssh %s "vzlist -a -H -o ctid"' % remote_host)
+    # Clean up output so ssh identity errors will not hit conversion to int
+    data = [i for i in data.split('\n') if len(i) == 10
+            and i.startswith('   ')]
+    return map(int, data)
+
+
+def _get_remote_max_ctid(remote_host):
+    """Get max ctid value from remote HN
+    @param remote_host: host to connect to (with username if provided)
+    """
+    return max(_get_remote_ctid_list(remote_host))
+
+
+def change_ctid(ctid, new_ctid=None):
+    execute('vzmlocal %s:%s' % (ctid, new_ctid))
 
 
 def update_template_and_name(ovf_file, settings, new_name):
