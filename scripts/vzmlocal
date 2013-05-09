@@ -11,14 +11,15 @@ from opennode.cli.actions.quota import rename_quota_file, copy_quota_file
 from opennode.cli.actions.openvz_utils import (get_openvz_running_ctids,
                                                get_openvz_stopped_ctids)
 
+valid_extensions = ['.mount', '.umount', '.premount', '.postumount',
+                    '.start', '.stop', '.conf']
+
 
 def move_running_vm(ct):
     if 'dest' in ct and not ct['dest'] == '/vz/private':
         print ("Can't change private path on running container %(ctid)s, "
                "skipping.") % ct
         return
-    valid_extensions = ['mount', 'umount', 'premount', 'postumount',
-                        'start', 'stop', 'conf']
     ex = execute('vzctl chkpnt %(ctid)s --dumpfile '
                  '/tmp/Dump.%(ctid)s' % ct)
     print ex
@@ -28,15 +29,15 @@ def move_running_vm(ct):
     ls_conf = execute('ls /etc/vz/conf/%(ctid)s.*' % ct)
     extensions = []
     for path in ls_conf.split('\n'):
-        ext = os.path.split(path)[1].split('.')
-        if len(ext) == 2 and ext[1] in valid_extensions:
-            extensions.append(ext[1])
+        ext = os.path.splitext(path)[1]
+        if ext in valid_extensions:
+            extensions.append(ext)
     ct['extensions'] = ','.join(extensions)
     if ',' in ct['extensions']:
-        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s.'
+        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s'
                 '{%(extensions)s}' % ct)
     else:
-        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s.'
+        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s'
                 '%(extensions)s' % ct)
     execute('mv /vz/private/%(ctid)s /vz/private/%(new_ctid)s' % ct)
     execute('mv /vz/root/%(ctid)s /vz/root/%(new_ctid)s' % ct)
@@ -50,18 +51,16 @@ def move_running_vm(ct):
 def copy_stopped(ct):
     if not 'dest' in ct or not ct['dest']:
         ct['dest'] = '/vz/private'
-    valid_extensions = ['mount', 'umount', 'premount', 'postumount',
-                        'start', 'stop', 'conf']
     ls_conf = execute('ls /etc/vz/conf/%(ctid)s.*' % ct)
     extensions = []
     for path in ls_conf.split('\n'):
-        ext = os.path.split(path)[1].split('.')[1]
+        ext = os.path.splitext(path)[1]
         if ext in valid_extensions:
             extensions.append(ext)
     # XXX: There is no copy utility like rename(1) so
     # we have to call cp in a loop
     for ext in extensions:
-        execute('cp /etc/vz/conf/%s.%s /etc/vz/conf/%s.%s' %
+        execute('cp /etc/vz/conf/%s%s /etc/vz/conf/%s%s' %
                 (ct['ctid'], ext, ct['new_ctid'], ext))
     # XXX: libvirt does not like different VMs with same uuid.
     execute("sed -i -e's/#UUID: .*/#UUID: %s/' /etc/vz/conf/%s.conf" %
@@ -79,20 +78,18 @@ def copy_stopped(ct):
 def move_stopped(ct):
     if not 'dest' in ct or not ct['dest']:
         ct['dest'] = '/vz/private'
-    valid_extensions = ['mount', 'umount', 'premount', 'postumount',
-                        'start', 'stop', 'conf']
     ls_conf = execute('ls /etc/vz/conf/%(ctid)s.*' % ct)
     extensions = []
     for path in ls_conf.split('\n'):
-        ext = os.path.split(path)[1].split('.')[1]
+        ext = os.path.splitext(path)[1]
         if ext in valid_extensions:
             extensions.append(ext)
     ct['extensions'] = ','.join(extensions)
     if ',' in ct['extensions']:
-        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s.'
+        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s'
                 '{%(extensions)s}' % ct)
     else:
-        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s.'
+        execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s'
                 '%(extensions)s' % ct)
     execute('mv /vz/private/%(ctid)s %(dest)s/%(new_ctid)s' % ct)
     execute('mv /vz/root/%(ctid)s /vz/root/%(new_ctid)s' % ct)
