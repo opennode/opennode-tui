@@ -12,6 +12,7 @@ from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data, execute
 from opennode.cli.config import get_config
 from opennode.cli.actions.storage import get_pool_path
+from opennode.cli.log import get_logger
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
@@ -591,9 +592,9 @@ def get_owner(conn, uuid):
 
 @vm_method
 def change_ctid(conn, uuid, new_ctid):
-    print 'vm.change_ctid'
     if conn.getType() == 'OpenVZ':
         ctid = openvz.get_ctid_by_uuid(uuid)
+        get_logger().info('Change ctid from %s to %s', ctid, new_ctid)
         openvz.change_ctid(ctid, new_ctid)
     else:
         raise NotImplemented
