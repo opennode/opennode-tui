@@ -8,16 +8,8 @@ from uuid import uuid4
 
 from opennode.cli.actions.utils import execute
 from opennode.cli.actions.quota import rename_quota_file, copy_quota_file
-
-
-def get_running_containers():
-    containers = execute("vzlist --all | tail -n+2 | grep running | cut -b-10")
-    return [line.strip() for line in containers.split('\n')]
-
-
-def get_stopped_containers():
-    containers = execute("vzlist --all | tail -n+2 | grep stopped | cut -b-10")
-    return [line.strip() for line in containers.split('\n')]
+from opennode.cli.actions.openvz_utils import (get_openvz_running_ctids,
+                                               get_openvz_stopped_ctids)
 
 
 def move_running_vm(ct):
@@ -30,6 +22,9 @@ def move_running_vm(ct):
     ex = execute('vzctl chkpnt %(ctid)s --dumpfile '
                  '/tmp/Dump.%(ctid)s' % ct)
     print ex
+    # XXX: We can't call rename with only one file extension inside {}
+    # So we list all files belonging to ctid, filter them with known list
+    # and put result to comma delimited string inside ct structure.
     ls_conf = execute('ls /etc/vz/conf/%(ctid)s.*' % ct)
     extensions = []
     for path in ls_conf.split('\n'):
@@ -63,9 +58,12 @@ def copy_stopped(ct):
         ext = os.path.split(path)[1].split('.')[1]
         if ext in valid_extensions:
             extensions.append(ext)
+    # XXX: There is no copy utility like rename(1) so
+    # we have to call cp in a loop
     for ext in extensions:
         execute('cp /etc/vz/conf/%s.%s /etc/vz/conf/%s.%s' %
                 (ct['ctid'], ext, ct['new_ctid'], ext))
+    # XXX: libvirt does not like different VMs with same uuid.
     execute("sed -i -e's/#UUID: .*/#UUID: %s/' /etc/vz/conf/%s.conf" %
             (str(uuid4()), ct['new_ctid']))
     execute('rsync -av --numeric-ids /vz/private/%(ctid)s '
@@ -105,8 +103,8 @@ def move_stopped(ct):
 
 
 def process_ct_list(options, ct_list):
-    running = get_running_containers()
-    stopped = get_stopped_containers()
+    running = map(str, get_openvz_running_ctids())
+    stopped = map(str, get_openvz_stopped_ctids())
     for ct in ct_list:
         if ct['ctid'] not in running + stopped:
             # XXX: No VM with such ctid
