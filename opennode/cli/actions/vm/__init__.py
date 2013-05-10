@@ -575,7 +575,7 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
         openvz.migrate(uuid, target_host, *args, **kwargs)
         return
 
-    raise NotImplemented
+    raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
 @vm_method
@@ -583,7 +583,7 @@ def set_owner(conn, uuid, owner):
     if conn.getType() == 'OpenVZ':
         openvz.set_owner(uuid, owner)
     else:
-        raise NotImplemented
+        raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
 @vm_method
@@ -591,7 +591,7 @@ def get_owner(conn, uuid):
     if conn.getType() == 'OpenVZ':
         openvz.get_owner(uuid)
     else:
-        raise NotImplemented
+        raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
 @vm_method
@@ -601,4 +601,4 @@ def change_ctid(conn, uuid, new_ctid):
         get_logger().info('Change ctid from %s to %s', ctid, new_ctid)
         openvz.change_ctid(ctid, new_ctid)
     else:
-        raise NotImplemented
+        raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
