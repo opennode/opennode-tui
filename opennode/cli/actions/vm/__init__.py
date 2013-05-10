@@ -151,7 +151,6 @@ def _render_vm(conn, vm):
     def vm_template_name(vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_template_name(vm.name())
-        return None
 
     def vm_memory(vm):
         # libvirt doesn't work with openvz
@@ -162,7 +161,7 @@ def _render_vm(conn, vm):
 
     def vm_uptime(vm, state):
         if state != 'active':
-            return None
+            return
 
         # libvirt doesn't work with openvz
         if conn.getType() == 'OpenVZ':
@@ -189,7 +188,11 @@ def _render_vm(conn, vm):
     def vm_ctid(vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_ctid_by_uuid(get_uuid(vm))
-        return None
+
+    def vm_owner(vm):
+        if conn.getType() == 'OpenVZ':
+            return get_owner(conn, get_uuid(vm))
+
 
     return {"uuid": get_uuid(vm),
             "name": vm_name(vm),
@@ -206,7 +209,8 @@ def _render_vm(conn, vm):
             'consoles': [i for i in [_vm_console_vnc(conn, get_uuid(vm)),
                                      _vm_console_pty(conn, get_uuid(vm))] if i],
             'interfaces': _vm_interfaces(conn, get_uuid(vm)),
-            'ctid': vm_ctid(vm)}
+            'ctid': vm_ctid(vm),
+            'owner': vm_owner(vm)}
 
 
 def _list_vms(conn):
