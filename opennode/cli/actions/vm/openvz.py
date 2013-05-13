@@ -549,8 +549,10 @@ def get_diskspace(ctid):
 
 def get_onboot(ctid):
     """Return onboot parameter of a specified CT"""
+    # XXX: If ONBOOT is unset in conf (default for vzctl) then we use it as no
     encoding = {"yes": 1,
-                "no": 0}
+                "no": 0,
+                "-": 0}
     return encoding[execute("vzlist %s -H -o onboot" % ctid).strip()]
 
 
