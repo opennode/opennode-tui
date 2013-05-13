@@ -673,11 +673,6 @@ def update_vm(settings):
     if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
 
-    with open('/root/devel/debug/settings.txt', 'wt') as f:
-        from pprint import pformat
-        f.write(pformat(settings))
-        f.write('\n')
-
     if settings.get("hostname") != settings.get("name"):
         # XXX: Execute only if hostname is changed.
         execute("vzctl set %s --hostname %s --save" % (vm_id,
