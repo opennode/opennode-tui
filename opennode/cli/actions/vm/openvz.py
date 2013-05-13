@@ -681,6 +681,11 @@ def update_vm(settings):
         else:
             execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
 
+    if settings.get('ctid') is not None and \
+            settings.get('ctid_old') is not None:
+        if settings.get('ctid') != settings.get('ctid_old'):
+            execute('vzmlocal %(ctid_old)s:%(ctid)s' % settings)
+
 
 def get_uuid_by_ctid(ctid):
     """Return UUID of the VM"""
