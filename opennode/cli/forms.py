@@ -253,7 +253,8 @@ class OpenvzModificationForm(Form):
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         self.ctid = IntegerField('ctid', settings['ctid'],
                                  display_name='VEID', required=False)
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio,
+        self.hostname = StringField("hostname", settings.get("name", ""))
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio, self.hostname,
                                             self.bind_mounts, self.swap, self.onboot, self.bootorder,
                                             self.vcpulimit, self.ctid])
 
@@ -276,6 +277,8 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "Bind mounts:", 0, 0), self.bind_mounts),
             (Textbox(20, 1, "", 0, 0),
              Textbox(20, 1, "/src1,/dst1;/srcN,..", 0, 0)),
+            separator,
+            (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
             separator,
             (Textbox(20, 1, "", 0, 0), self.onboot),
             separator,

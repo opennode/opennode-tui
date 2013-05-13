@@ -673,6 +673,11 @@ def update_vm(settings):
     if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
 
+    if settings.get("hostname") != settings.get("name"):
+        # XXX: Execute only if hostname is changed.
+        execute("vzctl set %s --hostname %s --save" % (vm_id,
+                                                       settings['hostname']))
+
     if settings.get("ioprio") is not None:
         ioprio = int(settings.get("ioprio"))
         if settings.get("ioprio_old") is not None:
