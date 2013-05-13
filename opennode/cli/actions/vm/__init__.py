@@ -191,7 +191,7 @@ def _render_vm(conn, vm):
 
     def vm_owner(vm):
         if conn.getType() == 'OpenVZ':
-            return get_owner(conn, get_uuid(vm))
+            return openvz.get_owner(get_uuid(vm))
 
 
     return {"uuid": get_uuid(vm),
