@@ -45,7 +45,7 @@ def move_running_vm(ct):
     else:
         execute('rename %(ctid)s %(new_ctid)s /etc/vz/conf/%(ctid)s'
                 '%(extensions)s' % ct)
-    execute('mv %(private)s/%(ctid)s %(private)%/(new_ctid)s' % ct)
+    execute('mv %(private)s/%(ctid)s %(private)s/%(new_ctid)s' % ct)
     execute('mv %(root)s/%(ctid)s %(root)s/%(new_ctid)s' % ct)
     ex = execute('vzctl restore %(new_ctid)s --dumpfile '
                  '/tmp/Dump.%(ctid)s' % ct)

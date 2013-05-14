@@ -549,8 +549,10 @@ def get_diskspace(ctid):
 
 def get_onboot(ctid):
     """Return onboot parameter of a specified CT"""
+    # XXX: If ONBOOT is unset in conf (default for vzctl) then we use it as no
     encoding = {"yes": 1,
-                "no": 0}
+                "no": 0,
+                "-": 0}
     return encoding[execute("vzlist %s -H -o onboot" % ctid).strip()]
 
 
@@ -673,6 +675,11 @@ def update_vm(settings):
     if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
 
+    if settings.get("hostname") != settings.get("name"):
+        # XXX: Execute only if hostname is changed.
+        execute("vzctl set %s --hostname %s --save" % (vm_id,
+                                                       settings['hostname']))
+
     if settings.get("ioprio") is not None:
         ioprio = int(settings.get("ioprio"))
         if settings.get("ioprio_old") is not None:
@@ -680,6 +687,11 @@ def update_vm(settings):
                 execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
         else:
             execute("vzctl set %s --ioprio %s --save" % (vm_id, ioprio))
+
+    if settings.get('ctid') is not None and \
+            settings.get('ctid_old') is not None:
+        if settings.get('ctid') != settings.get('ctid_old'):
+            execute('vzmlocal %(ctid_old)s:%(ctid)s' % settings)
 
 
 def get_uuid_by_ctid(ctid):
@@ -792,8 +804,12 @@ def _get_remote_max_ctid(remote_host):
     return max(_get_remote_ctid_list(remote_host))
 
 
-def change_ctid(ctid, new_ctid=None):
+def change_ctid(ctid, new_ctid):
     execute('vzmlocal %s:%s' % (ctid, new_ctid))
+
+
+def clone_vm(ctid, new_ctid):
+    execute('vzmlocal -C %s:%s' % (ctid, new_ctid))
 
 
 def update_template_and_name(ovf_file, settings, new_name):

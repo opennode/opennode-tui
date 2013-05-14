@@ -191,7 +191,7 @@ def _render_vm(conn, vm):
 
     def vm_owner(vm):
         if conn.getType() == 'OpenVZ':
-            return get_owner(conn, get_uuid(vm))
+            return openvz.get_owner(get_uuid(vm))
 
 
     return {"uuid": get_uuid(vm),
@@ -606,3 +606,31 @@ def change_ctid(conn, uuid, new_ctid):
         openvz.change_ctid(ctid, new_ctid)
     else:
         raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
+
+
+@vm_method
+def clone_vm(conn, uuid, *args, **kwargs):
+    settings = kwargs
+    settings.update(args[0] if (len(args) == 1 and
+                                type(args[0]) is dict) else {})
+    if conn.getType() == 'OpenVZ':
+        # XXX: Perform vzmlocal -C ctid:new_ctid - this changes uuid of new VM.
+        openvz.clone_vm(openvz.get_ctid_by_uuid(uuid), settings['ctid'])
+
+        # XXX: If user changed target ctid in edit form then openvz.update_vm()
+        # would perform another vzmlocal move.
+        settings['ctid_old'] = settings['ctid']
+        param_name_map = {'cpu_limit': 'vcpulimit',
+                          'swap_size': 'swap',
+                          'num_cores': 'vcpu'}
+        openvz_settings = {}
+        openvz_settings.update(dict((param_name_map.get(key, key), value)
+                                    for key, value in settings.iteritems()))
+
+        # XXX: uuid must be re-read from disk.
+        openvz_settings['uuid'] = openvz.get_uuid_by_ctid(settings['ctid'])
+        openvz.update_vm(openvz_settings)
+        return
+    else:
+        raise NotImplementedError("VM type '%s' is not (yet) supported" %
+                                  conn.getType())

@@ -505,7 +505,9 @@ class OpenNodeTUI(object):
                                                      vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                 "Pick VM for modification:",
-                                buttons=[('Back', 'back', 'F12'), 'Edit', 'Start', 'Stop', 'Migrate', 'Delete'])
+                                buttons=[('Back', 'back', 'F12'), 'Edit',
+                                         'Start', 'Stop', 'Migrate', 'Clone',
+                                         'Delete'])
         if res is None:
             return self.display_manage()
         else:
@@ -519,6 +521,44 @@ class OpenNodeTUI(object):
                 display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
             else:
                 return self._perform_openvz_migration(vm_type, vm_id)
+
+        if action == 'clone':
+            vm_type = available_vms[vm_id]["vm_type"]
+            if vm_type != 'openvz':
+                display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
+            else:
+                if available_vms[vm_id]['run_state'] == 'running':
+                    display_info(self.screen, TITLE, "Please stop VM first - as only\nstopped VMs can be cloned!")
+                    return self.display_vm_manage()
+
+                ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
+                storage_pool = actions.storage.get_default_pool()
+                vm = actions.vm.get_module(vm_type)
+                template_settings = vm.get_active_template_settings(ctid, storage_pool)
+                available_vms[vm_id]["memory_min"] = template_settings["memory_min"]
+                available_vms[vm_id]['onboot'] = actions.vm.openvz. \
+                                get_onboot(ctid)
+                available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
+                                get_bootorder(ctid)
+                available_vms[vm_id]["vcpulimit"] = actions.vm.openvz.get_cpulimit(ctid)
+                available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
+                available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
+                available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
+                available_vms[vm_id]["ctid"] = actions.vm.openvz._get_available_ct_id()
+                available_vms[vm_id]["ctid_old"] = actions.vm.openvz._get_available_ct_id()
+
+                form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+                user_settings = self._display_custom_form(form, available_vms[vm_id])
+
+                if user_settings is None:
+                    return self.display_vm_manage()
+                display_info(self.screen, TITLE,
+                             "Cloning could take a while, depending on VM size.")
+                self.screen.finish()
+                actions.vm.clone_vm(available_vms[vm_id]['vm_uri'], vm_id, user_settings)
+                self.screen = SnackScreen()
+
+            return self.display_vm_manage()
 
         if action == 'stop':
             if available_vms[vm_id]['state'] != 'active':
@@ -583,6 +623,8 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
+                available_vms[vm_id]["ctid"] = available_vms[vm_id]["consoles"][0]["cid"]
+                available_vms[vm_id]["ctid_old"] = available_vms[vm_id]["consoles"][0]["cid"]
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,

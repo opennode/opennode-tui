@@ -251,9 +251,12 @@ class OpenvzModificationForm(Form):
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio,
+        self.ctid = IntegerField('ctid', settings['ctid'],
+                                 display_name='VEID', required=False)
+        self.hostname = StringField("hostname", settings.get("name", ""))
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.disk, self.ioprio, self.hostname,
                                             self.bind_mounts, self.swap, self.onboot, self.bootorder,
-                                            self.vcpulimit])
+                                            self.vcpulimit, self.ctid])
 
     def display(self):
         button_save, button_exit = Button("Update"), Button("Back")
@@ -275,9 +278,13 @@ class OpenvzModificationForm(Form):
             (Textbox(20, 1, "", 0, 0),
              Textbox(20, 1, "/src1,/dst1;/srcN,..", 0, 0)),
             separator,
+            (Textbox(20, 1, "Hostname:", 0, 0), self.hostname),
+            separator,
             (Textbox(20, 1, "", 0, 0), self.onboot),
             separator,
             (Textbox(20, 1, "Boot order:", 0, 0), self.bootorder),
+            separator,
+            (Textbox(20, 1, "VEID:", 0, 0), self.ctid),
             separator,
             (button_exit, button_save)
         ]
