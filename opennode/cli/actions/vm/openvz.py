@@ -806,8 +806,12 @@ def _get_remote_max_ctid(remote_host):
     return max(_get_remote_ctid_list(remote_host))
 
 
-def change_ctid(ctid, new_ctid=None):
+def change_ctid(ctid, new_ctid):
     execute('vzmlocal %s:%s' % (ctid, new_ctid))
+
+
+def clone_vm(ctid, new_ctid):
+    execute('vzmlocal -C %s:%s' % (ctid, new_ctid))
 
 
 def update_template_and_name(ovf_file, settings, new_name):
