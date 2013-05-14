@@ -731,14 +731,12 @@ def shutdown_vm(uuid):
     try:
         msg = execute("vzctl stop %s" % ctid)
         log.info(msg)
-        print msg
     except CommandException as e:
         if e.code == 13056:  # sometimes umount fails
             for i in range(5):
                 try:
                     msg = execute("vzctl umount %s" % ctid)
                     log.info(msg)
-                    print log
                 except CommandException:
                     import time
                     time.sleep(3)
