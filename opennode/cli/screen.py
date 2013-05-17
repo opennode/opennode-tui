@@ -519,6 +519,7 @@ class OpenNodeTUI(object):
             vm_type = available_vms[vm_id]["vm_type"]
             if vm_type != 'openvz':
                 display_info(self.screen, TITLE, "Only OpenVZ VMs are supported at the moment, sorry.")
+                return self.display_vm_manage()
             else:
                 return self._perform_openvz_migration(vm_type, vm_id)
 
