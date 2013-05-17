@@ -501,8 +501,9 @@ class OpenNodeTUI(object):
             vms = actions.vm.list_vms(vmt)
             for vm in vms:
                 available_vms[vm["uuid"]] = vm
-                vms_labels.append(("%s (%s) - %s" % (vm["name"], vm["run_state"],
-                                                     vm["vm_type"]), vm["uuid"]))
+                vms_labels.append(("%s %s (%s) - %s" % (vm.get("ctid", ""),
+                                                        vm["name"], vm["run_state"],
+                                                        vm["vm_type"]), vm["uuid"]))
         res = display_selection(self.screen, TITLE, vms_labels,
                                 "Pick VM for modification:",
                                 buttons=[('Back', 'back', 'F12'), 'Edit',
