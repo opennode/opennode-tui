@@ -166,7 +166,7 @@ def prepare_file_system(settings, storage_pool):
         disk_template_path = path.join(target_dir, disk["template_name"])
         if disk["deploy_type"] == "file":
             volume_name = "disk%s" % disk_index
-            disk["source_file"] = '%s-%s-%s.%s' % (settings["hostname"], settings["uuid"], 
+            disk["source_file"] = '%s-%s-%s.%s' % (settings["hostname"], settings["uuid"],
                                                    volume_name, disk.get('template_format', 'qcow2'))
             disk_deploy_path = path.join(images_dir, disk["source_file"])
             shutil.copy2(disk_template_path, disk_deploy_path)
@@ -309,7 +309,7 @@ def generate_libvirt_conf(settings):
             image_path = path.join(config.getstring("general", "storage-endpoint"),
                                    config.getstring("general", "default-storage-pool"),
                                    "images")
-            disk_source_dom.setAttribute("file", path.join(image_path, 
+            disk_source_dom.setAttribute("file", path.join(image_path,
                                          disk["source_file"]))
             disk_dom.appendChild(disk_source_dom)
             disk_target_dom = libvirt_conf_dom.createElement("target")
@@ -599,3 +599,9 @@ def _generate_ovf_file(vm_settings):
         feature_dom = doc.createElement(feature)
         features_dom.appendChild(feature_dom)
     return ovf
+
+
+def get_id_by_uuid(uuid, backend="qemu:///system"):
+    conn = libvirt.open(backend)
+    return '-' if conn.lookupByUUIDString(uuid).ID() < 0 else \
+        conn.lookupByUUIDString(uuid).ID()
