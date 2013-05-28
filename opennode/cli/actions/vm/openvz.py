@@ -278,7 +278,7 @@ def deploy(ovf_settings, storage_pool):
     print msg
     nameservers = ovf_settings.get("nameservers", None)
     if not nameservers:
-        nameservers = [ovf_settings["nameserver"]]
+        nameservers = [ovf_settings.get("nameserver", '8.8.8.8')]
 
     execute("vzctl set %s %s --save" % (ovf_settings["vm_id"],
                                         ' '.join('--nameserver %s' % i for i in nameservers)))
