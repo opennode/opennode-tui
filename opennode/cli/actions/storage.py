@@ -95,21 +95,21 @@ def delete_pool(pool_name):
 def add_pool(pool_name, careful=True):
     """Add a new pool_name"""
     if careful and filter(lambda p: p[0] == pool_name, list_pools()):
-        msg = "Pool '%s' already exists." %pool_name
+        msg = "Pool '%s' already exists." % pool_name
         get_logger().warn(msg)
         print msg
         return
     try:
-        pool_name = re.sub(" " , "_", pool_name) # safety measure
+        pool_name = re.sub(" ", "_", pool_name)  # safety measure
         pool_path = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                  pool_name)
         mkdir_p(pool_path)
         prepare_storage_pool(pool_name)
-        execute("virsh 'pool-define-as %s dir --target %s'" %(pool_name, pool_path))
-        execute("virsh 'pool-start %s'" %pool_name)
-        execute("virsh 'pool-autostart %s'" %pool_name)
+        execute("virsh 'pool-define-as %s dir --target %s'" % (pool_name, pool_path))
+        execute("virsh 'pool-start %s'" % pool_name)
+        execute("virsh 'pool-autostart %s'" % pool_name)
     except Exception, e:
-        msg = "Failed to create a new pool: %s" %e
+        msg = "Failed to create a new pool: %s" % e
         get_logger().error(msg)
         print msg
 

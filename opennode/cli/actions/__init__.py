@@ -4,6 +4,7 @@ from opennode.cli.actions import oms, console, host
 from opennode.cli.actions import templates, storage
 from opennode.cli.actions import vm, sysresources, network
 
+
 def smolt_hardware_info():
     """ Get hardware information from smolt. """
     try:
@@ -17,6 +18,7 @@ def smolt_hardware_info():
     return dict((param, str(getattr(hardware.host, param)))
                      for param in dir(hardware.host)
                      if not param.startswith('_') and getattr(hardware.host, param))
+
 
 def hardware_info():
     data = {
@@ -50,14 +52,14 @@ def _extract_callables(mod, package, level):
     for member in dir(mod):
         memberobj = getattr(mod, member)
         if not member.startswith('_') and callable(memberobj):
-            flat_name = '{0}_{1}'.format(mod.__name__[len(package)+1:].replace('.', '_'), member)
+            flat_name = '{0}_{1}'.format(mod.__name__[len(package) + 1:].replace('.', '_'), member)
             assert not flat_name.startswith('_'), (flat_name, 'from', mod.__name__, package, member)
             globals()[flat_name] = memberobj
         elif (type(memberobj) is type(oms)):
             if not memberobj.__package__ or (not memberobj.__package__.startswith(package)):
                 # ignore modules that are not part of the same package
                 continue
-            _extract_callables(memberobj, package, level+1)
+            _extract_callables(memberobj, package, level + 1)
 
 
 def _generate_classes():
