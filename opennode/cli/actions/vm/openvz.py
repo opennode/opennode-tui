@@ -280,6 +280,10 @@ def deploy(ovf_settings, storage_pool):
     if not nameservers:
         nameservers = [ovf_settings.get("nameserver", '8.8.8.8')]
 
+    # XXX a hack to set a working dns if NS is malformed for some reason (OMS-444)
+    if (type(nameservers) == str and len(nameservers) < 7):
+        nameservers = ['8.8.8.8']
+
     execute("vzctl set %s %s --save" % (ovf_settings["vm_id"],
                                         ' '.join('--nameserver %s' % i for i in nameservers)))
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
