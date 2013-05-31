@@ -1,7 +1,6 @@
 import os
 import yaml
 
-from opennode.cli.actions.utils import execute2
 from opennode.cli.config import get_config
 
 
@@ -48,8 +47,11 @@ def register_oms_server(server, port):
     """Register with a new OMS server:port."""
     # cleanup of the previous func cert
     set_oms_server(server, port)
-    execute2('chkconfig salt-minion on')
-    execute2('service salt-minion restart')
+    # XXX: actions.utils.execute2 does not work in this case and
+    # actions.utils.execute hangs. With 'execute' python hangs
+    # when reading back output of commands.getstatusoutput()
+    os.popen('chkconfig salt-minion on')
+    os.popen('service salt-minion restart')
 
 
 ## OMS VM specific ##
