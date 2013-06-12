@@ -18,7 +18,7 @@ from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
                                         CommandException, TemplateException, test_passwordless_ssh, execute2,
                                         save_to_tar)
-from opennode.cli.actions.vm import ovfutil
+from opennode.cli.actions.vm import ovfutil, _list_vms
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 from opennode.cli.config import get_config
@@ -259,10 +259,19 @@ def generate_config(ovf_settings):
 
 def deploy(ovf_settings, storage_pool):
     """ Deploys OpenVZ container """
+    log = get_logger()
     # make sure we have required template present and symlinked
     link_template(storage_pool, ovf_settings["template_name"])
 
-    log = get_logger()
+    uuid = ovf_settings['uuid']
+    conn = libvirt.open('openvz:///system')
+    deployed_uuid_list = [vm['uuid'] for vm in _list_vms(conn)]
+    if uuid in deployed_uuid_list:
+        msg = 'Deployment failed: a VM with UUID %s is already deployed' % uuid
+        log.error(msg)
+        print msg
+        return
+
     msg = "Generating configuration..."
     log.info(msg)
     print msg
