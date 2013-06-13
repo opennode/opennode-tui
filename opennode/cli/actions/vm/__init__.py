@@ -331,6 +331,10 @@ def deploy_vm(conn, *args, **kwargs):
             vm_parameters = {}
         vm_parameters.update(kwargs)
         _deploy_vm(vm_parameters)
+
+        if conn.getType() == 'OpenVZ' and 'owner' in vm_parameters:
+            openvz.set_owner(vm_parameters['uuid'], vm_parameters['owner'])
+
     except Exception:
         raise
     return "OK"
