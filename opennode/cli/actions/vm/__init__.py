@@ -2,6 +2,7 @@ from functools import wraps
 from uuid import UUID
 from xml.etree import ElementTree
 import libvirt
+import logging
 import os
 import time
 import urlparse
@@ -323,20 +324,32 @@ def resume_vm(conn, uuid):
 
 @vm_method
 def deploy_vm(conn, *args, **kwargs):
-    try:
-        if args:
-            vm_parameters = eval(args[0]) if type(args[0]) is str else args[0]
-            assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
-        else:
-            vm_parameters = {}
-        vm_parameters.update(kwargs)
-        _deploy_vm(vm_parameters)
+    if args:
+        vm_parameters = eval(args[0]) if type(args[0]) is str else args[0]
+        assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
+    else:
+        vm_parameters = {}
 
-        if conn.getType() == 'OpenVZ' and 'owner' in vm_parameters:
+    vm_parameters.update(kwargs)
+    _deploy_vm(vm_parameters)
+
+    if conn.getType() == 'OpenVZ' and 'owner' in vm_parameters:
+
+        count = 10
+        while count > 0:
+            try:
+                openvz.get_ctid_by_uuid(vm_parameters['uuid'])
+            except libvirt.libvirtError:
+                time.sleep(1)
+                count -= 1
+            else:
+                break
+
+        try:
             openvz.set_owner(vm_parameters['uuid'], vm_parameters['owner'])
+        except libvirt.libvirtError:
+            logging.warning('Non-fatal error setting owner', exc_info=True)
 
-    except Exception:
-        raise
     return "OK"
 
 

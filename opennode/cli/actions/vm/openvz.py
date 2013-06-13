@@ -290,6 +290,7 @@ def deploy(ovf_settings, storage_pool):
     uuid = ovf_settings['uuid']
     conn = libvirt.open('openvz:///system')
     deployed_uuid_list = [uuid for uuid in _list_vms(conn)]
+
     if uuid in deployed_uuid_list:
         msg = 'Deployment failed: a VM with UUID %s is already deployed' % uuid
         log.error(msg)
