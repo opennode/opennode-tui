@@ -1,6 +1,7 @@
 from contextlib import closing
 from hashlib import sha1
 from os import path
+from uuid import UUID
 import datetime
 import errno
 import operator
@@ -18,13 +19,36 @@ from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
                                         CommandException, TemplateException, test_passwordless_ssh, execute2,
                                         save_to_tar)
-from opennode.cli.actions.vm import ovfutil, _list_vms
+from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.vm.config_template import openvz_template
 from opennode.cli.actions.network import list_nameservers
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
 from opennode.cli.actions.openvz_utils import get_openvz_all_ctids
 import shutil
+
+
+def _list_vms(conn):
+    def _get_running_vm_ids(conn):
+        if conn.getType() == 'OpenVZ' and \
+            'missing' == execute("vzlist -H > /dev/null 2>&1; if [  $? -eq 1 ]; then echo missing; fi"):
+            return []
+        else:
+            return conn.listDomainsID()
+
+    def _get_stopped_vm_ids(conn):
+        # XXX a workaround for libvirt's  python API listDefinedDomains function not reportng last OpenVZ VM
+        # correctly on rare occasion
+        if conn.getType() == 'OpenVZ':
+            return execute('vzlist -H -S -o ctid').split()
+        else:
+            return conn.listDefinedDomains()
+
+    online = [str(UUID(bytes=vm.UUID())) for vm in
+               (conn.lookupByID(i) for i in _get_running_vm_ids(conn))]
+    offline = [str(UUID(bytes=vm.UUID())) for vm in
+               (conn.lookupByName(i) for i in _get_stopped_vm_ids(conn))]
+    return online + offline
 
 
 def get_ovf_template_settings(ovf_file):
