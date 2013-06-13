@@ -510,8 +510,9 @@ def _deploy_vm(vm_parameters, logger=None):
         try:
             uuid = vm_parameters['uuid']
             conn = libvirt.open('openvz:///system')
-            deployed_uuid_list = [vmuuid for vmuuid in _list_vms(conn)]
+            deployed_uuid_list = [ivm['uuid'] for ivm in _list_vms(conn)]
 
+            logging.info('Deploying %s: %s', uuid, deployed_uuid_list)
             if uuid in deployed_uuid_list:
                 msg = 'Deployment failed: a VM with UUID %s is already deployed (%s)' % (uuid,
                                                                                          deployed_uuid_list)
