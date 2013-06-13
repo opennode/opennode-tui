@@ -331,22 +331,14 @@ def deploy_vm(conn, *args, **kwargs):
         vm_parameters = {}
 
     vm_parameters.update(kwargs)
+    owner = vm_parameters.get('owner')
+    if 'owner' in vm_parameters:
+        del vm_parameters['owner']
     _deploy_vm(vm_parameters)
 
-    if conn.getType() == 'OpenVZ' and 'owner' in vm_parameters:
-
-        count = 10
-        while count > 0:
-            try:
-                openvz.get_ctid_by_uuid(vm_parameters['uuid'])
-            except libvirt.libvirtError:
-                time.sleep(1)
-                count -= 1
-            else:
-                break
-
+    if conn.getType() == 'OpenVZ' and owner:
         try:
-            openvz.set_owner(vm_parameters['uuid'], vm_parameters['owner'])
+            openvz.set_owner(vm_parameters['uuid'], owner)
         except libvirt.libvirtError:
             logging.warning('Non-fatal error setting owner', exc_info=True)
 
@@ -513,6 +505,21 @@ def _deploy_vm(vm_parameters, logger=None):
         if logger:
             logger("Cannot deploy because template is '%s'" % (template))
         raise Exception("Cannot deploy because template is '%s'" % (template))
+
+    if vm_type is 'openvz':
+        try:
+            uuid = vm_parameters['uuid']
+            conn = libvirt.open('openvz:///system')
+            deployed_uuid_list = [vmuuid for vmuuid in _list_vms(conn)]
+
+            if uuid in deployed_uuid_list:
+                msg = 'Deployment failed: a VM with UUID %s is already deployed (%s)' % (uuid,
+                                                                                         deployed_uuid_list)
+                logging.error(msg)
+                print msg
+                return
+        finally:
+            conn.close()
 
     ovf_file = OvfFile(os.path.join(get_pool_path(storage_pool),
                                     vm_type, "unpacked",template + ".ovf"))

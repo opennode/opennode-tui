@@ -287,16 +287,6 @@ def deploy(ovf_settings, storage_pool):
     # make sure we have required template present and symlinked
     link_template(storage_pool, ovf_settings["template_name"])
 
-    uuid = ovf_settings['uuid']
-    conn = libvirt.open('openvz:///system')
-    deployed_uuid_list = [uuid for uuid in _list_vms(conn)]
-
-    if uuid in deployed_uuid_list:
-        msg = 'Deployment failed: a VM with UUID %s is already deployed' % uuid
-        log.error(msg)
-        print msg
-        return
-
     msg = "Generating configuration..."
     log.info(msg)
     print msg
