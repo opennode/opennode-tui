@@ -331,16 +331,11 @@ def deploy_vm(conn, *args, **kwargs):
         vm_parameters = {}
 
     vm_parameters.update(kwargs)
-    owner = vm_parameters.get('owner')
-    if 'owner' in vm_parameters:
-        del vm_parameters['owner']
     _deploy_vm(vm_parameters)
 
+    owner = vm_parameters.get('owner')
     if conn.getType() == 'OpenVZ' and owner:
-        try:
-            openvz.set_owner(vm_parameters['uuid'], owner)
-        except libvirt.libvirtError:
-            logging.warning('Non-fatal error setting owner', exc_info=True)
+        openvz.set_owner(vm_parameters['uuid'], owner)
 
     return "OK"
 
