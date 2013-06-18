@@ -10,18 +10,22 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli.config import get_config
 from opennode.cli.actions import storage, vm as vm_ops
-from opennode.cli.actions.utils import (delete, calculate_hash, execute_in_screen, execute, download,
-                                        urlopen, TemplateException)
+from opennode.cli.actions.utils import delete, calculate_hash, execute_in_screen, execute, download
+from opennode.cli.actions.utils import urlopen, TemplateException
+from opennode.cli.log import get_logger
 
-__all__ = ['get_template_repos', 'get_template_repos_info', 'get_template_list', 'sync_storage_pool',
+__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
            'sync_template', 'delete_template', 'unpack_template', 'get_local_templates',
            'sync_oms_template', 'is_fresh', 'is_syncing']
 
 
+log = get_logger()
+
+
 def _simple_download_hook(count, blockSize, totalSize):
     """Simple download counter"""
-    print "% 3.1f%% of %d bytes\r" % (min(100, float(blockSize * count) /
-                                          totalSize * 100), totalSize),
+    log.info("% 3.1f%% of %d bytes\r" %
+             (min(100, float(blockSize * count) / totalSize * 100), totalSize))
 
 
 def get_template_repos():
@@ -34,22 +38,6 @@ def get_template_repos():
         name = config.getstring(group, 'name')
         vm_type = config.getstring(group, 'type')
         result.append(("%s (%s)" % (name, vm_type), group))
-    return result
-
-
-# Dead code for TUI.
-# get_template_repos and get_template_repos_info are exactly the same
-# and get_template_repos_info is used nowhere.
-def get_template_repos_info():
-    """Return a formatted list of strings describing configured repositories"""
-    config = get_config()
-    repo_groups = config.getstring('general', 'repo-groups').split(',')
-    result = []
-    for r in repo_groups:
-        group = "%s-repo" % r.strip()
-        name = config.getstring(group, 'name')
-        vm_type = config.getstring(group, 'type')
-        result.append(dict(name=name, vm_type=vm_type, group=group))
     return result
 
 
@@ -149,11 +137,11 @@ def import_template(template, vm_type, storage_pool=None):
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage.get_pool_path(storage_pool),
                                vm_type, tmpl_name)
-    print "Copying template to the storage pool..."
-    print template, target_file
+    log.info("Copying template to the storage pool...")
+    log.info("%s %s" % (template, target_file))
     shutil.copyfile(template, target_file)
     calculate_hash(target_file)
-    print "Unpacking..."
+    log.info("Unpacking...")
     unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.%s' % extension))
 
 
@@ -161,10 +149,9 @@ def delete_template(storage_pool, vm_type, template):
     """Deletes template, unpacked folder and a hash"""
     # get a list of files in the template
     config = get_config()
-    print "Deleting %s (%s) from %s..." % (template, vm_type, storage_pool)
+    log.info("Deleting %s (%s) from %s..." % (template, vm_type, storage_pool))
     storage_endpoint = config.getstring('general', 'storage-endpoint')
-    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type,
-                                        template)
+    templatefile = "%s/%s/%s/%s.tar" % (storage_endpoint, storage_pool, vm_type, template)
     if not os.path.exists(templatefile):
         templatefile = os.path.splitext(templatefile)[0] + '.ova'
     tmpl = tarfile.open(templatefile)
@@ -249,23 +236,24 @@ def list_templates():
     # local templates
     config = get_config()
     for vm_type in ["openvz", "kvm"]:
-        print "%s local templates:" % vm_type.upper()
+        log.info("%s local templates:", vm_type.upper())
         for storage_pool in storage.list_pools():
-            print "\t", "Storage:", os.path.join(config.getstring("general", "storage-endpoint"),
-                                                 storage_pool[0], vm_type)
+            log.info("\t Storage: %s",
+                     os.path.join(config.getstring("general", "storage-endpoint"),
+                                  storage_pool[0], vm_type))
             for tmpl in get_local_templates(vm_type, storage_pool[0]):
-                print "\t\t", tmpl
-            print
+                log.info("\t\t %s", tmpl)
+            log.info('')
     # remote templates
     repo_groups = re.split(",\s*", config.getstring("general", "repo-groups"))
     repo_groups = [repo_group + "-repo" for repo_group in repo_groups]
     for repo_group in repo_groups:
         url, vm_type = config.getstring(repo_group, "url"), config.getstring(repo_group, "type")
-        print "%s remote templates:" % vm_type.upper()
-        print "\t", "Repository:", url
+        log.info("%s remote templates:", vm_type.upper())
+        log.info("\t Repository: %s", url)
         for tmpl in get_template_list(repo_group):
-            print "\t\t", tmpl
-        print
+            log.info("\t\t %s", tmpl)
+        log.info('')
 
 
 def get_purely_local_templates(storage_pool, vm_type, remote_repo):
