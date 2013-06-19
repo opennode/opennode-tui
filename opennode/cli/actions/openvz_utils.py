@@ -11,7 +11,8 @@ def get_openvz_running_ctids():
     @rtype: List
     """
     return map(int, [ctid for ctid in
-                     execute('vzlist -H -o ctid').splitlines()])
+                     execute('vzlist -H -o ctid').splitlines()
+                     if 'Container' not in ctid])
 
 
 def get_openvz_stopped_ctids():
