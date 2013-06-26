@@ -155,11 +155,11 @@ def _render_vm(conn, vm):
             return openvz.get_template_name(vm.name())
 
     def vm_memory(vm):
-        # libvirt doesn't work with openvz
+        # libvirt doesn't work well with openvz
         if conn.getType() == 'OpenVZ':
             return openvz.get_memory(vm.name())
-        # XXX: todo use libvirt
-        return 0
+        # memory is expected in MB
+        return vm.info()[1] / 1024
 
     def vm_uptime(vm, state):
         if state != 'active':
@@ -168,13 +168,16 @@ def _render_vm(conn, vm):
         # libvirt doesn't work with openvz
         if conn.getType() == 'OpenVZ':
             return openvz.get_uptime(vm.name())
-        # XXX: todo use libvirt
-        return 0
+        # uptime in s
+        return vm.info()[4] / 100000000.0
 
     def vm_diskspace(vm):
         if conn.getType() == 'OpenVZ':
             return {'/': openvz.get_diskspace(vm.name())}
-        return {'/': 0.0}
+        # return a total sum of block devices used by KVM vm
+        cmd = "virt-filesystems --no-title --blkdevs --long -d %s|awk \'{print $3 / 1024.0 / 1024 / 1024}\'" % vm.name()
+        kvm_size = sum(map(float, execute(cmd).split('\n')))
+        return {'/': kvm_size}
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
