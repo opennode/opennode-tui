@@ -502,7 +502,7 @@ def _deploy_vm(vm_parameters, logger=None):
             logger("Cannot deploy because template is '%s'" % (template))
         raise Exception("Cannot deploy because template is '%s'" % (template))
 
-    if vm_type is 'openvz':
+    if vm_type == 'openvz':
         try:
             uuid = vm_parameters['uuid']
             conn = libvirt.open('openvz:///system')
@@ -510,8 +510,8 @@ def _deploy_vm(vm_parameters, logger=None):
 
             logging.info('Deploying %s: %s', uuid, deployed_uuid_list)
             if uuid in deployed_uuid_list:
-                msg = 'Deployment failed: a VM with UUID %s is already deployed (%s)' % (uuid,
-                                                                                         deployed_uuid_list)
+                msg = ('Deployment failed: a VM with UUID %s is already deployed '
+                       '(%s)' % (uuid, deployed_uuid_list))
                 logging.error(msg)
                 print msg
                 return
