@@ -155,11 +155,11 @@ def _render_vm(conn, vm):
             return openvz.get_template_name(vm.name())
 
     def vm_memory(vm):
-        # libvirt doesn't work with openvz
+        # libvirt doesn't work well with openvz
         if conn.getType() == 'OpenVZ':
             return openvz.get_memory(vm.name())
-        # XXX: todo use libvirt
-        return 0
+        # memory is expected in MB
+        return vm.info()[1] / 1024
 
     def vm_uptime(vm, state):
         if state != 'active':
@@ -168,19 +168,27 @@ def _render_vm(conn, vm):
         # libvirt doesn't work with openvz
         if conn.getType() == 'OpenVZ':
             return openvz.get_uptime(vm.name())
-        # XXX: todo use libvirt
-        return 0
+        # uptime in s
+        return vm.info()[4] / 100000000.0
 
     def vm_diskspace(vm):
         if conn.getType() == 'OpenVZ':
             return {'/': openvz.get_diskspace(vm.name())}
-        return {'/': 0.0}
+        # return a total sum of block devices used by KVM VM
+        # get list of block devices of a file type
+        cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
+        devices = execute(cmd).split('\n')
+        total_bytes = 0.0
+        for dev_path in devices:
+            cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
+            total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
+        return {'/': total_bytes}
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
-        # XXX use libvirt
-        return 0
+        # we don't support the notion of swap disks for libvirt/KVM for now
+        return None
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':
