@@ -9,6 +9,7 @@ import urlparse
 
 from ovf.OvfFile import OvfFile
 
+from opennode.cli.actions import hardware_info
 from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data, execute
 from opennode.cli.config import get_config
@@ -196,6 +197,11 @@ def _render_vm(conn, vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_owner(get_uuid(vm))
 
+    def vm_kernel(vm):
+        if conn.getType() == 'OpenVZ':
+            return hardware_info()['kernelVersion']
+        else:
+            return 'unknown'
 
     return {"uuid": get_uuid(vm),
             "name": vm_name(vm),
@@ -214,7 +220,8 @@ def _render_vm(conn, vm):
                                      _vm_console_pty(conn, get_uuid(vm))] if i],
             'interfaces': _vm_interfaces(conn, get_uuid(vm)),
             'ctid': vm_ctid(vm),
-            'owner': vm_owner(vm)}
+            'owner': vm_owner(vm),
+            'kernel': vm_kernel(vm)}
 
 
 def _list_vms(conn):
