@@ -174,10 +174,15 @@ def _render_vm(conn, vm):
     def vm_diskspace(vm):
         if conn.getType() == 'OpenVZ':
             return {'/': openvz.get_diskspace(vm.name())}
-        # return a total sum of block devices used by KVM vm
-        cmd = "virt-filesystems --no-title --blkdevs --long -d %s|awk \'{print $3 / 1024.0 / 1024 / 1024}\'" % vm.name()
-        kvm_size = sum(map(float, execute(cmd).split('\n')))
-        return {'/': kvm_size}
+        # return a total sum of block devices used by KVM VM
+        # get list of block devices of a file type
+        cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
+        devices = execute(cmd).split('\n')
+        total_bytes = 0
+        for dev_path in devices:
+            cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
+            total_bytes += int(execute(cmd))
+        return {'/': total_bytes}
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
