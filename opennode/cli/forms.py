@@ -131,11 +131,6 @@ class OpenvzForm(Form):
         if (self.password.validate() and self.password2.validate() and
                 self.password.value() != self.password2.value()):
             self.errors.append(("passwd", "Passwords don't match."))
-        if int(self.vcpulimit.value()) / int(self.vcpu.value()) > 100:
-            self.errors.append(("CPU usage limits",
-                                "CPU usage limit for %s CPU(s) is %d%%." %
-                               (self.vcpu.value(),
-                                100*int(self.vcpu.value()))))
         bm_valid = self.bind_mounts.validate()
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
@@ -254,7 +249,8 @@ class OpenvzModificationForm(Form):
                                                        ('Default', 4, settings["ioprio"] == 4),
                                                        ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
-        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], min_value=0)
+        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"],
+                                      min_value=0, max_value = 100)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         self.ctid = IntegerField('ctid', settings['ctid'],
                                  display_name='VEID', required=False)
@@ -303,11 +299,6 @@ class OpenvzModificationForm(Form):
         if Form.validate(self):
             # TODO disallow decrease of disk size, which would break OS
             pass
-        if int(self.vcpulimit.value()) / int(self.vcpu.value()) > 100:
-            self.errors.append(("CPU usage limits",
-                                "CPU usage limit for %s CPU(s) is %d%%." %
-                               (self.vcpu.value(),
-                                100*int(self.vcpu.value()))))
         bm_valid = self.bind_mounts.validate()
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
