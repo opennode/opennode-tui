@@ -140,7 +140,7 @@ def adjust_setting_to_systems_resources(ovf_template_settings):
     st["vcpu_max"] = str(min(sysres.get_cpu_count(), int(st.get("vcpu_max", 10 ** 10))))
     st["vcpu"] = adjusted(st.get("vcpu"), st.get("vcpu_min"), st.get("vcpu_max"), int)
 
-    st["vcpulimit_max"] = sysres.get_cpu_usage_limit()
+    st["vcpulimit_max"] = min(sysres.get_cpu_usage_limit(), int(st.get("vcpulimit_max", 100)))
     st["vcpulimit"] = adjusted(st.get("vcpulimit"), st.get("vcpulimit_min"), st.get("vcputlimit_max"), int)
 
     st["disk_max"] = min(sysres.get_disc_space_gb(), float(st.get("disk_max", 10 ** 30)))
@@ -200,7 +200,7 @@ def generate_ubc_config(settings):
         "quotatime": config.getstring("ubc-defaults", "DEFAULT_QUOTATIME"),
 
         "cpus": st["vcpu"],
-        "cpulimit": int(st["vcpulimit"]),
+        "cpulimit": int(st["vcpulimit"]) * int(st["vcpu"]),
         'cpuunits': config.getstring("ubc-defaults", "DEFAULT_CPUUNITS"),
     }
     # Get rid of zeros where necessary (eg 5.0 - > 5 )
@@ -600,7 +600,9 @@ def get_uptime(ctid):
 
 def get_cpulimit(ctid):
     """Max CPU usage limit"""
-    return int(execute("vzlist %s -H -o cpulimit" % ctid))
+    limit = int(execute("vzlist %s -H -o cpulimit" % ctid))
+    cpus = int(execute("vzlist %s -H -o cpus" % ctid))
+    return limit/cpus
 
 
 def detect_os(ctid):
@@ -698,7 +700,11 @@ def update_vm(settings):
 
     if settings.get("vcpulimit"):
         vcpulimit = int(settings.get("vcpulimit"))
-        execute("vzctl set %s --cpulimit %s --save" % (vm_id, vcpulimit))
+        if "vcpu" in settings:
+            execute("vzctl set %s --cpulimit %d --save" %
+                    (vm_id, int(vcpulimit) * int(settings.get("vcpu"))))
+        else:
+            execute("vzctl set %s --cpulimit %s --save" % (vm_id, vcpulimit))
 
     if settings.get("bind_mounts") is not None:
         _update_bmounts(vm_id, settings["bind_mounts"])
