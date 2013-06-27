@@ -178,17 +178,17 @@ def _render_vm(conn, vm):
         # get list of block devices of a file type
         cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
         devices = execute(cmd).split('\n')
-        total_bytes = 0
+        total_bytes = 0.0
         for dev_path in devices:
             cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
-            total_bytes += int(execute(cmd))
+            total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
         return {'/': total_bytes}
 
     def vm_swap(vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
-        # XXX use libvirt
-        return 0
+        # we don't support the notion of swap disks for libvirt/KVM for now
+        return None
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':
