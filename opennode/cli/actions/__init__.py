@@ -59,8 +59,11 @@ def _extract_callables(mod, package, level):
             _extract_callables(memberobj, package, level + 1)
 
 
+__all__ = []
+
 def _generate_classes():
-    import oms
+    import oms, console, host, templates, storage, vm, sysresources, network, hardware_info
+
     _canonical_name = 'opennode.cli.actions'
     for name, mod in globals().items():
         if type(mod) is not type(oms):
@@ -68,7 +71,7 @@ def _generate_classes():
         if mod.__name__.startswith(_canonical_name):
             _extract_callables(mod, _canonical_name, 0)
 
-_generate_classes()
+    global __all__
+    __all__ = [oms, console, host, templates, storage, vm, sysresources, network, hardware_info]
 
-__all__ = ['oms', 'console', 'host', 'templates', 'storage', 'vm',
-           'sysresources', 'network', 'hardware_info']
+_generate_classes()
