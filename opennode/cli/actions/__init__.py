@@ -1,9 +1,5 @@
 import sys
 
-from opennode.cli.actions import oms, console, host
-from opennode.cli.actions import templates, storage
-from opennode.cli.actions import vm, sysresources, network
-
 
 def smolt_hardware_info():
     """ Get hardware information from smolt. """
@@ -49,6 +45,7 @@ def hardware_info():
 
 # Salt hack: make actions module flat
 def _extract_callables(mod, package, level):
+    import oms
     for member in dir(mod):
         memberobj = getattr(mod, member)
         if not member.startswith('_') and callable(memberobj):
@@ -63,6 +60,7 @@ def _extract_callables(mod, package, level):
 
 
 def _generate_classes():
+    import oms
     _canonical_name = 'opennode.cli.actions'
     for name, mod in globals().items():
         if type(mod) is not type(oms):
@@ -72,4 +70,5 @@ def _generate_classes():
 
 _generate_classes()
 
-__all__ = [oms, console, host, templates, storage, vm, sysresources, network, hardware_info]
+__all__ = ['oms', 'console', 'host', 'templates', 'storage', 'vm',
+           'sysresources', 'network', 'hardware_info']
