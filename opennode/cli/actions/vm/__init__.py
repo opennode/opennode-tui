@@ -624,16 +624,12 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
 def set_owner(conn, uuid, owner):
     if conn.getType() == 'OpenVZ':
         openvz.set_owner(uuid, owner)
-    else:
-        raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
 @vm_method
 def get_owner(conn, uuid):
     if conn.getType() == 'OpenVZ':
         openvz.get_owner(uuid)
-    else:
-        raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
 @vm_method
