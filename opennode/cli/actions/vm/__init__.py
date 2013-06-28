@@ -9,7 +9,6 @@ import urlparse
 
 from ovf.OvfFile import OvfFile
 
-from opennode.cli.actions import hardware_info
 from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.actions.utils import roll_data, execute
 from opennode.cli.config import get_config
@@ -207,6 +206,7 @@ def _render_vm(conn, vm):
 
     def vm_kernel(vm):
         if conn.getType() == 'OpenVZ':
+            from opennode.cli.actions import hardware_info
             return hardware_info()['kernelVersion']
         else:
             return 'unknown'
