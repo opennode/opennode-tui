@@ -73,6 +73,4 @@ def _generate_classes():
 
 _generate_classes()
 
-
-global __all__
 __all__ = [oms, console, host, templates, storage, vm, sysresources, network, hardware_info]
