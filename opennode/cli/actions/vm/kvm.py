@@ -5,7 +5,7 @@ from os import path
 import operator
 import tarfile
 from contextlib import closing
-from xml.etree import ET
+from xml.etree import ElementTree as ET
 
 import libvirt
 
@@ -603,7 +603,7 @@ def _generate_ovf_file(vm_settings):
 
 def get_id_by_uuid(uuid, backend="qemu:///system"):
     conn = libvirt.open(backend)
-    return '-' if conn.lookupByUUIDString(uuid).ID() < 0 else conn.lookupByUUIDString(uuid).ID()
+    return None if conn.lookupByUUIDString(uuid).ID() < 0 else conn.lookupByUUIDString(uuid).ID()
 
 
 def set_owner(uuid, owner):
@@ -612,9 +612,11 @@ def set_owner(uuid, owner):
     @param owner: string representing owner
     """
     vmid = get_id_by_uuid(uuid)
+    if not vmid:
+        return
     conn = libvirt.open("qemu:///system")
-    dom = conn.lookupByID(vmid)
-    tree = ET.fromString(dom.XMLDesc(0))
+    vm = conn.lookupByID(vmid)
+    tree = ET.fromstring(vm.XMLDesc(0))
     domain = tree.find('domain')
     metadata = ET.SubElement(domain, 'metadata')
     owner = ET.SubElement(metadata, 'oms:owner')
@@ -630,9 +632,13 @@ def get_owner(uuid):
     @param uuid: uuid of the VM
     """
     vmid = get_id_by_uuid(uuid)
+    if not vmid:
+        return
+
     conn = libvirt.open("qemu:///system")
-    dom = conn.lookupByID(vmid)
-    tree = ET.fromString(dom.XMLDesc(0))
+    vm = conn.lookupByID(vmid)
+
+    tree = ET.fromstring(vm.XMLDesc(0))
     domain = tree.find('domain')
     owner = domain.find('oms:owner')
     if owner:
