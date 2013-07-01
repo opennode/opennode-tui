@@ -350,8 +350,12 @@ def deploy_vm(conn, *args, **kwargs):
     _deploy_vm(vm_parameters)
 
     owner = vm_parameters.get('owner')
-    if conn.getType() == 'OpenVZ' and owner:
-        openvz.set_owner(vm_parameters['uuid'], owner)
+
+    if not owner:
+        return 'OK'
+
+    if conn.getType() == 'OpenVZ':
+        set_owner(conn, vm_parameters['uuid'], owner)
 
     return "OK"
 
@@ -622,14 +626,16 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
 
 @vm_method
 def set_owner(conn, uuid, owner):
-    if conn.getType() == 'OpenVZ':
-        openvz.set_owner(uuid, owner)
+    vm_type = conn.getType().lower()
+    module = get_module(vm_type)
+    return module.set_owner(uuid, owner)
 
 
 @vm_method
 def get_owner(conn, uuid):
-    if conn.getType() == 'OpenVZ':
-        openvz.get_owner(uuid)
+    vm_type = conn.getType().lower()
+    module = get_module(vm_type)
+    return module.get_owner(uuid)
 
 
 @vm_method
