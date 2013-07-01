@@ -4,8 +4,15 @@ import sys
 
 from opennode.cli.config import get_config
 
-_logger = None
 _configured = False
+
+
+def get_logger(level=None):
+    logger = logging.getLogger('opennode-tui')
+    if level is not None:
+        logger.setLevel(level)
+    return logger
+
 
 def _configure():
     logger = get_logger()
@@ -40,10 +47,3 @@ def _configure():
 
 
 _configure()
-
-
-def get_logger(level=None):
-    logger = logging.getLogger('opennode-tui')
-    if level is not None:
-        logger.setLevel(level)
-    return logger
