@@ -347,6 +347,11 @@ def generate_libvirt_conf(settings):
         interface_source_dom = libvirt_conf_dom.createElement("source")
         interface_source_dom.setAttribute("bridge", interface["source_bridge"])
         interface_dom.appendChild(interface_source_dom)
+        # add MAC section if given. Otherwise leave to libvirt for generation
+        if 'mac' in interface:
+            interface_mac_dom = libvirt_conf_dom.createElement("mac")
+            interface_mac_dom.setAttribute("address", interface["mac"])
+            interface_dom.appendChild(interface_mac_dom)
 
     serial_dom = libvirt_conf_dom.createElement("serial")
     serial_dom.setAttribute("type", settings["serial"]["type"])
