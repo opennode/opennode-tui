@@ -263,7 +263,6 @@ def setup_scripts(vm_settings, storage_pool):
     except:
         msg = "No action scripts in the template."
         get_logger().warn(msg)
-        print msg
         pass
 
 
@@ -289,17 +288,14 @@ def deploy(ovf_settings, storage_pool):
 
     msg = "Generating configuration..."
     log.info(msg)
-    print msg
     generate_config(ovf_settings)
 
     msg = "Creating OpenVZ container..."
     log.info(msg)
-    print msg
     create_container(ovf_settings)
 
     msg = "Deploying..."
     log.info(msg)
-    print msg
     nameservers = ovf_settings.get("nameservers", None)
     if not nameservers:
         nameservers = [ovf_settings.get("nameserver", '8.8.8.8')]
@@ -316,7 +312,6 @@ def deploy(ovf_settings, storage_pool):
 
     msg = "Setting up action scripts..."
     log.info(msg)
-    print msg
     setup_scripts(ovf_settings, storage_pool)
 
     if ovf_settings.get('appliance_type') == 'oms':
@@ -335,7 +330,6 @@ def deploy(ovf_settings, storage_pool):
 
     msg = "Template %s deployed successfully!" % ovf_settings["vm_id"]
     log.info(msg)
-    print msg
 
 
 def query_openvz(include_running=False, fields='ctid,hostname'):
@@ -431,7 +425,6 @@ def save_as_ovf(vm_settings, storage_pool):
     log = get_logger()
     msg = "Archiving VM container catalog %s. This may take a while..." % ct_source_dir
     log.info(msg)
-    print msg
     with closing(tarfile.open(ct_archive_fnm, "w:gz")) as tar:
         for f in os.listdir(ct_source_dir):
             tar.add(path.join(ct_source_dir, f), arcname=f)
@@ -439,7 +432,6 @@ def save_as_ovf(vm_settings, storage_pool):
     # Archive action scripts if they are present
     msg = "Adding action scripts..."
     log.info(msg)
-    print msg
     ct_scripts_fnm = path.join(unpacked_dir, "%s.scripts.tar.gz" % vm_settings["template_name"])
     with closing(tarfile.open(ct_scripts_fnm, "w:gz")) as tar:
         for script_type in ['premount', 'mount', 'start', 'stop', 'umount', 'postumount']:
@@ -450,7 +442,6 @@ def save_as_ovf(vm_settings, storage_pool):
     # generate and save ovf configuration file
     msg = "Generating ovf file..."
     log.info(msg)
-    print msg
     ovf = _generate_ovf_file(vm_settings, ct_archive_fnm)
     ovf_fnm = path.join(unpacked_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
@@ -459,7 +450,6 @@ def save_as_ovf(vm_settings, storage_pool):
     # pack container archive and ovf file
     msg = "Archiving..."
     log.info(msg)
-    print msg
     ovf_archive_fnm = path.join(dest_dir, "%s.ova" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
         tar.add(ct_archive_fnm, arcname=path.basename(ct_archive_fnm))
@@ -467,7 +457,7 @@ def save_as_ovf(vm_settings, storage_pool):
         tar.add(ct_scripts_fnm, arcname=path.basename(ct_scripts_fnm))
 
     calculate_hash(ovf_archive_fnm)
-    print "Done! Saved template at %s" % ovf_archive_fnm
+    log.info("Done! Saved template at %s" % ovf_archive_fnm)
 
 
 def _generate_ovf_file(vm_settings, ct_archive_fnm):
@@ -602,7 +592,7 @@ def get_cpulimit(ctid):
     """Max CPU usage limit"""
     limit = int(execute("vzlist %s -H -o cpulimit" % ctid))
     cpus = int(execute("vzlist %s -H -o cpus" % ctid))
-    return limit/cpus
+    return limit / cpus
 
 
 def detect_os(ctid):
@@ -618,14 +608,15 @@ def get_vcpu(ctid):
 def get_ioprio(ctid):
     """ Get VM I/O priority. If priority is entered manually
     or elsewhere, return approximate value based on value table"""
-    value = { '0': 0,
-              '1': 0,
-              '2': 0,
-              '3': 0,
-              '4': 4,
-              '5': 7,
-              '6': 7,
-              '7': 7,}
+    value = {'0': 0,
+             '1': 0,
+             '2': 0,
+             '3': 0,
+             '4': 4,
+             '5': 7,
+             '6': 7,
+             '7': 7
+              }
     rv = execute("vzlist %s -H -o ioprio" % ctid).strip()
     if rv == '-':
         return 4
@@ -748,7 +739,7 @@ def get_bmounts(ctid):
         # File not found in case we are doing a new conf
         return ''
     conf = parser.items()
-    if conf.has_key('ON_BMOUNT'):
+    if 'ON_BMOUNT' in conf:
         if conf['ON_BMOUNT'].strip().startswith('"'):
             conf['ON_BMOUNT'] = conf['ON_BMOUNT'][1:]
         if conf['ON_BMOUNT'].strip().endswith('"'):
