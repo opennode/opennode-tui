@@ -4,17 +4,25 @@ import sys
 
 from opennode.cli.config import get_config
 
-_logger = None
+_configured = False
+
 
 def get_logger(level=None):
     logger = logging.getLogger('opennode-tui')
-    if not getattr(logger, '_configured', False):
+    if level is not None:
+        logger.setLevel(level)
+    return logger
 
+
+def _configure():
+    logger = get_logger()
+    global _configured
+
+    if not getattr(logger, '_configured', False) and not _configured:
+        conf_level = get_config().getstring('general', 'loglevel', 'INFO')
+        level = logging._levelNames.get(conf_level.upper())
         if level is None:
-            conf_level = get_config().getstring('general', 'loglevel', 'INFO')
-            level = logging._levelNames.get(conf_level.upper())
-            if level is None:
-                level = logging.INFO
+            level = logging.INFO
 
         logger.setLevel(level)
 
@@ -34,4 +42,8 @@ def get_logger(level=None):
         sherr.setLevel(logging.ERROR)
         sherr.setFormatter(logging.Formatter('%(module)10s:%(lineno)s:%(funcName)s - %(message)s'))
         logger.addHandler(sherr)
-    return logger
+
+        _configured = True
+
+
+_configure()

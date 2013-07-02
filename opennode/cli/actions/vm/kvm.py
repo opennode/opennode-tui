@@ -5,6 +5,7 @@ from os import path
 import operator
 import tarfile
 from contextlib import closing
+from xml.etree import ElementTree as ET
 
 import libvirt
 
@@ -13,8 +14,7 @@ from ovf.OvfReferencedFile import OvfReferencedFile
 
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
-from opennode.cli.actions.utils import (execute, get_file_size_bytes, calculate_hash,
-                                        TemplateException, save_to_tar)
+from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
 
@@ -603,5 +603,43 @@ def _generate_ovf_file(vm_settings):
 
 def get_id_by_uuid(uuid, backend="qemu:///system"):
     conn = libvirt.open(backend)
-    return '-' if conn.lookupByUUIDString(uuid).ID() < 0 else \
-        conn.lookupByUUIDString(uuid).ID()
+    return None if conn.lookupByUUIDString(uuid).ID() < 0 else conn.lookupByUUIDString(uuid).ID()
+
+
+def set_owner(uuid, owner):
+    """Set ON_OWNER by uuid.
+    @param uuid: uuid of the VM
+    @param owner: string representing owner
+    """
+    vmid = get_id_by_uuid(uuid)
+    if not vmid:
+        return
+    conn = libvirt.open("qemu:///system")
+    vm = conn.lookupByID(vmid)
+    tree = ET.fromstring(vm.XMLDesc(0))
+    domain = tree.find('domain')
+    metadata = ET.SubElement(domain, 'metadata')
+    owner = ET.SubElement(metadata, 'oms:owner')
+    owner.text = owner
+    conn.defineXML(tree.tostring())
+
+    data = open('/etc/libvirt/qemu/%s.xml' % (domain.find('name').text), 'r').read()
+    assert 'oms:owner' in data, 'Owner was not set after all!'
+
+
+def get_owner(uuid):
+    """Get VM owner by id
+    @param uuid: uuid of the VM
+    """
+    vmid = get_id_by_uuid(uuid)
+    if not vmid:
+        return
+
+    conn = libvirt.open("qemu:///system")
+    vm = conn.lookupByID(vmid)
+
+    tree = ET.fromstring(vm.XMLDesc(0))
+    domain = tree.find('domain')
+    owner = domain.find('oms:owner')
+    if owner:
+        return owner.text
