@@ -354,8 +354,7 @@ def deploy_vm(conn, *args, **kwargs):
     if not owner:
         return 'OK'
 
-    if conn.getType() == 'OpenVZ':
-        set_owner(conn, vm_parameters['uuid'], owner)
+    set_owner(conn, vm_parameters['uuid'], owner)
 
     return "OK"
 
