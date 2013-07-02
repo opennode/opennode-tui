@@ -43,7 +43,7 @@ def _get_ovf_vcpu(ovf_file, bound):
     virtual_hardware_node = ovf_file.document.getElementsByTagName("VirtualHardwareSection")[0]
     rasd = Ovf.getDict(virtual_hardware_node)['children']
     for resource in rasd:
-        if (resource.has_key('rasd:ResourceType') and
+        if ('rasd:ResourceType' in resource and
                 resource['rasd:ResourceType'] == '3'):
             _bound = resource.get('ovf:bound', 'normal')
             if _bound == bound:
