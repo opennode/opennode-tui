@@ -656,7 +656,7 @@ def set_owner(uuid, owner):
     @param uuid: uuid of the VM
     @param owner: string representing owner
     """
-    # Seve logic is similar to bmount save logic
+    # Save logic is similar to one used for bmount
     ctid = get_ctid_by_uuid(uuid)
     conf_fnm = '/etc/vz/conf/%s.conf' % ctid
     with file(conf_fnm, 'rt') as f:
@@ -759,7 +759,7 @@ def get_bmounts(ctid):
 
 
 def get_owner(uuid):
-    """Get VM onwer by id
+    """Get VM owner by id
     @param uuid: uuid of the VM
     """
     ctid = get_ctid_by_uuid(uuid)
