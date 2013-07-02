@@ -353,7 +353,7 @@ def generate_libvirt_conf(settings):
             interface_mac_dom.setAttribute("address", interface["mac"])
             interface_dom.appendChild(interface_mac_dom)
         # add nwfilter agasin MAC spoofing, if IP is provided
-        # XXX only one IP is expected to be provided - so we currently limit traffic from all ifaces for that IP 
+        # XXX only one IP is expected to be provided - so we currently limit traffic from all ifaces for that IP
         if 'ip_address' in settings:
             # top level filter element
             interface_filter_dom = libvirt_conf_dom.createElement("filterref")
