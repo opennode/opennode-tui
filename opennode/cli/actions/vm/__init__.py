@@ -352,10 +352,8 @@ def deploy_vm(conn, *args, **kwargs):
 
     owner = vm_parameters.get('owner')
 
-    if not owner:
-        return 'OK'
-
-    _set_owner(conn, vm_parameters['uuid'], owner)
+    if owner:
+        _set_owner(conn, vm_parameters['uuid'], owner)
 
     return "OK"
 
@@ -532,13 +530,12 @@ def _deploy_vm(vm_parameters, logger=None):
                 msg = ('Deployment failed: a VM with UUID %s is already deployed '
                        '(%s)' % (uuid, deployed_uuid_list))
                 logging.error(msg)
-                print msg
                 return
         finally:
             conn.close()
 
     ovf_file = OvfFile(os.path.join(get_pool_path(storage_pool),
-                                    vm_type, "unpacked",template + ".ovf"))
+                                    vm_type, "unpacked", template + ".ovf"))
     vm = actions.vm.get_module(vm_type)
     settings = vm.get_ovf_template_settings(ovf_file)
 
