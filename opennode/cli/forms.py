@@ -33,7 +33,8 @@ class KvmForm(Form):
         self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])
         self.vcpu = IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.hostname = StringField("hostname", settings.get("hostname", ""))
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname])
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname, self.password,
+                                            self.password2])
 
     def display(self):
         button_save, button_exit = Button("Create VM"), Button("Main menu")
@@ -56,6 +57,7 @@ class KvmForm(Form):
             for j, cell in enumerate(row):
                 form.add(cell, j, i)
         return form.runOnce() != button_exit
+
 
 
 class OpenvzForm(Form):
@@ -198,6 +200,8 @@ class KvmTemplateForm(Form):
         self.vcpu = FloatField("vcpu", settings["vcpu"])
         self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
         self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
+        self.password = PasswordField("passwd", settings["passwd"], display_name="password")
+        self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max,
                                             self.vcpu, self.vcpu_min, self.vcpu_max])
 
@@ -212,6 +216,9 @@ class KvmTemplateForm(Form):
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
+            separator,
+            (Textbox(20, 1, "Root password:", 0, 0), self.password),
+            (Textbox(20, 1, "Root password x2:", 0, 0), self.password2),
             separator,
             (button_exit, button_save)
         ]
@@ -233,8 +240,11 @@ class KvmTemplateForm(Form):
                 self.errors.extend(validate_range("vcpu", self.vcpu.value(),
                                                   self.vcpu_min.value(),
                                                   self.vcpu_max.value(), int))
-        return not self.errors
+            if (self.password.validate() and self.password2.validate() and
+                    self.password.value() != self.password2.value()):
+                self.errors.extend(("passwd", "Passwords don't match."))
 
+        return not self.errors
 
 class OpenvzModificationForm(Form):
 

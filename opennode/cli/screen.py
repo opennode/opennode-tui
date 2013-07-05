@@ -81,7 +81,8 @@ class OpenNodeTUI(object):
             self.screen.finish()
             logic[result]()
             self.screen = SnackScreen()
-            self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <F12> Back / exit ")
+            self.screen.pushHelpLine("  <Tab>/<Alt-Tab> between elements   |  "
+                                     "<Space> selects   |  <F12> Back / exit ")
             return self.display_console_menu()
         else:
             return self.display_main_screen()
@@ -91,7 +92,7 @@ class OpenNodeTUI(object):
                 'default': self.display_storage_default,
                 'add': self.display_storage_add,
                 'delete': self.display_storage_delete,
-                'shared': self.display_storge_shared,
+                'shared': self.display_storage_shared,
                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage pool operation',
                   [('Back', 'back', 'F12'),
@@ -106,8 +107,8 @@ class OpenNodeTUI(object):
             actions.storage.set_default_pool(pool)
         return self.display_storage()
 
-    def display_storge_shared(self):
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
+    def display_storage_shared(self):
+        ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
                   [('Back', 'main', 'F12'), ('List bind mounts', 'default'),
                    ('Add a bind mount', 'add'), ('Delete a bind mount', 'delete')])
 
@@ -180,7 +181,10 @@ class OpenNodeTUI(object):
         if bridges is None:
             display_info(self.screen, "Error", "No network bridges found.")
             return self.display_network_bridge()
-        chosen_bridge = display_selection(self.screen, TITLE, bridges, 'Please select the network bridge for modification:')
+
+        chosen_bridge = display_selection(self.screen, TITLE, bridges,
+                                          'Please select the network bridge for modification:')
+
         if chosen_bridge is not None:
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         'Are you sure you want to delete "%s"?' %
@@ -189,6 +193,7 @@ class OpenNodeTUI(object):
             if result == 'yes':
                 # sorry, pool, time to go
                 actions.network.delete_bridge(chosen_bridge)
+
         return self.display_network_bridge()
 
     def display_select_storage_pool(self, default=None):
@@ -434,7 +439,7 @@ class OpenNodeTUI(object):
     def _display_custom_form(self, form, template_settings):
         while 1:
             if not form.display():
-                return None
+                return
             if form.validate():
                 settings = template_settings.copy()
                 settings.update(form.data)
@@ -718,7 +723,7 @@ class OpenNodeTUI(object):
             raise ValueError("Unsupported vm type '%s'" % vm_type)
         while 1:
             if not form.display():
-                return None
+                return
             if form.validate():
                 settings = template_settings.copy()
                 settings.update(form.data)
