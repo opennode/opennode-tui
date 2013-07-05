@@ -89,7 +89,6 @@ def sync_template(remote_repo, template, storage_pool):
     config = get_config()
     url = config.getstring(remote_repo, 'url')
     vm_type = config.getstring(remote_repo, 'type')
-    storage_endpoint = config.getstring('general', 'storage-endpoint')
     localfile = os.path.join(storage.get_pool_path(storage_pool),
                              vm_type, template)
     remotefile = urlparse.urljoin(url.rstrip('/') + '/', template)
@@ -133,7 +132,6 @@ def import_template(template, vm_type, storage_pool=None):
     if not template.endswith('tar') or template.endswith('ova'):
         raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
     extension = 'ova' if template.endswith('ova') else 'tar'
-    storage_endpoint = config.getstring('general', 'storage-endpoint')
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage.get_pool_path(storage_pool),
                                vm_type, tmpl_name)
@@ -197,7 +195,6 @@ def get_local_templates(vm_type, storage_pool=None):
     config = get_config()
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
-    storage_endpoint = config.getstring('general', 'storage-endpoint')
     return [tmpl[:-4] for tmpl in
             os.listdir("%s/%s" % (storage.get_pool_path(storage_pool),
                                   vm_type))
