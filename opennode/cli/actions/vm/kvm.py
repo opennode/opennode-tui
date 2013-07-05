@@ -59,7 +59,9 @@ def get_active_template_settings(vm_name, storage_pool):
         if interface_dom.getAttribute("type") == "bridge":
             mac_address = interface_dom.getElementsByTagName("mac")[0].getAttribute("address")
             bridge_name = interface_dom.getElementsByTagName("source")[0].getAttribute("bridge")
-            settings["interfaces"].append({"type": "bridge", "source_bridge": bridge_name, "mac_address": mac_address})
+            settings["interfaces"].append({"type": "bridge",
+                                           "source_bridge": bridge_name,
+                                           "mac_address": mac_address})
     return settings
 
 
@@ -125,6 +127,7 @@ def read_ovf_settings(settings, ovf_file):
 
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
+    settings['passwd'] = ovfutil.get_root_password(ovf_file)
     return settings
 
 
@@ -437,6 +440,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     log.info(msg)
     print msg
 
+
 def _prepare_disks(vm_settings, target_dir):
     """
     Prepare VM disks for OVF appliance creation.
@@ -595,9 +599,15 @@ def _generate_ovf_file(vm_settings):
     features_dom = doc.createElement("Features")
     on_section.appendChild(features_dom)
 
+    admin_password = doc.createElement('AdminPassword')
+    on_section.appendChild(admin_password)
+    password_value = doc.createTextNode(vm_settings['passwd'])
+    admin_password.appendChild(password_value)
+
     for feature in vm_settings["features"]:
         feature_dom = doc.createElement(feature)
         features_dom.appendChild(feature_dom)
+
     return ovf
 
 

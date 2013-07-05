@@ -265,3 +265,11 @@ def _get_unpacked_base(vm_type):
     return os.path.join(get_config().getstring('general', 'storage-endpoint'),
                         get_config().getstring('general', 'default-storage-pool'),
                         vm_type, 'unpacked')
+
+
+def get_root_password(ovf_file):
+    section = ovf_file.document.getElementsByTagName('opennodens:OpenNodeSection')
+    admin_field = section[0].getElementsByTagName('AdminPassword')
+    if not admin_field:
+        return
+    return admin_field[0].firstChild.nodeValue
