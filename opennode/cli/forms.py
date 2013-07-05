@@ -59,7 +59,6 @@ class KvmForm(Form):
         return form.runOnce() != button_exit
 
 
-
 class OpenvzForm(Form):
 
     def __init__(self, screen, title, settings):
@@ -144,11 +143,15 @@ class OpenvzTemplateForm(Form):
 
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory", required=False)
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory", required=False)
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""),
+                                     display_name="min memory", required=False)
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""),
+                                     display_name="max memory", required=False)
         self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""),
+                                   display_name="min vcpu", required=False)
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""),
+                                   display_name="max vcpu", required=False)
         self.disk = FloatField("disk", settings["disk"])
         self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
         Form.__init__(self, screen, title, [self.memory, self.memory_min,
@@ -195,11 +198,15 @@ class KvmTemplateForm(Form):
 
     def __init__(self, screen, title, settings):
         self.memory = FloatField("memory", settings["memory"])
-        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""), display_name="min memory", required=False)
-        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""), display_name="max memory", required=False)
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""),
+                                     display_name="min memory", required=False)
+        self.memory_max = FloatField("memory_max", settings.get("memory_max", ""),
+                                     display_name="max memory", required=False)
         self.vcpu = FloatField("vcpu", settings["vcpu"])
-        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""), display_name="min vcpu", required=False)
-        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""), display_name="max vcpu", required=False)
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""),
+                                   display_name="min vcpu", required=False)
+        self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""),
+                                   display_name="max vcpu", required=False)
         self.password = PasswordField("passwd", settings["passwd"], display_name="password")
         self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max,
@@ -306,15 +313,15 @@ class OpenvzModificationForm(Form):
         return form.runOnce() != button_exit
 
     def validate(self):
-        if Form.validate(self):
-            # TODO disallow decrease of disk size, which would break OS
-            pass
+        # TODO disallow decrease of disk size, which would break OS
+        Form.validate(self)
         bm_valid = self.bind_mounts.validate()
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
             self.errors.append(("bind_mounts", "%s" % error_str))
         if self.memory.value() < self.settings["memory_min"]:
-            err_msg = "Memory size can not be lower than minimum defined in template: %s GB" % self.settings["memory_min"]
+            err_msg = ("Memory size can not be lower than minimum defined in template: %s GB" %
+                       self.settings["memory_min"])
             self.errors.append(("memory", err_msg))
         return not self.errors
 
@@ -334,8 +341,7 @@ class OpenVZMigrationForm(Form):
             separator,
             (Textbox(20, 1, "Live migration:", 0, 0), self.live),
             separator,
-            (button_save, button_exit)
-        ]
+            (button_save, button_exit)]
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
             for j, cell in enumerate(row):
@@ -343,10 +349,8 @@ class OpenVZMigrationForm(Form):
         return form.runOnce() != button_exit
 
     def validate(self):
-        if Form.validate(self):
-            pass
+        Form.validate(self)
         return not self.errors
-
 
 # ------------- Field widgets --------------
 
