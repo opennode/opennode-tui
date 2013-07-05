@@ -33,7 +33,8 @@ class Form(object):
 class KvmForm(Form):
 
     def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])
+        self.memory = FloatField("memory", settings["memory"], settings["memory_min"],
+                                 settings["memory_max"])
         self.vcpu = IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.hostname = StringField("hostname", settings.get("hostname", ""))
         Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname, self.password,
@@ -55,6 +56,7 @@ class KvmForm(Form):
             separator,
             (button_save, button_exit)
         ]
+
         form = GridForm(self.screen, self.title, 2, len(rows))
         for i, row in enumerate(rows):
             for j, cell in enumerate(row):
@@ -65,10 +67,12 @@ class KvmForm(Form):
 class OpenvzForm(Form):
 
     def __init__(self, screen, title, settings):
-        self.memory = FloatField("memory", settings["memory"], settings["memory_min"], settings["memory_max"])
+        self.memory = FloatField("memory", settings["memory"], settings["memory_min"],
+                                 settings["memory_max"])
         self.swap = FloatField("swap", settings["swap"], settings["swap_min"], settings["swap_max"])
         self.vcpu = FloatField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
-        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"], settings["vcpulimit_max"])
+        self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"], settings["vcpulimit_min"],
+                                      settings["vcpulimit_max"])
         self.disk = FloatField("disk", settings["disk"], settings["disk_min"], settings["disk_max"])
         self.ioprio = RadioBarField("ioprio", screen, [('Low    ', 0, settings["ioprio"] == 0),
                                                        ('Default', 4, settings["ioprio"] == 4),
@@ -135,10 +139,12 @@ class OpenvzForm(Form):
         if (self.password.validate() and self.password2.validate() and
                 self.password.value() != self.password2.value()):
             self.errors.append(("passwd", "Passwords don't match."))
+
         bm_valid = self.bind_mounts.validate()
         if bm_valid:
             error_str = "\n".join([s[1] for s in bm_valid])
             self.errors.append(("bind_mounts", "%s" % error_str))
+
         return not self.errors
 
 
@@ -157,10 +163,8 @@ class OpenvzTemplateForm(Form):
                                    display_name="max vcpu", required=False)
         self.disk = FloatField("disk", settings["disk"])
         self.ostemplate = StringField("ostemplate", settings.get("ostemplate", ""))
-        Form.__init__(self, screen, title, [self.memory, self.memory_min,
-                                            self.memory_max, self.vcpu,
-                                            self.vcpu_min, self.vcpu_max,
-                                            self.disk, self.ostemplate])
+        Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max, self.vcpu,
+                                            self.vcpu_min, self.vcpu_max, self.disk, self.ostemplate])
 
     def display(self):
         button_save, button_exit = Button("Create"), Button("Back")
@@ -255,6 +259,7 @@ class KvmTemplateForm(Form):
                 self.errors.extend(("passwd", "Passwords don't match."))
 
         return not self.errors
+
 
 class OpenvzModificationForm(Form):
 
@@ -355,3 +360,69 @@ class OpenVZMigrationForm(Form):
         Form.validate(self)
         return not self.errors
 
+
+class GenericTemplateEditForm(Form):
+
+    separator = (Textbox(20, 1, "", 0, 0), Textbox(20, 1, "", 0, 0))
+
+    def _define_fields(self, settings):
+        self.memory = FloatField("memory", settings["memory"])
+        self.memory_min = FloatField("memory_min", settings.get("memory_min", ""),
+                                     display_name="min memory", required=False)
+        self.vcpu = FloatField("vcpu", settings["vcpu"])
+        self.vcpu_min = FloatField("vcpu_min", settings.get("vcpu_min", ""),
+                                   display_name="min vcpu", required=False)
+        self.template_name = StringField('template_name', settings.get('template_name'),
+                                         display_name='template name', required=False)
+        return [self.memory,
+                self.memory_min,
+                self.vcpu,
+                self.vcpu_min,
+                self.template_name]
+
+    def _define_view(self, button_save, button_exit):
+        rows = [
+            (Textbox(20, 1, "Template name:", 0, 0), self.template_name),
+            self.separator,
+            (Textbox(20, 1, "Memory size (GB):", 0, 0), self.memory),
+            (Textbox(20, 1, "Min memory size (GB):", 0, 0), self.memory_min),
+            self.separator,
+            (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
+            (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
+            self.separator,
+            (button_exit, button_save)
+        ]
+        return rows
+
+    def __init__(self, screen, title, settings):
+        self.settings = settings
+        super(GenericTemplateEditForm, self).__init__(screen, title,
+                                                      self._define_fields(settings))
+
+    def display(self):
+        button_save, button_exit = Button("Edit"), Button("Cancel")
+        rows = self._define_view(button_save, button_exit)
+        form = GridForm(self.screen, self.title, 2, len(rows))
+        for i, row in enumerate(rows):
+            for j, cell in enumerate(row):
+                form.add(cell, j, i)
+        return form.runOnce() != button_exit
+
+
+class KvmTemplateEditForm(GenericTemplateEditForm):
+
+    def _define_fields(self, settings):
+        self.password = PasswordField('passwd', settings['passwd'],
+                                      display_name='password', required=True)
+        self.password2 = PasswordField('passwd2', settings['passwd'],
+                                             display_name='password', required=True)
+        fields = super(KvmTemplateEditForm, self)._define_fields(settings)
+        fields.append(self.password)
+        fields.append(self.password2)
+        return fields
+
+    def _define_view(self, button_save, button_exit):
+        rows = super(KvmTemplateEditForm, self)._define_view(button_save, button_exit)
+        rows.insert(-2, (Textbox(20, 1, 'Password:', 0, 0), self.password))
+        rows.insert(-2, (Textbox(20, 1, 'Password x2:', 0, 0), self.password2))
+        return rows

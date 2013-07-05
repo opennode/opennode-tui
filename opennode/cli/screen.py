@@ -8,11 +8,13 @@ from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
 from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
                                   display_selection, display_vm_type_select, display_info,
-                                  display_template_edit_form, display_yesno)
+                                  display_yesno)
 from opennode.cli import actions
 from opennode.cli.config import get_config
-from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
-                                OpenvzModificationForm, OpenVZMigrationForm)
+from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
+from opennode.cli.forms import OpenvzModificationForm, OpenVZMigrationForm
+from opennode.cli.forms import GenericTemplateEditForm
+from opennode.cli.forms import KvmTemplateEditForm
 from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
                                         TemplateException, CommandException)
 from ovf.OvfFile import OvfFile
@@ -412,7 +414,14 @@ class OpenNodeTUI(object):
 
         settings = vm.get_ovf_template_settings(ovf_file)
 
-        new_values = display_template_edit_form(self.screen, TITLE, settings)
+        if template_type != 'kvm':
+            form_type = GenericTemplateEditForm
+        else:
+            form_type = KvmTemplateEditForm
+
+        form = form_type(self.screen, 'Template edit', settings)
+        new_values = self._display_custom_form(form, {})
+
         if new_values is None:
             return self.display_templates()
 
