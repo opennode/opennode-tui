@@ -121,7 +121,7 @@ def display_selection(screen, title, list_of_items, subtitle, default=None,
             return (action, selection)  # customized buttons
     else:
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
-    return None
+    return
 
 
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
@@ -136,7 +136,7 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
         ButtonChoiceWindow(screen, title,
                            'Sorry, there are no items to choose from',
                            ['Back'])
-    return None
+    return
 
 
 def display_vm_type_select(screen, title):
@@ -197,7 +197,7 @@ def display_template_edit_form(screen, title, settings):
     rc = g.runOnce()
 
     if bb.buttonPressed(rc) == 'cancel':
-        return None
+        return
 
     new_values = {}
     new_values['vcpu_min'] = e_mincpu.value()

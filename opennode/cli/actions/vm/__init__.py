@@ -187,7 +187,7 @@ def _render_vm(conn, vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
         # we don't support the notion of swap disks for libvirt/KVM for now
-        return None
+        return
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':

@@ -36,15 +36,14 @@ class OpenNodeTUI(object):
                  'oms': self.display_oms,
                  }
 
-        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI', \
-                [('Exit', 'exit', 'F12'),
-                ('Console', 'console'),
-                ('Create VM', 'createvm'),
-                ('Manage', 'manage'),
-                # XXX disable till more sound functionality
-                ('OMS (beta)', 'oms')
-                ],
-                42)
+        result = ButtonChoiceWindow(self.screen, TITLE, 'Welcome to OpenNode TUI',
+                                    [('Exit', 'exit', 'F12'),
+                                     ('Console', 'console'),
+                                     ('Create VM', 'createvm'),
+                                     ('Manage', 'manage'),
+                                     # XXX disable till more sound functionality
+                                     ('OMS (beta)', 'oms')],
+                                    42)
         return logic[result]()
 
     def display_manage(self):
@@ -56,23 +55,22 @@ class OpenNodeTUI(object):
                  }
 
         result = ButtonChoiceWindow(self.screen, TITLE, 'What would you like to manage today',
-                [('Menu', 'back', 'F12'),
-                # XXX disable till more sound functionality
-                #('Network', 'net'),
-                ('VMs', 'managevm'),
-                ('Storage', 'storage'),
-                ('Templates', 'templates'),
-                #('Monitoring', 'monitoring'),
-                ],
-                42)
+                                    [('Menu', 'back', 'F12'),
+                                     # XXX disable till more sound functionality
+                                     #('Network', 'net'),
+                                     ('VMs', 'managevm'),
+                                     ('Storage', 'storage'),
+                                     ('Templates', 'templates'),
+                                     #('Monitoring', 'monitoring'),
+                                    ], 42)
 
         return logic[result]()
 
     def display_console_menu(self):
         logic = {
-               'kvm': actions.console.run_kvm,
-               'ovz': actions.console.run_openvz,
-               }
+            'kvm': actions.console.run_kvm,
+            'ovz': actions.console.run_openvz,
+        }
         result = ButtonChoiceWindow(self.screen, TITLE,
                                     'Select a management console to use:',
                                     [('Menu', 'main', 'F12'),
@@ -89,16 +87,16 @@ class OpenNodeTUI(object):
 
     def display_storage(self):
         logic = {'back': self.display_manage,
-                'default': self.display_storage_default,
-                'add': self.display_storage_add,
-                'delete': self.display_storage_delete,
-                'shared': self.display_storage_shared,
-               }
+                 'default': self.display_storage_default,
+                 'add': self.display_storage_add,
+                 'delete': self.display_storage_delete,
+                 'shared': self.display_storage_shared,
+                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select storage pool operation',
-                  [('Back', 'back', 'F12'),
-                   ('Select default', 'default'),
-                   ('Add', 'add'),
-                   ('Delete', 'delete')])
+                                    [('Back', 'back', 'F12'),
+                                     ('Select default', 'default'),
+                                     ('Add', 'add'),
+                                     ('Delete', 'delete')])
         logic[result]()
 
     def display_storage_default(self):
@@ -109,8 +107,8 @@ class OpenNodeTUI(object):
 
     def display_storage_shared(self):
         ButtonChoiceWindow(self.screen, TITLE, 'Select bind mount operation',
-                  [('Back', 'main', 'F12'), ('List bind mounts', 'default'),
-                   ('Add a bind mount', 'add'), ('Delete a bind mount', 'delete')])
+                           [('Back', 'main', 'F12'), ('List bind mounts', 'default'),
+                            ('Add a bind mount', 'add'), ('Delete a bind mount', 'delete')])
 
     def display_storage_add(self):
         storage_entry = Entry(30, 'new')
@@ -147,13 +145,13 @@ class OpenNodeTUI(object):
 
     def display_network(self):
         logic = {'main': self.display_main_screen,
-                'bridge': self.display_network_bridge,
-               }
+                 'bridge': self.display_network_bridge,
+                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select network operation',
                   [('Back', 'main', 'F12'),
                    #('Nameserver configuration', 'nameserver'),
                    #('Hostname modification', 'hostname'),
-                    ('Bridge management', 'bridge')])
+                   ('Bridge management', 'bridge')])
         logic[result]()
 
     def display_network_bridge(self):
@@ -381,23 +379,24 @@ class OpenNodeTUI(object):
 
 
     def display_template_edit(self):
-        repos = [f for f in [('Local openvz', 'openvz'), ('Local kvm', 'kvm')]]
-        if repos is None:
-            return self.display_templates()
+        repos = [('Local openvz', 'openvz'), ('Local kvm', 'kvm')]
         template_type = display_selection(self.screen, TITLE, repos,
                                           'Please, select template type from the list')
         if template_type is None:
             return self.display_templates()
+
         vm = actions.vm.get_module(template_type)
+
         template = self.display_select_template_from_storage(actions.storage.get_default_pool(),
                                                              template_type)
         if template is None:
             return self.display_templates()
+
         unpacked_base = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                      get_config().getstring('general', 'default-storage-pool'),
-                                     template_type,
-                                     'unpacked')
+                                     template_type, 'unpacked')
         ovf_file_name = os.path.join(unpacked_base, template + '.ovf')
+
         try:
             ovf_file = OvfFile(ovf_file_name)
         except IOError as (errno, _):
@@ -405,24 +404,29 @@ class OpenNodeTUI(object):
                 display_info(self.screen, "ERROR",
                              "Template OVF file is missing:\n%s" % ovf_file_name)
             return self.display_templates()
+
         settings = vm.get_ovf_template_settings(ovf_file)
+
         new_values = display_template_edit_form(self.screen, TITLE, settings)
         if new_values is None:
             return self.display_templates()
+
         changed = False
         rename = False
-        for k in new_values:
-            if k == 'template_name':
-                if settings[k] != new_values[k]:
-                    rename = True
-            else:
-                if settings[k] != new_values[k]:
-                    changed = True
+
+        if 'template_name' in new_values and new_values['template_name'] != settings['template_name']:
+            rename = True
 
         new_name = os.path.basename(new_values['template_name'])
         new_values['template_name'] = settings['template_name']
         if settings['template_name'] != new_name:
             rename = True
+
+        for k in new_values:
+            if k is not 'template_name' and new_values[k] != settings[k]:
+                changed = True
+                break
+
         if not changed and not rename:
             return self.display_templates()
 
@@ -431,8 +435,7 @@ class OpenNodeTUI(object):
         else:
             vm.update_template_and_name(ovf_file, new_values, new_name)
 
-        display_info(self.screen, TITLE,
-                     'Template "%s"\nmetadata successfully edited.' % template,
+        display_info(self.screen, TITLE, 'Template "%s"\nmetadata successfully edited.' % template,
                      width=50, height=2)
         return self.display_templates()
 
