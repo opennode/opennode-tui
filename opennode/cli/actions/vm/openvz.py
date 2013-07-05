@@ -845,7 +845,7 @@ def update_template_and_name(ovf_file, settings, new_name):
     """
     unpacked_base = ovfutil._get_unpacked_base('openvz')
     if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
-        return None
+        return
     ovf_file = ovfutil.update_referenced_files(ovf_file, settings['template_name'],
                                                new_name)
     ovfutil.save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base,
