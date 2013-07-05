@@ -75,6 +75,7 @@ def autodetected_backends():
 
 def _connection(backend):
     bs = backends()
+    assert type(backend) == str
     if bs and (backend not in bs and not backend.startswith('test://')):
         raise Exception("unsupported backend %s" % backend)
 
@@ -351,10 +352,8 @@ def deploy_vm(conn, *args, **kwargs):
 
     owner = vm_parameters.get('owner')
 
-    if not owner:
-        return 'OK'
-
-    set_owner(conn, vm_parameters['uuid'], owner)
+    if owner:
+        _set_owner(conn, vm_parameters['uuid'], owner)
 
     return "OK"
 
@@ -531,13 +530,12 @@ def _deploy_vm(vm_parameters, logger=None):
                 msg = ('Deployment failed: a VM with UUID %s is already deployed '
                        '(%s)' % (uuid, deployed_uuid_list))
                 logging.error(msg)
-                print msg
                 return
         finally:
             conn.close()
 
     ovf_file = OvfFile(os.path.join(get_pool_path(storage_pool),
-                                    vm_type, "unpacked",template + ".ovf"))
+                                    vm_type, "unpacked", template + ".ovf"))
     vm = actions.vm.get_module(vm_type)
     settings = vm.get_ovf_template_settings(ovf_file)
 
@@ -613,6 +611,7 @@ def update_vm(conn, uuid, *args, **kwargs):
     for key, value in settings.iteritems():
         action_map.get(key, unknown_param)(value)
 
+
 @vm_method
 def migrate(conn, uuid, target_host, *args, **kwargs):
     """ Migrate VM to another host """
@@ -623,11 +622,15 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
     raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
-@vm_method
-def set_owner(conn, uuid, owner):
+def _set_owner(conn, uuid, owner):
     vm_type = conn.getType().lower()
     module = get_module(vm_type)
     return module.set_owner(uuid, owner)
+
+
+@vm_method
+def set_owner(conn, uuid, owner):
+    return _set_owner(conn, uuid, owner)
 
 
 @vm_method

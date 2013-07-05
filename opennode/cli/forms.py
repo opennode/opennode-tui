@@ -275,7 +275,7 @@ class OpenvzModificationForm(Form):
                                                        ('High   ', 7, settings["ioprio"] == 7)])
         self.bind_mounts = BindMountsField("bind_mounts", settings["bind_mounts"], required=False)
         self.vcpulimit = IntegerField("vcpulimit", settings["vcpulimit"],
-                                      min_value=0, max_value = 100)
+                                      min_value=0, max_value=100)
         self.onboot = CheckboxField("onboot", settings.get("onboot", 0), display_name="Start on boot")
         self.ctid = IntegerField('ctid', settings['ctid'],
                                  display_name='VEID', required=False)

@@ -133,24 +133,16 @@ def read_ovf_settings(settings, ovf_file):
 
 def deploy(settings, storage_pool):
     log = get_logger()
-    msg = "Copying KVM template disks (this may take a while)..."
-    log.info(msg)
-    print msg
+    log.info("Copying KVM template disks (this may take a while)...")
     prepare_file_system(settings, storage_pool)
 
-    msg = "Generating KVM VM configuration..."
-    log.info(msg)
-    print msg
+    log.info("Generating KVM VM configuration...")
     libvirt_conf_dom = generate_libvirt_conf(settings)
 
-    msg = "Finalyzing KVM template deployment..."
-    log.info(msg)
-    print msg
+    log.info("Finalyzing KVM template deployment...")
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
-    msg = "Done!"
-    log.info(msg)
-    print msg
+    log.info("Done!")
 
 
 def prepare_file_system(settings, storage_pool):
@@ -358,6 +350,23 @@ def generate_libvirt_conf(settings):
         interface_source_dom = libvirt_conf_dom.createElement("source")
         interface_source_dom.setAttribute("bridge", interface["source_bridge"])
         interface_dom.appendChild(interface_source_dom)
+        # add MAC section if given. Otherwise leave to libvirt for generation
+        if 'mac' in interface:
+            interface_mac_dom = libvirt_conf_dom.createElement("mac")
+            interface_mac_dom.setAttribute("address", interface["mac"])
+            interface_dom.appendChild(interface_mac_dom)
+        # add nwfilter agasin MAC spoofing, if IP is provided
+        # XXX only one IP is expected to be provided - so we currently limit traffic from all ifaces for that IP
+        if 'ip_address' in settings:
+            # top level filter element
+            interface_filter_dom = libvirt_conf_dom.createElement("filterref")
+            interface_filter_dom.setAttribute("filter", 'clean-traffic')
+            interface_dom.appendChild(interface_filter_dom)
+            # IP parameter
+            interface_filter_ip_dom = libvirt_conf_dom.createElement("parameter")
+            interface_filter_ip_dom.setAttribute("name", 'IP')
+            interface_filter_ip_dom.setAttribute("value", settings['ip_address'])
+            interface_filter_dom.appendChild(interface_filter_ip_dom)
 
     serial_dom = libvirt_conf_dom.createElement("serial")
     serial_dom.setAttribute("type", settings["serial"]["type"])
@@ -406,13 +415,11 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     # prepare file system
     msg = "Preparing disks... (This may take a while)"
     log.info(msg)
-    print msg
     vm_settings["disks"] = _prepare_disks(vm_settings, target_dir)
 
     # generate and save ovf configuration file
     msg = "Generating ovf file..."
     log.info(msg)
-    print msg
     ovf = _generate_ovf_file(vm_settings)
     ovf_fnm = path.join(target_dir, "%s.ovf" % vm_settings["template_name"])
     with open(ovf_fnm, 'w') as f:
@@ -421,7 +428,6 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     # pack container archive and ovf file
     msg = "Archiving..."
     log.info(msg)
-    print msg
     arch_location = path.join(config.getstring('general', 'storage-endpoint'), storage_pool, "kvm")
     ovf_archive_fnm = path.join(arch_location, "%s.ova" % vm_settings["template_name"])
     with closing(tarfile.open(ovf_archive_fnm, "w")) as tar:
@@ -438,7 +444,7 @@ def save_as_ovf(vm_settings, storage_pool, unpack=True):
     calculate_hash(ovf_archive_fnm)
     msg = "Done! Template saved at %s" % ovf_archive_fnm
     log.info(msg)
-    print msg
+
 
 
 def _prepare_disks(vm_settings, target_dir):
@@ -479,7 +485,6 @@ def _prepare_disks(vm_settings, target_dir):
 def get_kvm_disk_capacity_bytes(path):
     msg = "Getting capacity of the kvm disk '%s'" % path
     get_logger().info(msg)
-    print msg
     res = execute("virt-df --csv %s" % (path))
     rows = res.split("\n")[2:]
     capacity = 0
