@@ -452,11 +452,10 @@ class OpenNodeTUI(object):
                 settings = template_settings.copy()
                 settings.update(form.data)
                 return settings
-            else:
-                errors = form.errors
-                key, msg = errors[0]
-                display_info(self.screen, TITLE, msg, width=75)
-                continue
+
+            errors = form.errors
+            key, msg = errors[0]
+            display_info(self.screen, TITLE, msg, width=75)
 
     def _perform_openvz_migration(self, vm_type, vm_id):
         migration_form = OpenVZMigrationForm(self.screen, TITLE)
@@ -465,10 +464,10 @@ class OpenNodeTUI(object):
                 return self.display_vm_manage()
             if migration_form.validate():
                 break
-            else:
-                errors = migration_form.errors
-                key, msg = errors[0]
-                display_info(self.screen, TITLE, msg, width=75)
+            errors = migration_form.errors
+            key, msg = errors[0]
+            display_info(self.screen, TITLE, msg, width=75)
+
         target_host = migration_form.data['target host']
         live = migration_form.data['live'] == 1
         vm = actions.vm.get_module(vm_type)
@@ -526,6 +525,7 @@ class OpenNodeTUI(object):
             return self.display_manage()
         else:
             action, vm_id = res
+
         if action == 'back':
             return self.display_manage()
 
