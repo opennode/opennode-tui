@@ -148,27 +148,27 @@ class OpenNodeTUI(object):
                  'bridge': self.display_network_bridge,
                 }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select network operation',
-                  [('Back', 'main', 'F12'),
-                   #('Nameserver configuration', 'nameserver'),
-                   #('Hostname modification', 'hostname'),
-                   ('Bridge management', 'bridge')])
+                                    [('Back', 'main', 'F12'),
+                                     #('Nameserver configuration', 'nameserver'),
+                                     #('Hostname modification', 'hostname'),
+                                     ('Bridge management', 'bridge')])
         logic[result]()
 
     def display_network_bridge(self):
         logic = {'main': self.display_network,
-                'add': self.display_network_bridge_add_update,
-                'del': self.display_network_bridge_delete,
-               }
+                 'add': self.display_network_bridge_add_update,
+                 'del': self.display_network_bridge_delete,
+                }
         result = ButtonChoiceWindow(self.screen, TITLE, 'Select bridge operation',
-                  [('Main menu', 'main', 'F12'),
-                   ('Delete bridge', 'del'),
-                   ('Add new bridge', 'add')])
+                                    [('Main menu', 'main', 'F12'),
+                                     ('Delete bridge', 'del'),
+                                     ('Add new bridge', 'add')])
         logic[result]()
 
     def display_network_bridge_add_update(self, bridge=None):
         action, bridge = EntryWindow(self.screen, TITLE, 'Add new bridge',
-                ['Name', 'Hello', 'FD', 'STP'],
-                buttons=[('Back', 'back', 'F12'), 'Create'])
+                                     ['Name', 'Hello', 'FD', 'STP'],
+                                     buttons=[('Back', 'back', 'F12'), 'Create'])
         if action == 'create':
             actions.network.add_bridge(bridge[0])
             actions.network.configure_bridge(bridge[0], bridge[1], bridge[2], bridge[3])
@@ -187,7 +187,8 @@ class OpenNodeTUI(object):
             result = ButtonChoiceWindow(self.screen, TITLE,
                                         'Are you sure you want to delete "%s"?' %
                                         chosen_bridge,
-                        [('No, not today.', 'no', 'F12'), ('Yes, delete the bridge.', 'yes')])
+                                        [('No, not today.', 'no', 'F12'),
+                                         ('Yes, delete the bridge.', 'yes')])
             if result == 'yes':
                 # sorry, pool, time to go
                 actions.network.delete_bridge(chosen_bridge)
@@ -209,14 +210,17 @@ class OpenNodeTUI(object):
         if storage_pool is None:
             display_info(self.screen, "Error", "Default storage pool is not defined!")
             return self.display_main_screen()
+
         logic = {'main': self.display_main_screen,
                  'register': self.display_oms_register,
                  'download': self.display_oms_download,
                  'install': self.display_oms_install,
                 }
+
         result = ButtonChoiceWindow(self.screen, TITLE, 'OpenNode Management Service (OMS) operations',
-            [('Menu', 'main', 'F12'), ('Download OMS image', 'download'),
-             ('Install OMS image', 'install'), ('Register with OMS', 'register')])
+                                    [('Menu', 'main', 'F12'), ('Download OMS image', 'download'),
+                                     ('Install OMS image', 'install'), ('Register with OMS', 'register')])
+
         logic[result]()
 
     def display_oms_register(self, msg='Please, enter OMS address and port'):
@@ -224,10 +228,10 @@ class OpenNodeTUI(object):
         oms_entry_server = Entry(30, oms_server)
         oms_entry_port = Entry(30, str(oms_port))
         command, oms_address = EntryWindow(self.screen, TITLE, msg,
-                                [('OMS server address', oms_entry_server),
-                                 ('OMS server port', oms_entry_port)],
-                                buttons=[('Back', 'oms_menu', 'F12'),
-                                         ('Register', 'register')])
+                                           [('OMS server address', oms_entry_server),
+                                            ('OMS server port', oms_entry_port)],
+                                           buttons=[('Back', 'oms_menu', 'F12'),
+                                                    ('Register', 'register')])
         if command == 'oms_menu':
             return self.display_oms()
         elif command == 'register':
@@ -305,10 +309,10 @@ class OpenNodeTUI(object):
                 # here comes hack
                 self.screen = SnackScreen()
                 cleanup = ButtonChoiceWindow(self.screen, 'Existing task pool',
-                                               "A task pool is already defined. It could mean\nthat the previous " +
-                                               "synchronisation crashed, or that there is one working already.\n\n" +
-                                               "Would you like to force synchronisation?",
-                                                      ['Yes', 'No'])
+                                             'A task pool is already defined. It could mean\n'
+                                             'that the previous synchronisation crashed or that there is '
+                                             'one working already.\n\nWould you like to force '
+                                             'synchronisation?', ['Yes', 'No'])
                 self.screen.finish()
                 if cleanup == 'yes':
                     actions.templates.sync_storage_pool(storage_pool, chosen_repo, selected_list, force=True)
@@ -323,12 +327,14 @@ class OpenNodeTUI(object):
         purely_local_templates = list(set(local_templates) - set(remote_templates))
         list_items.extend([('(l)' + tmpl, tmpl, True) for tmpl in purely_local_templates])
         return display_checkbox_selection(self.screen, TITLE, list_items,
-                        'Please, select templates to keep in the storage pool (r - remote, l - local):')
+                                          'Please, select templates to keep in the storage pool '
+                                          '(r - remote, l - local):')
 
     def display_select_template_from_storage(self, storage_pool, vm_type):
         """Displays a list of templates from a specified storage pool"""
         templates = actions.templates.get_local_templates(vm_type, storage_pool)
-        return display_selection(self.screen, TITLE, templates, "Select a %s template from %s" % (vm_type, storage_pool))
+        return display_selection(self.screen, TITLE, templates,
+                                 "Select a %s template from %s" % (vm_type, storage_pool))
 
     def display_template_create(self):
         storage_pool = actions.storage.get_default_pool()
@@ -344,7 +350,7 @@ class OpenNodeTUI(object):
         instances = vm.get_available_instances()
         if len(instances) == 0:
             display_info(self.screen, TITLE,
-                "No suitable VMs found. Only stopped VMs can be\nused for creating new templates!")
+                         "No suitable VMs found. Only stopped VMs can be\nused for creating new templates!")
             return self.display_templates()
 
         # pick an instance
@@ -376,7 +382,6 @@ class OpenNodeTUI(object):
         vm.save_as_ovf(template_settings, storage_pool)
         self.screen = SnackScreen()
         return self.display_templates()
-
 
     def display_template_edit(self):
         repos = [('Local openvz', 'openvz'), ('Local kvm', 'kvm')]
@@ -470,8 +475,8 @@ class OpenNodeTUI(object):
 
         if not test_passwordless_ssh(target_host):
             setup_keys = ButtonChoiceWindow(self.screen, "Passwordless SSH",
-                                       "Would you like to setup passwordless SSH to %s?" % target_host,
-                                              ['Yes', 'No'])
+                                            "Would you like to setup passwordless SSH to %s?" % target_host,
+                                            ['Yes', 'No'])
             if setup_keys == 'yes':
                 self.screen.finish()
                 setup_passwordless_ssh(target_host)
@@ -546,10 +551,8 @@ class OpenNodeTUI(object):
                 vm = actions.vm.get_module(vm_type)
                 template_settings = vm.get_active_template_settings(ctid, storage_pool)
                 available_vms[vm_id]["memory_min"] = template_settings["memory_min"]
-                available_vms[vm_id]['onboot'] = actions.vm.openvz. \
-                                get_onboot(ctid)
-                available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
-                                get_bootorder(ctid)
+                available_vms[vm_id]['onboot'] = actions.vm.openvz.get_onboot(ctid)
+                available_vms[vm_id]['bootorder'] = actions.vm.openvz.get_bootorder(ctid)
                 available_vms[vm_id]["vcpulimit"] = actions.vm.openvz.get_cpulimit(ctid)
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
@@ -606,9 +609,10 @@ class OpenNodeTUI(object):
                 display_info(self.screen, TITLE, "Cannot delete running VM!")
             else:
                 result = ButtonChoiceWindow(self.screen, TITLE,
-                                        "Are you sure you want to delete VM '%s'" % available_vms[vm_id]['name'],
-                                        [('No, not today.', 'no', 'F12'),
-                                         ('Yes, do that.', 'yes')])
+                                            "Are you sure you want to delete VM '%s'" %
+                                            available_vms[vm_id]['name'],
+                                            [('No, not today.', 'no', 'F12'),
+                                             ('Yes, do that.', 'yes')])
 
                 if result == 'yes':
                     self.screen.finish()
@@ -625,10 +629,8 @@ class OpenNodeTUI(object):
                 vm = actions.vm.get_module(vm_type)
                 template_settings = vm.get_active_template_settings(ctid, storage_pool)
                 available_vms[vm_id]["memory_min"] = template_settings["memory_min"]
-                available_vms[vm_id]['onboot'] = actions.vm.openvz. \
-                                get_onboot(ctid)
-                available_vms[vm_id]['bootorder'] = actions.vm.openvz. \
-                                get_bootorder(ctid)
+                available_vms[vm_id]['onboot'] = actions.vm.openvz.get_onboot(ctid)
+                available_vms[vm_id]['bootorder'] = actions.vm.openvz.get_bootorder(ctid)
                 available_vms[vm_id]["vcpulimit"] = actions.vm.openvz.get_cpulimit(ctid)
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
@@ -638,7 +640,7 @@ class OpenNodeTUI(object):
                 form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
             else:
                 display_info(self.screen, TITLE,
-                    "Editing of '%s' VMs is not currently supported." % vm_type)
+                             "Editing of '%s' VMs is not currently supported." % vm_type)
                 return self.display_vm_manage()
 
             # TODO KVM specific form
@@ -651,7 +653,7 @@ class OpenNodeTUI(object):
 
             if available_vms[vm_id]["state"] == "inactive":
                 display_info(self.screen, TITLE,
-                    "Note that for some settings to propagate you\nneed to (re)start the VM!")
+                             "Note that for some settings to propagate you\nneed to (re)start the VM!")
 
             return self.display_vm_manage()
 
