@@ -1,13 +1,13 @@
-import os
-import xml.dom
-import shutil
-from os import path
-import operator
-import tarfile
 from contextlib import closing
+from os import path
 from xml.etree import ElementTree as ET
-
 import libvirt
+import operator
+import os
+import shutil
+import tarfile
+import time
+import xml.dom
 
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
@@ -17,6 +17,7 @@ from opennode.cli.log import get_logger
 from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
+from opennode.cli.actions.utils import roll_data
 
 
 def get_ovf_template_settings(ovf_file):
@@ -666,3 +667,23 @@ def update_template_and_name(ovf_file, settings, new_name):
 
 def update_template(ovf_file, settings):
     return ovfutil.update_template('qemu', ovf_file, settings)
+
+
+def vm_metrics(conn, vm):
+
+    def cpu_usage():
+        time_now = (vm.getCPUStats(True, 0)[0]['cpu_time'],
+                    sum(conn.getCPUStats(True, 0).itervalues()))
+        time_was = roll_data('/tmp/kvm-vm-cpu-%s' % vm.ID(), time_now, [0] * 6)
+        deltas = [yi - xi for yi, xi in zip(time_now, time_was)]
+        try:
+            cpu_pct = deltas[0] / float(deltas[1])
+        except ZeroDivisionError:
+            cpu_pct = 0
+        return cpu_pct
+
+    def memory_usage():
+        return vm.memoryStats()['rss']
+
+    return {'cpu_usage': cpu_usage(),
+            'memory_usage': memory_usage(),}

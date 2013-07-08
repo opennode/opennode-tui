@@ -10,7 +10,7 @@ import urlparse
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.actions.utils import roll_data, execute
+from opennode.cli.actions.utils import execute
 from opennode.cli.config import get_config
 from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.log import get_logger
@@ -117,11 +117,10 @@ def list_vm_ids(backend):
     conn = _connection(backend)
     return map(str, conn.listDefinedDomains() + conn.listDomainsID())
 
+def get_uuid(vm):
+    return str(UUID(bytes=vm.UUID()))
 
 def _render_vm(conn, vm):
-    def get_uuid(vm):
-        return str(UUID(bytes=vm.UUID()))
-
     STATE_MAP = {
        0: "active",
        1: "active",
@@ -438,58 +437,15 @@ def _vm_interfaces(conn, uuid):
 
     return [interface(idx, i) for idx, i in enumerate(elements)]
 
+
 vm_interfaces = vm_method(_vm_interfaces)
 
 
 @vm_method
 def metrics(conn):
+    vm_type = conn.getType().lower()
+    vm_metrics = get_module(vm_type).vm_metrics
 
-    if conn.getType() != 'OpenVZ':
-        return {}
-
-    def get_uuid(vm):
-        return str(UUID(bytes=vm.UUID()))
-
-    def vm_metrics(vm):
-        def cpu_usage():
-            time_list_now = map(int,
-                                execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
-            time_list_was = roll_data('/tmp/func-cpu-%s' % vm.ID(), time_list_now, [0] * 6)
-            deltas = [yi - xi for yi, xi in zip(time_list_now, time_list_was)]
-            try:
-                cpu_pct = 1 - (float(deltas[-1]) / sum(deltas))
-            except ZeroDivisionError:
-                cpu_pct = 0
-            return cpu_pct
-
-        def load():
-            return float(execute("vzctl exec %s \"cat /proc/loadavg | awk '{print \$1}'\"" % vm.ID()))
-
-        def memory_usage():
-            return float(execute("vzctl exec %s \"free | tail -n 2 | head -n 1 |"
-                                 " awk '{print \$3 / 1024}'\"" % vm.ID()))
-
-        def network_usage():
-            def get_netstats():
-                return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 | "
-                                                "awk -F: '{print \$2}' | awk '{print \$1, \$9}'\""
-                                                % vm.ID()).split(' ')]
-
-            t2, (rx2, tx2) = time.time(), get_netstats()
-            t1, rx1, tx1 = roll_data("/tmp/func-network-%s" % vm.ID(), (t2, rx2, tx2), (0, 0, 0))
-
-            window = t2 - t1
-            return ((rx2 - rx1) / window, (tx2 - tx1) / window)
-
-        def diskspace_usage():
-            return float(execute("vzctl exec %s \"df -P | grep ' /\$' | head -n 1 | "
-                                 "awk '{print \$3/1024}'\"" % vm.ID()))
-
-        return dict(cpu_usage=cpu_usage(),
-                    load=load(),
-                    memory_usage=memory_usage(),
-                    network_usage=max(network_usage()),
-                    diskspace_usage=diskspace_usage())
     try:
         return dict((get_uuid(vm), vm_metrics(vm)) for vm in
                     (conn.lookupByID(i) for i in conn.listDomainsID()))
