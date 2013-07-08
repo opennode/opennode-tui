@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
 
-import os
+from libvirt import libvirtError
+from ovf.OvfFile import OvfFile
 from uuid import uuid4
+import os
+import tarfile
 
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
@@ -15,11 +18,9 @@ from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTempl
 from opennode.cli.forms import OpenvzModificationForm, OpenVZMigrationForm
 from opennode.cli.forms import GenericTemplateEditForm
 from opennode.cli.forms import KvmTemplateEditForm
-from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
-                                        TemplateException, CommandException)
-from ovf.OvfFile import OvfFile
-from libvirt import libvirtError
-import tarfile
+from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh
+from opennode.cli.actions.utils import TemplateException, CommandException
+
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -445,7 +446,7 @@ class OpenNodeTUI(object):
             return self.display_templates()
 
         if changed and not rename:
-            vm.update_template(ovf_file, new_values)
+            vm.update_template(template_type, ovf_file, new_values)
         else:
             vm.update_template_and_name(ovf_file, new_values, new_name)
 
