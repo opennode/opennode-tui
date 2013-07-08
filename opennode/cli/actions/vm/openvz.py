@@ -2,30 +2,32 @@ from contextlib import closing
 from hashlib import sha1
 from os import path
 from uuid import UUID
+
 import datetime
 import errno
+import libvirt
 import operator
 import os
+import shutil
 import tarfile
-
-import libvirt
+import time
 
 from ovf.OvfFile import OvfFile
 from ovf.OvfReferencedFile import OvfReferencedFile
 
-from opennode.cli.actions import sysresources as sysres
 from opennode.cli.actions import oms
+from opennode.cli.actions import sysresources as sysres
+from opennode.cli.actions.network import list_nameservers
+from opennode.cli.actions.openvz_utils import get_openvz_all_ctids
 from opennode.cli.actions.storage import get_pool_path
-from opennode.cli.actions.utils import (SimpleConfigParser, execute, get_file_size_bytes, calculate_hash,
-                                        CommandException, TemplateException, test_passwordless_ssh, execute2,
-                                        save_to_tar)
+from opennode.cli.actions.utils import SimpleConfigParser, execute, get_file_size_bytes
+from opennode.cli.actions.utils import calculate_hash, CommandException, TemplateException
+from opennode.cli.actions.utils import test_passwordless_ssh, execute2
+from opennode.cli.actions.utils import roll_data
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions.vm.config_template import openvz_template
-from opennode.cli.actions.network import list_nameservers
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
-from opennode.cli.actions.openvz_utils import get_openvz_all_ctids
-import shutil
 
 
 def _list_vms(conn):
@@ -775,7 +777,6 @@ def shutdown_vm(uuid):
                     msg = execute("vzctl umount %s" % ctid)
                     log.info(msg)
                 except CommandException:
-                    import time
                     time.sleep(3)
 
 
@@ -791,7 +792,6 @@ def migrate(uid, target_host, live=False, print_=True):
     log = get_logger()
     # a workaround for the megadynamic nature of python variable type when called via an agent
     live = live == 'True' if type(live) is str else live
-    print_ = print_ == 'True' if type(print_) is str else print_
     # is ctid present on the target host?
     ctid = get_ctid_by_uuid(uid)
     try:
@@ -802,13 +802,9 @@ def migrate(uid, target_host, live=False, print_=True):
             raise
     msg = "Initiating migration to %s..." % target_host
     log.info(msg)
-    if print_:
-        print msg
     live_trigger = '--online' if live else ''
     for line in execute2("vzmigrate -v %s %s %s" % (live_trigger, target_host, ctid)):
         log.info(line)
-        if print_ and line:
-            print line
 
 
 def _get_remote_ctid_list(remote_host):
@@ -838,47 +834,51 @@ def clone_vm(ctid, new_ctid):
 
 
 def update_template_and_name(ovf_file, settings, new_name):
-    """ update .ovf and rename template
-    @param ovf_file: opened ovf.OvfFile object
-    @param settings: dictionary containing settings
-    @param new_name: new name for template
-    """
-    unpacked_base = ovfutil._get_unpacked_base('openvz')
-    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
-        return
-    ovf_file = ovfutil.update_referenced_files(ovf_file, settings['template_name'],
-                                               new_name)
-    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base,
-                                                                 new_name + '.ovf'))
-    os.unlink(ovf_file.path)
-    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.scripts.tar.gz'),
-              os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
-    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.tar.gz'),
-              os.path.join(unpacked_base, new_name + '.tar.gz'))
-    _package_files(settings['template_name'], new_name)
+    return ovfutil.update_template_and_name('openvz', ovf_file, settings, new_name)
 
 
 def update_template(ovf_file, settings):
-    """ update .ovf and recreate tar archive
-    @param ovf_file: opened ovf.OvfFile object
-    @param settings: dictionary containing settings
-    """
-    ovfutil.save_cpu_mem_to_ovf(ovf_file, settings)
-    template = settings['template_name']
-    _package_files(template)
+    return ovfutil.update_template('openvz', ovf_file, settings)
 
 
-def _package_files(template_name, new_name=None):
-    """ Package files to template and calculate hash.
-    @param template_name: name of the existing template
-    @param new_name: name for new template. Optional
-    """
-    if new_name is None:
-        new_name = template_name
-    unpacked_base = ovfutil._get_unpacked_base('openvz')
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova'))
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova.pfff'))
-    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.ova')
-    filelist = ovfutil.generate_ovf_archive_filelist('openvz', new_name)
-    save_to_tar(tmpl_file, filelist)
-    calculate_hash(tmpl_file)
+def vm_metrics(vm):
+
+    def cpu_usage():
+        time_list_now = map(int,
+                            execute("vzctl exec %s \"head -n 1 /proc/stat\"" % vm.ID()).split(' ')[2:6])
+        time_list_was = roll_data('/tmp/openvz-vm-cpu-%s' % vm.ID(), time_list_now, [0] * 6)
+        deltas = [yi - xi for yi, xi in zip(time_list_now, time_list_was)]
+        try:
+            cpu_pct = sum(deltas) / float(deltas[-1])
+        except ZeroDivisionError:
+            cpu_pct = 0
+        return cpu_pct
+
+    def load():
+        return float(execute("vzctl exec %s \"cat /proc/loadavg | awk '{print \$1}'\"" % vm.ID()))
+
+    def memory_usage():
+        return float(execute("vzctl exec %s \"free | tail -n 2 | head -n 1 |"
+                             " awk '{print \$3 / 1024}'\"" % vm.ID()))
+
+    def network_usage():
+        def get_netstats():
+            return [int(v) for v in execute("vzctl exec %s \"cat /proc/net/dev|grep venet0 | "
+                                            "awk -F: '{print \$2}' | awk '{print \$1, \$9}'\""
+                                            % vm.ID()).split(' ')]
+
+        t2, (rx2, tx2) = time.time(), get_netstats()
+        t1, rx1, tx1 = roll_data("/tmp/openvz-vm-network-%s" % vm.ID(), (t2, rx2, tx2), (0, 0, 0))
+
+        window = t2 - t1
+        return ((rx2 - rx1) / window, (tx2 - tx1) / window)
+
+    def diskspace_usage():
+        return float(execute("vzctl exec %s \"df -P | grep ' /\$' | head -n 1 | "
+                             "awk '{print \$3/1024}'\"" % vm.ID()))
+
+    return dict(cpu_usage=cpu_usage(),
+                load=load(),
+                memory_usage=memory_usage(),
+                network_usage=max(network_usage()),
+                diskspace_usage=diskspace_usage())
