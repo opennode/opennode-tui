@@ -833,14 +833,6 @@ def clone_vm(ctid, new_ctid):
     execute('vzmlocal -C %s:%s' % (ctid, new_ctid))
 
 
-def update_template_and_name(ovf_file, settings, new_name):
-    return ovfutil.update_template_and_name('openvz', ovf_file, settings, new_name)
-
-
-def update_template(ovf_file, settings):
-    return ovfutil.update_template('openvz', ovf_file, settings)
-
-
 def vm_metrics(vm):
 
     def cpu_usage():

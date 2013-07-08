@@ -661,14 +661,6 @@ def get_owner(uuid):
         return owner.text
 
 
-def update_template_and_name(ovf_file, settings, new_name):
-    return ovfutil.update_template_and_name('qemu', ovf_file, settings, new_name)
-
-
-def update_template(ovf_file, settings):
-    return ovfutil.update_template('qemu', ovf_file, settings)
-
-
 def vm_metrics(conn, vm):
 
     def cpu_usage():

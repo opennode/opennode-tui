@@ -284,6 +284,7 @@ def update_template_and_name(vm_type, ovf_file, settings, new_name):
     @param new_name: new name for template
     """
     unpacked_base = _get_unpacked_base(vm_type)
+
     if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
         return
 
@@ -315,9 +316,21 @@ def _package_files(vm_type, template_name, new_name=None):
     if new_name is None:
         new_name = template_name
     unpacked_base = _get_unpacked_base(vm_type)
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova'))
-    os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova.pfff'))
+
+    ## XXX: hack to cleanup templates no matter how they're named
+    try:
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova'))
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova.pfff'))
+    except OSError:
+        pass
+
+    try:
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar'))
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar.pfff'))
+    except OSError:
+        pass
+
     tmpl_file = os.path.join(unpacked_base, '..', new_name + '.ova')
-    filelist = generate_ovf_archive_filelist('openvz', new_name)
+    filelist = generate_ovf_archive_filelist(vm_type, new_name)
     save_to_tar(tmpl_file, filelist)
     calculate_hash(tmpl_file)
