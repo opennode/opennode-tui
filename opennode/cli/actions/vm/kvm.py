@@ -17,6 +17,7 @@ from opennode.cli.log import get_logger
 from opennode.cli.actions.utils import execute, get_file_size_bytes, calculate_hash, TemplateException
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.actions import sysresources as sysres
+from opennode.cli.actions.utils import roll_data
 
 
 def get_ovf_template_settings(ovf_file):
@@ -658,3 +659,23 @@ def get_owner(uuid):
     owner = domain.find('oms:owner')
     if owner:
         return owner.text
+
+
+def vm_metrics(conn, vm):
+
+    def cpu_usage():
+        time_now = (vm.getCPUStats(True, 0)[0]['cpu_time'],
+                    sum(conn.getCPUStats(True, 0).itervalues()))
+        time_was = roll_data('/tmp/kvm-vm-cpu-%s' % vm.ID(), time_now, [0] * 6)
+        deltas = [yi - xi for yi, xi in zip(time_now, time_was)]
+        try:
+            cpu_pct = deltas[0] / float(deltas[1])
+        except ZeroDivisionError:
+            cpu_pct = 0
+        return cpu_pct
+
+    def memory_usage():
+        return vm.memoryStats()['rss']
+
+    return {'cpu_usage': cpu_usage(),
+            'memory_usage': memory_usage(),}
