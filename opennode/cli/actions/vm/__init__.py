@@ -10,7 +10,7 @@ import urlparse
 from ovf.OvfFile import OvfFile
 
 from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.actions.utils import execute
+from opennode.cli.actions.utils import execute, CommandException
 from opennode.cli.config import get_config
 from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.log import get_logger
@@ -175,12 +175,17 @@ def _render_vm(conn, vm):
             return {'/': openvz.get_diskspace(vm.name())}
         # return a total sum of block devices used by KVM VM
         # get list of block devices of a file type
-        cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
-        devices = execute(cmd).split('\n')
-        total_bytes = 0.0
-        for dev_path in devices:
-            cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
-            total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
+        try:
+            cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
+            devices = execute(cmd).split('\n')
+            total_bytes = 0.0
+            for dev_path in devices:
+                #cmd = "virsh domblkinfo %s %s | grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
+                cmd = "virsh domblkinfo %s %s" % (vm.name(), dev_path)
+                res = execute(cmd)
+                total_bytes += int(res) / 1024.0  # we want result to be in MB
+        except CommandException:
+            total_bytes = 0.0
         return {'/': total_bytes}
 
     def vm_swap(vm):
