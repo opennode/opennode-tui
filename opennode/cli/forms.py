@@ -37,8 +37,7 @@ class KvmForm(Form):
                                  settings["memory_max"])
         self.vcpu = IntegerField("vcpu", settings["vcpu"], settings["vcpu_min"], settings["vcpu_max"])
         self.hostname = StringField("hostname", settings.get("hostname", ""))
-        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname, self.password,
-                                            self.password2])
+        Form.__init__(self, screen, title, [self.memory, self.vcpu, self.hostname])
 
     def display(self):
         button_save, button_exit = Button("Create VM"), Button("Main menu")

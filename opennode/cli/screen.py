@@ -1,25 +1,27 @@
 #!/usr/bin/env python
 """OpenNode Terminal User Interface (TUI)"""
 
-import os
+from libvirt import libvirtError
+from ovf.OvfFile import OvfFile
 from uuid import uuid4
+import os
+import tarfile
 
 from snack import SnackScreen, ButtonChoiceWindow, Entry, EntryWindow, reflow
 
-from opennode.cli.helpers import (display_create_template, display_checkbox_selection,
-                                  display_selection, display_vm_type_select, display_info,
-                                  display_yesno)
 from opennode.cli import actions
+from opennode.cli.actions.utils import TemplateException, CommandException
+from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh
+from opennode.cli.actions.vm import ovfutil
 from opennode.cli.config import get_config
-from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
-from opennode.cli.forms import OpenvzModificationForm, OpenVZMigrationForm
 from opennode.cli.forms import GenericTemplateEditForm
+from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
 from opennode.cli.forms import KvmTemplateEditForm
-from opennode.cli.actions.utils import (test_passwordless_ssh, setup_passwordless_ssh,
-                                        TemplateException, CommandException)
-from ovf.OvfFile import OvfFile
-from libvirt import libvirtError
-import tarfile
+from opennode.cli.forms import OpenvzModificationForm, OpenVZMigrationForm
+from opennode.cli.helpers import display_create_template, display_checkbox_selection
+from opennode.cli.helpers import display_selection, display_vm_type_select, display_info
+from opennode.cli.helpers import display_yesno
+
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -445,9 +447,9 @@ class OpenNodeTUI(object):
             return self.display_templates()
 
         if changed and not rename:
-            vm.update_template(ovf_file, new_values)
+            ovfutil.update_template(template_type, ovf_file, new_values)
         else:
-            vm.update_template_and_name(ovf_file, new_values, new_name)
+            ovfutil.update_template_and_name(template_type, ovf_file, new_values, new_name)
 
         display_info(self.screen, TITLE, 'Template "%s"\nmetadata successfully edited.' % template,
                      width=50, height=2)

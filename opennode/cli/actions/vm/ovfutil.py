@@ -4,6 +4,8 @@
 
 import os
 from ovf import Ovf, OvfLibvirt
+
+from opennode.cli.actions.utils import calculate_hash, save_to_tar
 from opennode.cli.config import get_config
 
 
@@ -273,3 +275,62 @@ def get_root_password(ovf_file):
     if not admin_field:
         return
     return admin_field[0].firstChild.nodeValue
+
+
+def update_template_and_name(vm_type, ovf_file, settings, new_name):
+    """ update .ovf and rename template
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    @param new_name: new name for template
+    """
+    unpacked_base = _get_unpacked_base(vm_type)
+
+    if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
+        return
+
+    ovf_file = update_referenced_files(ovf_file, settings['template_name'], new_name)
+    save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base, new_name + '.ovf'))
+    os.unlink(ovf_file.path)
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.scripts.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
+    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.tar.gz'),
+              os.path.join(unpacked_base, new_name + '.tar.gz'))
+    _package_files(vm_type, settings['template_name'], new_name)
+
+
+def update_template(vm_type, ovf_file, settings):
+    """ update .ovf and recreate tar archive
+    @param ovf_file: opened ovf.OvfFile object
+    @param settings: dictionary containing settings
+    """
+    save_cpu_mem_to_ovf(ovf_file, settings)
+    template = settings['template_name']
+    _package_files(vm_type, template)
+
+
+def _package_files(vm_type, template_name, new_name=None):
+    """ Package files to template and calculate hash.
+    @param template_name: name of the existing template
+    @param new_name: name for new template. Optional
+    """
+    if new_name is None:
+        new_name = template_name
+    unpacked_base = _get_unpacked_base(vm_type)
+
+    ## XXX: hack to cleanup templates no matter how they're named
+    try:
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova'))
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.ova.pfff'))
+    except OSError:
+        pass
+
+    try:
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar'))
+        os.unlink(os.path.join(unpacked_base, '..', template_name + '.tar.pfff'))
+    except OSError:
+        pass
+
+    tmpl_file = os.path.join(unpacked_base, '..', new_name + '.ova')
+    filelist = generate_ovf_archive_filelist(vm_type, new_name)
+    save_to_tar(tmpl_file, filelist)
+    calculate_hash(tmpl_file)
