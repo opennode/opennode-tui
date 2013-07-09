@@ -23,7 +23,6 @@ def get_ovf_template_settings(ovf_file):
     """ Parses ovf file and creates a dictionary of settings """
     settings = read_default_ovf_settings()
     read_ovf_settings(settings, ovf_file)
-    settings["template_name"] = path.basename(ovf_file.path)
     return settings
 
 
@@ -100,6 +99,8 @@ def read_ovf_settings(settings, ovf_file):
     @rtype: Dictionary
     """
 
+    settings["template_name"] = path.splitext(path.basename(ovf_file.path))[0]
+
     sys_type, sys_arch = ovfutil.get_vm_type(ovf_file).split("-")
     if sys_type != "kvm":
         raise TemplateException("The chosen template '%s' cannot run on KVM hypervisor." % sys_type)
@@ -128,6 +129,8 @@ def read_ovf_settings(settings, ovf_file):
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
     settings['passwd'] = ovfutil.get_root_password(ovf_file)
+    settings['username'] = ovfutil.get_admin_username(ovf_file)
+
     return settings
 
 
