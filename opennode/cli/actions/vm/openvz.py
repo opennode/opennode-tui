@@ -91,7 +91,7 @@ def read_ovf_settings(ovf_file):
     """
     settings = {}
 
-    settings["template_name"] = os.path.split(ovf_file.path)[1][:-4]
+    settings["template_name"] = os.path.splitext(os.path.basename(ovf_file.path))[0]
 
     vm_type = ovfutil.get_vm_type(ovf_file)
     if vm_type != "openvz":
