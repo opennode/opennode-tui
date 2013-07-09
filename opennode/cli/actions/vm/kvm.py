@@ -6,7 +6,6 @@ import operator
 import os
 import shutil
 import tarfile
-import time
 import xml.dom
 
 from ovf.OvfFile import OvfFile
@@ -668,8 +667,12 @@ def get_owner(uuid):
 def vm_metrics(conn, vm):
 
     def cpu_usage():
+        hn_stats = conn.getCPUStats(True, 0)
+        if hn_stats is None:
+            return 0.0
+
         time_now = (vm.getCPUStats(True, 0)[0]['cpu_time'],
-                    sum(conn.getCPUStats(True, 0).itervalues()))
+                    sum(hn_stats.itervalues()))
         time_was = roll_data('/tmp/kvm-vm-cpu-%s' % vm.ID(), time_now, [0] * 6)
         deltas = [yi - xi for yi, xi in zip(time_now, time_was)]
         try:
@@ -679,7 +682,7 @@ def vm_metrics(conn, vm):
         return cpu_pct
 
     def memory_usage():
-        return vm.memoryStats()['rss']
+        return vm.memoryStats()['rss'] / 1024.0
 
     return {'cpu_usage': cpu_usage(),
             'memory_usage': memory_usage(),}

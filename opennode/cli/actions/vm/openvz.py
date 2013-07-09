@@ -833,7 +833,7 @@ def clone_vm(ctid, new_ctid):
     execute('vzmlocal -C %s:%s' % (ctid, new_ctid))
 
 
-def vm_metrics(vm):
+def vm_metrics(conn, vm):
 
     def cpu_usage():
         time_list_now = map(int,

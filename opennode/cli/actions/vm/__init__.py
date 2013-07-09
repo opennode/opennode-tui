@@ -447,7 +447,7 @@ def metrics(conn):
     vm_metrics = get_module(vm_type).vm_metrics
 
     try:
-        return dict((get_uuid(vm), vm_metrics(vm)) for vm in
+        return dict((get_uuid(vm), vm_metrics(conn, vm)) for vm in
                     (conn.lookupByID(i) for i in conn.listDomainsID()))
     except libvirt.libvirtError:
         return {}
