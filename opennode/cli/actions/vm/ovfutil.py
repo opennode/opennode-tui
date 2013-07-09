@@ -272,7 +272,15 @@ def _get_unpacked_base(vm_type):
 def get_root_password(ovf_file):
     section = ovf_file.document.getElementsByTagName('opennodens:OpenNodeSection')
     admin_field = section[0].getElementsByTagName('AdminPassword')
-    if not admin_field:
+    if admin_field is None:
+        return
+    return admin_field[0].firstChild.nodeValue
+
+
+def get_admin_username(ovf_file):
+    section = ovf_file.document.getElementsByTagName('opennodens:OpenNodeSection')
+    admin_field = section[0].getElementsByTagName('AdminUsername')
+    if admin_field is None:
         return
     return admin_field[0].firstChild.nodeValue
 

@@ -128,6 +128,8 @@ def read_ovf_settings(settings, ovf_file):
     settings["disks"] = ovfutil.get_disks(ovf_file)
     settings["features"] = ovfutil.get_openode_features(ovf_file)
     settings['passwd'] = ovfutil.get_root_password(ovf_file)
+    settings['username'] = ovfutil.get_admin_user(ovf_file)
+
     return settings
 
 
