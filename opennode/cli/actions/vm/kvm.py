@@ -6,6 +6,7 @@ import operator
 import os
 import shutil
 import tarfile
+import time
 import xml.dom
 
 from ovf.OvfFile import OvfFile
@@ -631,26 +632,33 @@ def set_owner(uuid, owner):
         return
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
-    owner = ET.fromstring('<oms:owner xmlns:oms="urn:opennode-tui">%s</oms:owner>' % owner)
-    vm.setMetadata(vmid, ET.tostring(owner), None, None, 0x3)
+    tree = ET.fromstring(vm.XMLDesc(0))
+    domain = tree.find('domain')
+    metadata = ET.SubElement(domain, 'metadata')
+    owner = ET.SubElement(metadata, 'oms:owner')
+    owner.text = owner
+    conn.defineXML(tree.tostring())
+
+    data = open('/etc/libvirt/qemu/%s.xml' % (domain.find('name').text), 'r').read()
+    assert 'oms:owner' in data, 'Owner was not set after all!'
 
 
 def get_owner(uuid):
     """Get VM owner by id
     @param uuid: uuid of the VM
     """
-    log = get_logger()
     vmid = get_id_by_uuid(uuid)
-
     if not vmid:
-        log.warning('VM UUID: %s not found!' % (uuid))
         return
 
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
-    # XXX: assumes that this element will be the only one
-    metadata = ET.fromstring(vm.metadata(vmid, None, 1))
-    return metadata.text
+
+    tree = ET.fromstring(vm.XMLDesc(0))
+    domain = tree.find('domain')
+    owner = domain.find('oms:owner')
+    if owner:
+        return owner.text
 
 
 def vm_metrics(conn, vm):
