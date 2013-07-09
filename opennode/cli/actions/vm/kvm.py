@@ -632,32 +632,36 @@ def set_owner(uuid, owner):
         return
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
-    tree = ET.fromstring(vm.XMLDesc(0))
-    domain = tree.find('domain')
-    metadata = ET.SubElement(domain, 'metadata')
-    owner = ET.SubElement(metadata, 'oms:owner')
-    owner.text = owner
-    conn.defineXML(tree.tostring())
+    domain = ET.fromstring(vm.XMLDesc(0))
+    metadata = domain.find('./metadata') or ET.SubElement(domain, 'metadata')
+    owner_e = ET.SubElement(metadata, ET.QName('urn:opennode-tui', 'owner'))
+    owner_e.text = owner
 
-    data = open('/etc/libvirt/qemu/%s.xml' % (domain.find('name').text), 'r').read()
-    assert 'oms:owner' in data, 'Owner was not set after all!'
+    open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'w').write(ET.tostring(domain))
 
+    data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
+    domain_n = ET.fromstring(data)
+    owner_e = domain_n.find('./metadata/{urn:opennode-tui}owner')
+    assert owner_e is not None
+    assert owner_e.text == owner
+    return owner_e.text
 
 def get_owner(uuid):
     """Get VM owner by id
     @param uuid: uuid of the VM
     """
     vmid = get_id_by_uuid(uuid)
+
     if not vmid:
         return
 
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
 
-    tree = ET.fromstring(vm.XMLDesc(0))
-    domain = tree.find('domain')
-    owner = domain.find('oms:owner')
-    if owner:
+    data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
+    domain = ET.fromstring(data)
+    owner = domain.find('./metadata/{urn:opennode-tui}owner')
+    if owner is not None:
         return owner.text
 
 
