@@ -213,8 +213,9 @@ class KvmTemplateForm(Form):
                                    display_name="min vcpu", required=False)
         self.vcpu_max = FloatField("vcpu_max", settings.get("vcpu_max", ""),
                                    display_name="max vcpu", required=False)
-        self.password = PasswordField("passwd", settings["passwd"], display_name="password")
-        self.password2 = PasswordField("passw2", settings["passwd"], display_name="password")
+        self.username = StringField("username", settings.get("username", ''), display_name="username")
+        self.password = PasswordField("passwd", settings.get("passwd", ''), display_name="password")
+        self.password2 = PasswordField("passw2", settings.get("passwd", ''), display_name="password")
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max,
                                             self.vcpu, self.vcpu_min, self.vcpu_max])
 
@@ -229,6 +230,8 @@ class KvmTemplateForm(Form):
             (Textbox(20, 1, "Number of CPUs:", 0, 0), self.vcpu),
             (Textbox(20, 1, "Min number of CPUs:", 0, 0), self.vcpu_min),
             (Textbox(20, 1, "Max number of CPUs:", 0, 0), self.vcpu_max),
+            separator,
+            (Textbox(20, 1, "Default admin:", 0, 0), self.username),
             separator,
             (Textbox(20, 1, "Root password:", 0, 0), self.password),
             (Textbox(20, 1, "Root password x2:", 0, 0), self.password2),
@@ -411,17 +414,23 @@ class GenericTemplateEditForm(Form):
 class KvmTemplateEditForm(GenericTemplateEditForm):
 
     def _define_fields(self, settings):
+        self.username = StringField('username', settings.get('username', ''), display_name='username',
+                                    required=False)
         self.password = PasswordField('passwd', settings['passwd'],
                                       display_name='password', required=True)
         self.password2 = PasswordField('passwd2', settings['passwd'],
                                              display_name='password', required=True)
         fields = super(KvmTemplateEditForm, self)._define_fields(settings)
+        fields.append(self.username)
         fields.append(self.password)
         fields.append(self.password2)
         return fields
 
     def _define_view(self, button_save, button_exit):
         rows = super(KvmTemplateEditForm, self)._define_view(button_save, button_exit)
+        rows.insert(-2, self.separator)
+        rows.insert(-2, (Textbox(20, 1, 'Default admin:', 0, 0), self.username))
+        rows.insert(-2, self.separator)
         rows.insert(-2, (Textbox(20, 1, 'Password:', 0, 0), self.password))
         rows.insert(-2, (Textbox(20, 1, 'Password x2:', 0, 0), self.password2))
         return rows

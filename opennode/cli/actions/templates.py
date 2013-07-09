@@ -193,11 +193,12 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
 def get_local_templates(vm_type, storage_pool=None):
     """Returns a list of templates of a certain vm_type from the storage pool"""
     config = get_config()
+
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
-    return [tmpl[:-4] for tmpl in
-            os.listdir("%s/%s" % (storage.get_pool_path(storage_pool),
-                                  vm_type))
+
+    return [os.path.splitext(tmpl)[0] for tmpl in
+            os.listdir("%s/%s" % (storage.get_pool_path(storage_pool), vm_type))
             if tmpl.endswith('tar') or tmpl.endswith('ova')]
 
 

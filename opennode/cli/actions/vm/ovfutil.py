@@ -241,7 +241,7 @@ def update_referenced_files(ovf_file, template_name, new_name):
     return ovf_file
 
 
-def generate_ovf_archive_filelist(template_type, template_name, new_name=None):
+def generate_ovf_archive_filelist(template_type, ovf_file, template_name, new_name=None):
     """ Generates list of files to add to tar archive
     @param template_type: 'openvz' or 'kvm'
     @param template_name: template name to use
@@ -250,14 +250,24 @@ def generate_ovf_archive_filelist(template_type, template_name, new_name=None):
     if new_name is None:
         new_name = template_name
     unpacked_base = _get_unpacked_base(template_type)
-    filenames = []
-    filenames.append((os.path.join(unpacked_base, template_name + '.scripts.tar.gz'),
-                      new_name + '.scripts.tar.gz'))
-    filenames.append((os.path.join(unpacked_base, template_name + '.tar.gz'),
-                      new_name + '.tar.gz'))
-    filenames.append((os.path.join(unpacked_base, template_name + '.ovf'),
-                      new_name + '.ovf'))
-    return filenames
+    filenames = set()
+
+    def suffix_filename_pair(suffix):
+        return (os.path.join(unpacked_base, template_name + suffix), new_name + suffix)
+
+    if template_type == 'openvz':
+        filenames.add(suffix_filename_pair('.scripts.tar.gz'))
+    elif template_type in ('kvm', 'qemu'):
+        filenames.add(suffix_filename_pair('.img'))
+
+    envelope_dom = ovf_file.document.getElementsByTagName("Envelope")[0]
+    references_section_dom = envelope_dom.getElementsByTagName("References")[0]
+    file_dom_list = references_section_dom.getElementsByTagName("File")
+    for file_dom in file_dom_list:
+        filenames.add(os.path.join(unpacked_base, file_dom.getAttribute("ovf:href")))
+
+    filenames.add(suffix_filename_pair('.ovf'))
+    return list(filenames)
 
 
 def _get_unpacked_base(vm_type):
@@ -272,7 +282,7 @@ def _get_unpacked_base(vm_type):
 def get_root_password(ovf_file):
     section = ovf_file.document.getElementsByTagName('opennodens:OpenNodeSection')
     admin_field = section[0].getElementsByTagName('AdminPassword')
-    if admin_field is None:
+    if not admin_field:
         return
     return admin_field[0].firstChild.nodeValue
 
@@ -280,7 +290,7 @@ def get_root_password(ovf_file):
 def get_admin_username(ovf_file):
     section = ovf_file.document.getElementsByTagName('opennodens:OpenNodeSection')
     admin_field = section[0].getElementsByTagName('AdminUsername')
-    if admin_field is None:
+    if not admin_field:
         return
     return admin_field[0].firstChild.nodeValue
 
@@ -299,11 +309,20 @@ def update_template_and_name(vm_type, ovf_file, settings, new_name):
     ovf_file = update_referenced_files(ovf_file, settings['template_name'], new_name)
     save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base, new_name + '.ovf'))
     os.unlink(ovf_file.path)
-    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.scripts.tar.gz'),
-              os.path.join(unpacked_base, new_name + '.scripts.tar.gz'))
-    os.rename(os.path.join(unpacked_base, settings['template_name'] + '.tar.gz'),
-              os.path.join(unpacked_base, new_name + '.tar.gz'))
-    _package_files(vm_type, settings['template_name'], new_name)
+
+    template_name = settings['template_name']
+
+    def suffix_filename_pair(suffix):
+        return (os.path.join(unpacked_base, template_name + suffix),
+                os.path.join(unpacked_base, new_name + suffix))
+
+    if vm_type == 'openvz':
+        os.rename(suffix_filename_pair('.scripts.tar.gz'))
+        os.rename(suffix_filename_pair('.tar.gz'))
+    elif vm_type in ('kvm', 'qemu'):
+        os.rename(suffix_filename_pair('.img'))
+
+    _package_files(vm_type, ovf_file, template_name, new_name)
 
 
 def update_template(vm_type, ovf_file, settings):
@@ -313,10 +332,10 @@ def update_template(vm_type, ovf_file, settings):
     """
     save_cpu_mem_to_ovf(ovf_file, settings)
     template = settings['template_name']
-    _package_files(vm_type, template)
+    _package_files(vm_type, ovf_file, template)
 
 
-def _package_files(vm_type, template_name, new_name=None):
+def _package_files(vm_type, ovf_file, template_name, new_name=None):
     """ Package files to template and calculate hash.
     @param template_name: name of the existing template
     @param new_name: name for new template. Optional
@@ -339,6 +358,6 @@ def _package_files(vm_type, template_name, new_name=None):
         pass
 
     tmpl_file = os.path.join(unpacked_base, '..', new_name + '.ova')
-    filelist = generate_ovf_archive_filelist(vm_type, new_name)
+    filelist = generate_ovf_archive_filelist(vm_type, ovf_file, new_name)
     save_to_tar(tmpl_file, filelist)
     calculate_hash(tmpl_file)
