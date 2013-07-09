@@ -156,6 +156,7 @@ def prepare_file_system(settings, storage_pool):
         - convert block device based images to file based images
     """
     config = get_config()
+    log = get_logger()
     images_dir = path.join(config.getstring("general", "storage-endpoint"),
                            storage_pool, "images")
     target_dir = path.join(config.getstring("general", "storage-endpoint"),
@@ -168,6 +169,19 @@ def prepare_file_system(settings, storage_pool):
                                                    volume_name, disk.get('template_format', 'qcow2'))
             disk_deploy_path = path.join(images_dir, disk["source_file"])
             shutil.copy2(disk_template_path, disk_deploy_path)
+            # resize disk to match the requested
+            # XXX we assume that the size was already adjusted to the template requirements
+            diskspace = settings.get('disk')
+            if diskspace:
+                # get the disk size
+                current_size = int(execute("qemu-img info %s |grep 'virtual size' |awk '{print $4}' |cut -b2- "
+                                   % disk_deploy_path)) / 1024 / 1024  # to get to GB
+                if diskspace > current_size:
+                    log.info('Increasing image file %s to %sG' % (disk_deploy_path, diskspace))
+                    execute("qemu-img resize %s %sG" (disk_deploy_path, diskspace))
+                else:
+                    log.warning('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
+                                % (disk_deploy_path, diskspace, diskspace))
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
