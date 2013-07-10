@@ -14,9 +14,9 @@ from opennode.cli.actions.utils import delete, calculate_hash, execute_in_screen
 from opennode.cli.actions.utils import urlopen, TemplateException
 from opennode.cli.log import get_logger
 
-__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool',
-           'sync_template', 'delete_template', 'unpack_template', 'get_local_templates',
-           'sync_oms_template', 'is_fresh', 'is_syncing']
+__all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool', 'sync_template',
+           'delete_template', 'unpack_template', 'get_local_templates', 'sync_oms_template', 'is_fresh',
+           'is_syncing']
 
 
 log = get_logger()
@@ -29,7 +29,7 @@ def _simple_download_hook(count, blockSize, totalSize):
 
 
 def get_template_repos():
-    """Return a formatted list of strings describing configured repositories"""
+    """Return a list of formatted strings describing configured repositories"""
     config = get_config()
     repo_groups = config.getstring('general', 'repo-groups').split(',')
     result = []

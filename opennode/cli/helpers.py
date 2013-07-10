@@ -3,9 +3,9 @@ import re
 
 from opennode.cli import actions
 
-from snack import (Textbox, Entry, Button, Listbox, Grid, Scale, Form,
-                   ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp,
-                   ButtonChoiceWindow, ListboxChoiceWindow, Label)
+from snack import Textbox, Entry, Button, Listbox, Grid, Scale, Form
+from snack import ButtonBar, TextboxReflowed, CheckboxTree, GridFormHelp
+from snack import ButtonChoiceWindow, ListboxChoiceWindow
 
 
 class DownloadMonitor():
@@ -121,7 +121,6 @@ def display_selection(screen, title, list_of_items, subtitle, default=None,
             return (action, selection)  # customized buttons
     else:
         ButtonChoiceWindow(screen, title, 'Sorry, there are no items to choose from.', ['Back'])
-    return
 
 
 def display_checkbox_selection(screen, title, list_of_items, subtitle):
@@ -136,7 +135,6 @@ def display_checkbox_selection(screen, title, list_of_items, subtitle):
         ButtonChoiceWindow(screen, title,
                            'Sorry, there are no items to choose from',
                            ['Back'])
-    return
 
 
 def display_vm_type_select(screen, title):
