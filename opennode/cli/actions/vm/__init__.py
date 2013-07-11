@@ -184,6 +184,8 @@ def _render_vm(conn, vm):
                 total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
         except CommandException:
             total_bytes = 0.0
+        except ValueError:
+            total_bytes = 0.0
         return {'/': total_bytes}
 
     def vm_swap(vm):
