@@ -347,6 +347,9 @@ def deploy_vm(conn, *args, **kwargs):
         vm_parameters = {}
 
     vm_parameters.update(kwargs)
+    # XXX: unsafe conversion
+    vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
+
     _deploy_vm(vm_parameters)
 
     owner = vm_parameters.get('owner')
@@ -476,17 +479,17 @@ def _deploy_vm(vm_parameters, logger=None):
         raise Exception("Cannot deploy because template is '%s'" % (template))
 
     if vm_type == 'openvz':
+        uuid = vm_parameters['uuid']
         try:
-            uuid = vm_parameters['uuid']
             conn = libvirt.open('openvz:///system')
             deployed_uuid_list = [ivm['uuid'] for ivm in _list_vms(conn)]
 
-            logging.info('Deploying %s: %s', uuid, deployed_uuid_list)
             if uuid in deployed_uuid_list:
                 msg = ('Deployment failed: a VM with UUID %s is already deployed '
                        '(%s)' % (uuid, deployed_uuid_list))
                 logging.error(msg)
                 return
+            logging.info('Deploying %s: %s', uuid, deployed_uuid_list)
         finally:
             conn.close()
 
