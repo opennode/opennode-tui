@@ -170,7 +170,7 @@ class BasicURLOpener(urllib.FancyURLopener):
         return (self.username, self.password)
 
 
-def download(remote, local, continue_=False):
+def download(remote, local, continue_=False, silent=False):
     """Download a remote file to a local file, using optional username/password
     for basic HTTP authentication. Using cURL as external dependency"""
     msg = "Getting remote file %s" % remote
@@ -191,6 +191,9 @@ def download(remote, local, continue_=False):
             curl_cmd += ['--anyauth', '--user', userauth]
     else:
         curl_cmd.append('-L')
+
+    if silent:
+        curl_cmd += ['-s']
 
     if continue_:
         curl_cmd += ['-C', '-']

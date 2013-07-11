@@ -84,7 +84,7 @@ def sync_storage_pool(storage_pool, remote_repo, templates,
     execute_in_screen('OPENNODE-SYNC', 'python -c "%s"' % cli_command)
 
 
-def sync_template(remote_repo, template, storage_pool):
+def sync_template(remote_repo, template, storage_pool, silent=False):
     """Synchronizes local template (cache) with the remote one (master)"""
     config = get_config()
     url = config.getstring(remote_repo, 'url')
@@ -111,10 +111,10 @@ def sync_template(remote_repo, template, storage_pool):
         # for resilience
         retry += 1
         storage.prepare_storage_pool(storage_pool)
-        download("%s.%s" % (remotefile, extension),
-                 unfinished_local, continue_=True)
+        download("%s.%s" % (remotefile, extension), unfinished_local, continue_=True, silent=silent)
+
         r_template_hash = "%s.%s.pfff" % (remotefile, extension)
-        download(r_template_hash, unfinished_local_hash, continue_=True)
+        download(r_template_hash, unfinished_local_hash, continue_=True, silent=silent)
 
     os.rename(unfinished_local, '%s.%s' % (localfile, extension))
     os.rename(unfinished_local_hash, '%s.%s.pfff' % (localfile, extension))
@@ -154,8 +154,7 @@ def delete_template(storage_pool, vm_type, template):
         templatefile = os.path.splitext(templatefile)[0] + '.ova'
     tmpl = tarfile.open(templatefile)
     for packed_file in tmpl.getnames():
-        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type,
-                                        packed_file)
+        fnm = "%s/%s/%s/unpacked/%s" % (storage_endpoint, storage_pool, vm_type, packed_file)
         if not os.path.isdir(fnm):
             delete(fnm)
         else:
@@ -221,7 +220,8 @@ def is_fresh(localfile, remotefile, unfinished=False):
     remote_hashfile.close()
     # get a local one
     try:
-        with open("%s.%s.pfff%s" % (localfile, extension, '.unfinished' if unfinished else ''), 'r') as f:
+        with open("%s.%s.pfff%s" % (localfile, extension,
+                                    '.unfinished' if unfinished else ''), 'r') as f:
             local_hash = f.read()
     except IOError:
         # no local hash found
