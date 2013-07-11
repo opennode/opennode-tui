@@ -55,5 +55,6 @@ class TestOpenVZ(BaseTestCase):
 
         expected_path = '/storage/%s/openvz/unpacked/%s.ovf' % (self.testsp, template)
         assert os.path.exists(expected_path), expected_path
-        assert vmuuid in map(lambda v: v['uuid'], vms)
-
+        assert vmuuid in map(lambda v: v['uuid'], vms), "%s" % map(lambda v: v['uuid'], vms)
+        nvm = filter(lambda v: v['uuid'] == vmuuid, vms)
+        assert nvm[0]['vm_type'] == 'openvz'
