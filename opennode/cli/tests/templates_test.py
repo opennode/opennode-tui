@@ -8,12 +8,21 @@ class TestTemplates(unittest.TestCase):
 
     def setUp(self):
         self._cleanup = []
-        self.testsp = 'testing-pool'
+        self.testsp = 'testing'
         storage.add_pool(self.testsp)
 
     def tearDown(self):
         for cleanupf, args, kwargs in self._cleanup:
-            cleanupf(*args, **kwargs)
+            try:
+                cleanupf(*args, **kwargs)
+            except Exception:
+                pass
+
+        try:
+            storage.delete_pool(self.testsp)
+        except Exception:
+            pass
+
 
     def _addCleanup(self, f, *args, **kwargs):
         """ unittest2-inspired resource management """
@@ -42,9 +51,11 @@ class TestTemplates(unittest.TestCase):
         template_list = templates.get_template_list(remote_repo)
         template = template_list[0]
 
+        local_templates = templates.get_local_templates('openvz', self.testsp)
+        assert len(local_templates) == 0
+
         self._addCleanup(templates.delete_template, self.testsp, 'openvz', template)
-        templates.sync_storage_pool(self.testsp, remote_repo, [template])
+        templates.sync_template(remote_repo, template, self.testsp)
 
         local_templates = templates.get_local_templates('openvz', self.testsp)
         assert len(local_templates) > 0
-
