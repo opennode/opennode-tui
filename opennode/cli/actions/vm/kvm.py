@@ -178,7 +178,7 @@ def prepare_file_system(settings, storage_pool):
                                    % disk_deploy_path)) / 1024 / 1024  # to get to GB
                 if diskspace > current_size:
                     log.info('Increasing image file %s to %sG' % (disk_deploy_path, diskspace))
-                    execute("qemu-img resize %s %sG" (disk_deploy_path, diskspace))
+                    execute("qemu-img resize %s %sG" % (disk_deploy_path, diskspace))
                 else:
                     log.warning('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
                                 % (disk_deploy_path, diskspace, diskspace))
