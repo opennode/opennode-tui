@@ -352,8 +352,10 @@ def deploy_vm(conn, *args, **kwargs):
         vm_parameters = {}
 
     vm_parameters.update(kwargs)
-    # XXX: unsafe conversion
-    vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
+
+    if 'nameservers' in vm_parameters:
+        # XXX: unsafe conversion
+        vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
 
     _deploy_vm(vm_parameters)
 
