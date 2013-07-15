@@ -29,6 +29,23 @@ vm_types = {
 _connections = {}
 
 
+def vm_method_kw(fun):
+    @wraps(fun)
+    def wrapper(backend, *args, **kwargs):
+        conn = _connection(backend)
+
+        try:
+            # strip async func specific junk args (ON-429)
+            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
+                args = args[:-1]
+	    return fun(conn, *args, **kwargs)
+        finally:
+            if backend.startswith('test://') and backend != 'test:///default':
+                _dump_state(conn, '/tmp/func_vm_test_state.xml')
+
+    return wrapper
+
+
 def vm_method(fun):
     @wraps(fun)
     def wrapper(backend, *args, **kwargs):
@@ -38,18 +55,12 @@ def vm_method(fun):
             # strip async func specific junk args (ON-429)
             if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
                 args = args[:-1]
-            # try without keyword arguments when function fails with typeerror due to unexpected kwargs
-            # XXX: it's a potential performance issue!
-            try:
-                return fun(conn, *args, **kwargs)
-            except TypeError:
-                return fun(conn, *args)
+            return fun(conn, *args)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
 
     return wrapper
-
 
 def backends():
     return get_config().getstring('general', 'backends').split(',')
@@ -343,7 +354,7 @@ def resume_vm(conn, uuid):
     dom.resume()
 
 
-@vm_method
+@vm_method_kw
 def deploy_vm(conn, *args, **kwargs):
     if args:
         vm_parameters = eval(args[0]) if type(args[0]) is str else args[0]
@@ -353,9 +364,8 @@ def deploy_vm(conn, *args, **kwargs):
 
     vm_parameters.update(kwargs)
 
-    if 'nameservers' in vm_parameters:
-        # XXX: unsafe conversion
-        vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
+    # XXX: unsafe conversion
+    vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
 
     _deploy_vm(vm_parameters)
 
@@ -541,7 +551,7 @@ def _get_stopped_vm_ids(conn):
         return conn.listDefinedDomains()
 
 
-@vm_method
+@vm_method_kw
 def update_vm(conn, uuid, *args, **kwargs):
     """
     Update VM parameters
@@ -578,7 +588,7 @@ def update_vm(conn, uuid, *args, **kwargs):
         action_map.get(key, unknown_param)(value)
 
 
-@vm_method
+@vm_method_kw
 def migrate(conn, uuid, target_host, *args, **kwargs):
     """ Migrate VM to another host """
     if conn.getType() == 'OpenVZ':
@@ -616,7 +626,7 @@ def change_ctid(conn, uuid, new_ctid):
         raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
-@vm_method
+@vm_method_kw
 def clone_vm(conn, uuid, *args, **kwargs):
     settings = kwargs
     settings.update(args[0] if (len(args) == 1 and
