@@ -294,7 +294,7 @@ def list_vms(conn):
 @vm_method
 def info_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    return _render_vm(dom)
+    return _render_vm(conn, dom)
 
 
 @vm_method
