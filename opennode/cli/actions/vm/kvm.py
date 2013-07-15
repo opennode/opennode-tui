@@ -1,4 +1,3 @@
-from contextlib import closing
 from os import path
 from xml.etree import ElementTree as ET
 import libvirt
@@ -145,7 +144,7 @@ def deploy(settings, storage_pool):
     log.info("Finalyzing KVM template deployment...")
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
-    log.info("Done!")
+    log.info("Deployment done!")
 
 
 def prepare_file_system(settings, storage_pool):
@@ -372,6 +371,11 @@ def generate_libvirt_conf(settings):
             interface_mac_dom = libvirt_conf_dom.createElement("mac")
             interface_mac_dom.setAttribute("address", interface["mac"])
             interface_dom.appendChild(interface_mac_dom)
+        elif 'mac_address' in settings:
+            interface_mac_dom = libvirt_conf_dom.createElement("mac")
+            interface_mac_dom.setAttribute("address", settings["mac_address"])
+            interface_dom.appendChild(interface_mac_dom)
+
         # add nwfilter agasin MAC spoofing, if IP is provided
         # XXX only one IP is expected to be provided - so we currently limit traffic from all ifaces for that IP
         if 'ip_address' in settings:
