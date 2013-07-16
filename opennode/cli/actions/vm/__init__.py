@@ -33,16 +33,27 @@ _connections = {}
 __context__ = {}
 
 
+def strip_async_func_junk(args):
+    # strip async func specific junk args (ON-429)
+    def cleanup_conditions(args):
+        yield args
+        yield isinstance(args[-1], dict)
+        yield args[-1].get('job_id')
+        yield args[-1].get('__logger__')
+
+    if all(cleanup_conditions(args)):
+        args = args[:-1]
+
+    return args
+
 def vm_method_kw(fun):
     @wraps(fun)
     def wrapper(backend, *args, **kwargs):
         conn = _connection(backend)
 
         try:
-            # strip async func specific junk args (ON-429)
-            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                args = args[:-1]
-	    return fun(conn, *args, **kwargs)
+            args = strip_async_func_junk(args)
+            return fun(conn, *args, **kwargs)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
@@ -56,15 +67,14 @@ def vm_method(fun):
         conn = _connection(backend)
 
         try:
-            # strip async func specific junk args (ON-429)
-            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                args = args[:-1]
+            args = strip_async_func_junk(args)
             return fun(conn, *args)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
 
     return wrapper
+
 
 def backends():
     return get_config().getstring('general', 'backends').split(',')
@@ -204,10 +214,9 @@ def _render_vm(conn, vm):
         return {'/': total_bytes}
 
     def vm_swap(vm):
+        # we don't support the notion of swap disks for libvirt/KVM for now
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
-        # we don't support the notion of swap disks for libvirt/KVM for now
-        return
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':
@@ -384,7 +393,14 @@ def deploy_vm(conn, *args, **kwargs):
 @vm_method
 def undeploy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.undefine()
+    dom.destroy()
+    dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE |
+                      libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+
+    vm_type = conn.getType().lower()
+    cleanup = getattr(get_module(vm_type), 'cleanup', None)
+    if callable(cleanup):
+        cleanup(conn, dom)
 
 
 @vm_method
