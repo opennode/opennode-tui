@@ -26,7 +26,11 @@ vm_types = {
     'qemu': kvm,  # synonym for kvm in our case
 }
 
+
 _connections = {}
+
+
+__context__ = {}
 
 
 def vm_method_kw(fun):
