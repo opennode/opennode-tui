@@ -192,7 +192,7 @@ def _render_vm(conn, vm):
             total_bytes = 0.0
             for dev_path in devices:
                 cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
-                total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
+                total_bytes += int(execute(cmd)) / 1024.0 / 1024.0 # we want result to be in MB
         except CommandException:
             total_bytes = 0.0
         except ValueError:
