@@ -2,6 +2,10 @@ import sys
 
 from opennode.cli.actions import oms, console, host, templates, storage, vm, sysresources, network
 
+
+__context__ = {}
+
+
 def smolt_hardware_info():
     """ Get hardware information from smolt. """
     try:
@@ -62,15 +66,23 @@ def _extract_callables(mod, package, level):
 
 __all__ = []
 
-def _generate_classes():
 
+def _generate_classes():
     _canonical_name = 'opennode.cli.actions'
+
     for name, mod in globals().items():
+
         if type(mod) is not type(oms):
             continue
+
+        if not hasattr(mod, '__context__'):
+            mod.__context__ = {}
+
         if mod.__name__.startswith(_canonical_name):
             _extract_callables(mod, _canonical_name, 0)
 
+
 _generate_classes()
+
 
 __all__ = [oms, console, host, templates, storage, vm, sysresources, network, hardware_info]
