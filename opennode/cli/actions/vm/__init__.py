@@ -142,8 +142,10 @@ def list_vm_ids(backend):
     conn = _connection(backend)
     return map(str, conn.listDefinedDomains() + conn.listDomainsID())
 
+
 def get_uuid(vm):
     return str(UUID(bytes=vm.UUID()))
+
 
 def _render_vm(conn, vm):
     STATE_MAP = {
@@ -393,12 +395,16 @@ def deploy_vm(conn, *args, **kwargs):
 @vm_method
 def undeploy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.destroy()
+
+    if dom.info()[0] < libvirt.VIR_DOMAIN_SHUTDOWN:
+        dom.destroy()
+
     dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE |
                       libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
 
     vm_type = conn.getType().lower()
     cleanup = getattr(get_module(vm_type), 'cleanup', None)
+
     if callable(cleanup):
         cleanup(conn, dom)
 
