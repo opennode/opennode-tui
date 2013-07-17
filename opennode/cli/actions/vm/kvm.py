@@ -717,7 +717,7 @@ def vm_metrics(conn, vm):
 
 def compile_cleanup(conn, vm):
     domain = ET.fromstring(vm.XMLDesc(0))
-    disk_elements = domain.findall('./devices/disk[@type=file,@device=disk]')
+    disk_elements = domain.findall('./devices/disk[@type="file" and @device="disk"]')
 
     cleanup_list = []
 
