@@ -717,13 +717,22 @@ def vm_metrics(conn, vm):
 
 def compile_cleanup(conn, vm):
     domain = ET.fromstring(vm.XMLDesc(0))
-    disk_elements = domain.findall('./devices/disk[@type="file" and @device="disk"]')
+    # Requires Python 2.7+
+    #disk_elements = domain.findall('./devices/disk[@type="file"]/.[@device="disk"]')
+    disk_elements = domain.findall('./devices/disk')
 
     cleanup_list = []
 
     for disk in disk_elements:
-        source = disk.find('./source[@file]')
-        if os.path.exists(source.file):
-            cleanup_list.append(source.file)
+        if disk.attrib.get('type') != 'file' or disk.attrib('device') != 'disk':
+            continue
+
+        source = disk.find('./source')
+
+        if not source.attrib('file'):
+            continue
+
+        if os.path.exists(source.attrib.get('file')):
+            cleanup_list.append(source.attrib.get('file'))
 
     return cleanup_list
