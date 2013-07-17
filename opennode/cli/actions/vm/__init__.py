@@ -11,10 +11,10 @@ from ovf.OvfFile import OvfFile
 
 from opennode.cli.actions.storage import get_pool_path
 from opennode.cli.actions.utils import execute, CommandException
+from opennode.cli.actions.utils import cleanup_files
 from opennode.cli.actions.vm import kvm, openvz
 from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
-from opennode.cli.utils import cleanup_files
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
            'destroy_vm', 'reboot_vm', 'suspend_vm', 'resume_vm', 'deploy_vm',
