@@ -722,12 +722,12 @@ def compile_cleanup(conn, vm):
     cleanup_list = []
 
     for disk in disk_elements:
-        if disk.attrib.get('type') != 'file' or disk.attrib('device') != 'disk':
+        if disk.attrib.get('type') != 'file' or disk.attrib.get('device') != 'disk':
             continue
 
         source = disk.find('./source')
 
-        if not source.attrib('file'):
+        if not source.attrib.get('file'):
             continue
 
         if os.path.exists(source.attrib.get('file')):
