@@ -248,3 +248,9 @@ def save_to_tar(tar_filename, filelist):
     for f in filelist:
         tmpl.add(f[0], arcname=f[1])
     tmpl.close()
+
+
+def cleanup_files(cleanup_list):
+    for f in cleanup_list:
+        if os.path.exists(f):
+            os.unlink(f)

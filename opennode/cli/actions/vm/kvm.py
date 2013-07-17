@@ -715,7 +715,7 @@ def vm_metrics(conn, vm):
             'memory_usage': memory_usage(),}
 
 
-def cleanup(conn, vm):
+def compile_cleanup(conn, vm):
     domain = ET.fromstring(vm.XMLDesc(0))
     disk_elements = domain.findall('./devices/disk[@type=file,@device=disk]')
 
@@ -726,5 +726,4 @@ def cleanup(conn, vm):
         if os.path.exists(source.file):
             cleanup_list.append(source.file)
 
-    for f in cleanup_list:
-        os.unlink(f)
+    return cleanup_list
