@@ -1,5 +1,7 @@
+from contextlib import closing
 from os import path
 from xml.etree import ElementTree as ET
+
 import libvirt
 import operator
 import os
@@ -648,8 +650,10 @@ def set_owner(uuid, owner):
     @param owner: string representing owner
     """
     vmid = get_id_by_uuid(uuid)
+
     if not vmid:
         return
+
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
     domain = ET.fromstring(vm.XMLDesc(0))
@@ -657,6 +661,7 @@ def set_owner(uuid, owner):
     owner_e = ET.SubElement(metadata, ET.QName('urn:opennode-tui', 'owner'))
     owner_e.text = owner
 
+    ## TODO: cleanup
     open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'w').write(ET.tostring(domain))
 
     data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
@@ -665,6 +670,7 @@ def set_owner(uuid, owner):
     assert owner_e is not None
     assert owner_e.text == owner
     return owner_e.text
+
 
 def get_owner(uuid):
     """Get VM owner by id
@@ -707,3 +713,24 @@ def vm_metrics(conn, vm):
 
     return {'cpu_usage': cpu_usage(),
             'memory_usage': memory_usage(),}
+
+
+def compile_cleanup(conn, vm):
+    domain = ET.fromstring(vm.XMLDesc(0))
+    disk_elements = domain.findall('./devices/disk')
+
+    cleanup_list = []
+
+    for disk in disk_elements:
+        if disk.attrib.get('type') != 'file' or disk.attrib.get('device') != 'disk':
+            continue
+
+        source = disk.find('./source')
+
+        if not source.attrib.get('file'):
+            continue
+
+        if os.path.exists(source.attrib.get('file')):
+            cleanup_list.append(source.attrib.get('file'))
+
+    return cleanup_list

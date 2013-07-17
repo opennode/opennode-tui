@@ -9,10 +9,11 @@ import urlparse
 
 from ovf.OvfFile import OvfFile
 
-from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.actions.utils import execute, CommandException
-from opennode.cli.config import get_config
 from opennode.cli.actions.storage import get_pool_path
+from opennode.cli.actions.utils import execute, CommandException
+from opennode.cli.actions.utils import cleanup_files
+from opennode.cli.actions.vm import kvm, openvz
+from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
@@ -33,16 +34,27 @@ _connections = {}
 __context__ = {}
 
 
+def strip_async_func_junk(args):
+    # strip async func specific junk args (ON-429)
+    def cleanup_conditions(args):
+        yield args
+        yield isinstance(args[-1], dict)
+        yield args[-1].get('job_id')
+        yield args[-1].get('__logger__')
+
+    if all(cleanup_conditions(args)):
+        args = args[:-1]
+
+    return args
+
 def vm_method_kw(fun):
     @wraps(fun)
     def wrapper(backend, *args, **kwargs):
         conn = _connection(backend)
 
         try:
-            # strip async func specific junk args (ON-429)
-            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                args = args[:-1]
-	    return fun(conn, *args, **kwargs)
+            args = strip_async_func_junk(args)
+            return fun(conn, *args, **kwargs)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
@@ -56,15 +68,14 @@ def vm_method(fun):
         conn = _connection(backend)
 
         try:
-            # strip async func specific junk args (ON-429)
-            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                args = args[:-1]
+            args = strip_async_func_junk(args)
             return fun(conn, *args)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
 
     return wrapper
+
 
 def backends():
     return get_config().getstring('general', 'backends').split(',')
@@ -132,8 +143,10 @@ def list_vm_ids(backend):
     conn = _connection(backend)
     return map(str, conn.listDefinedDomains() + conn.listDomainsID())
 
+
 def get_uuid(vm):
     return str(UUID(bytes=vm.UUID()))
+
 
 def _render_vm(conn, vm):
     STATE_MAP = {
@@ -204,10 +217,9 @@ def _render_vm(conn, vm):
         return {'/': total_bytes}
 
     def vm_swap(vm):
+        # we don't support the notion of swap disks for libvirt/KVM for now
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
-        # we don't support the notion of swap disks for libvirt/KVM for now
-        return
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':
@@ -384,7 +396,19 @@ def deploy_vm(conn, *args, **kwargs):
 @vm_method
 def undeploy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.undefine()
+
+    if dom.info()[0] < libvirt.VIR_DOMAIN_SHUTDOWN:
+        dom.destroy()
+
+    vm_type = conn.getType().lower()
+    compile_cleanup = getattr(get_module(vm_type), 'compile_cleanup', None)
+
+    cleanup_list = compile_cleanup(conn, dom) if callable(compile_cleanup) else []
+
+    dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE |
+                      libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+
+    cleanup_files(cleanup_list)
 
 
 @vm_method
