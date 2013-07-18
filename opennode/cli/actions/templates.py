@@ -19,6 +19,9 @@ __all__ = ['get_template_repos', 'get_template_list', 'sync_storage_pool', 'sync
            'is_syncing']
 
 
+__context__ = {}
+
+
 log = get_logger()
 
 
@@ -133,13 +136,12 @@ def import_template(template, vm_type, storage_pool=None):
         raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
     extension = 'ova' if template.endswith('ova') else 'tar'
     tmpl_name = os.path.basename(template)
-    target_file = os.path.join(storage.get_pool_path(storage_pool),
-                               vm_type, tmpl_name)
+    target_file = os.path.join(storage.get_pool_path(storage_pool), vm_type, tmpl_name)
     log.info("Copying template to the storage pool...")
     log.info("%s %s" % (template, target_file))
     shutil.copyfile(template, target_file)
     calculate_hash(target_file)
-    log.info("Unpacking...")
+    log.info("Unpacking template...")
     unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.%s' % extension))
 
 

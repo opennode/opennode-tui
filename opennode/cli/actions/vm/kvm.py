@@ -1,6 +1,7 @@
 from contextlib import closing
 from os import path
 from xml.etree import ElementTree as ET
+
 import libvirt
 import operator
 import os
@@ -145,7 +146,7 @@ def deploy(settings, storage_pool):
     log.info("Finalyzing KVM template deployment...")
     conn = libvirt.open("qemu:///system")
     conn.defineXML(libvirt_conf_dom.toxml())
-    log.info("Done!")
+    log.info("Deployment done!")
 
 
 def prepare_file_system(settings, storage_pool):
@@ -156,6 +157,7 @@ def prepare_file_system(settings, storage_pool):
         - convert block device based images to file based images
     """
     config = get_config()
+    log = get_logger()
     images_dir = path.join(config.getstring("general", "storage-endpoint"),
                            storage_pool, "images")
     target_dir = path.join(config.getstring("general", "storage-endpoint"),
@@ -168,6 +170,19 @@ def prepare_file_system(settings, storage_pool):
                                                    volume_name, disk.get('template_format', 'qcow2'))
             disk_deploy_path = path.join(images_dir, disk["source_file"])
             shutil.copy2(disk_template_path, disk_deploy_path)
+            # resize disk to match the requested
+            # XXX we assume that the size was already adjusted to the template requirements
+            diskspace = settings.get('disk')
+            if diskspace:
+                # get the disk size
+                current_size = int(execute("qemu-img info %s |grep 'virtual size' |awk '{print $4}' |cut -b2- "
+                                   % disk_deploy_path)) / 1024 / 1024  # to get to GB
+                if diskspace > current_size:
+                    log.info('Increasing image file %s to %sG' % (disk_deploy_path, diskspace))
+                    execute("qemu-img resize %s %sG" % (disk_deploy_path, diskspace))
+                else:
+                    log.warning('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
+                                % (disk_deploy_path, diskspace, diskspace))
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
@@ -358,6 +373,11 @@ def generate_libvirt_conf(settings):
             interface_mac_dom = libvirt_conf_dom.createElement("mac")
             interface_mac_dom.setAttribute("address", interface["mac"])
             interface_dom.appendChild(interface_mac_dom)
+        elif 'mac_address' in settings:
+            interface_mac_dom = libvirt_conf_dom.createElement("mac")
+            interface_mac_dom.setAttribute("address", settings["mac_address"])
+            interface_dom.appendChild(interface_mac_dom)
+
         # add nwfilter agasin MAC spoofing, if IP is provided
         # XXX only one IP is expected to be provided - so we currently limit traffic from all ifaces for that IP
         if 'ip_address' in settings:
@@ -630,8 +650,10 @@ def set_owner(uuid, owner):
     @param owner: string representing owner
     """
     vmid = get_id_by_uuid(uuid)
+
     if not vmid:
         return
+
     conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
     domain = ET.fromstring(vm.XMLDesc(0))
@@ -639,6 +661,7 @@ def set_owner(uuid, owner):
     owner_e = ET.SubElement(metadata, ET.QName('urn:opennode-tui', 'owner'))
     owner_e.text = owner
 
+    ## TODO: cleanup
     open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'w').write(ET.tostring(domain))
 
     data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
@@ -647,6 +670,7 @@ def set_owner(uuid, owner):
     assert owner_e is not None
     assert owner_e.text == owner
     return owner_e.text
+
 
 def get_owner(uuid):
     """Get VM owner by id
@@ -689,3 +713,24 @@ def vm_metrics(conn, vm):
 
     return {'cpu_usage': cpu_usage(),
             'memory_usage': memory_usage(),}
+
+
+def compile_cleanup(conn, vm):
+    domain = ET.fromstring(vm.XMLDesc(0))
+    disk_elements = domain.findall('./devices/disk')
+
+    cleanup_list = []
+
+    for disk in disk_elements:
+        if disk.attrib.get('type') != 'file' or disk.attrib.get('device') != 'disk':
+            continue
+
+        source = disk.find('./source')
+
+        if not source.attrib.get('file'):
+            continue
+
+        if os.path.exists(source.attrib.get('file')):
+            cleanup_list.append(source.attrib.get('file'))
+
+    return cleanup_list

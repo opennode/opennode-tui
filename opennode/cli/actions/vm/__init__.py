@@ -9,10 +9,11 @@ import urlparse
 
 from ovf.OvfFile import OvfFile
 
-from opennode.cli.actions.vm import kvm, openvz
-from opennode.cli.actions.utils import execute
-from opennode.cli.config import get_config
 from opennode.cli.actions.storage import get_pool_path
+from opennode.cli.actions.utils import execute, CommandException
+from opennode.cli.actions.utils import cleanup_files
+from opennode.cli.actions.vm import kvm, openvz
+from opennode.cli.config import get_config
 from opennode.cli.log import get_logger
 
 __all__ = ['autodetected_backends', 'list_vms', 'info_vm', 'start_vm', 'shutdown_vm',
@@ -26,7 +27,39 @@ vm_types = {
     'qemu': kvm,  # synonym for kvm in our case
 }
 
+
 _connections = {}
+
+
+__context__ = {}
+
+
+def strip_async_func_junk(args):
+    # strip async func specific junk args (ON-429)
+    def cleanup_conditions(args):
+        yield args
+        yield isinstance(args[-1], dict)
+        yield args[-1].get('job_id')
+        yield args[-1].get('__logger__')
+
+    if all(cleanup_conditions(args)):
+        args = args[:-1]
+
+    return args
+
+def vm_method_kw(fun):
+    @wraps(fun)
+    def wrapper(backend, *args, **kwargs):
+        conn = _connection(backend)
+
+        try:
+            args = strip_async_func_junk(args)
+            return fun(conn, *args, **kwargs)
+        finally:
+            if backend.startswith('test://') and backend != 'test:///default':
+                _dump_state(conn, '/tmp/func_vm_test_state.xml')
+
+    return wrapper
 
 
 def vm_method(fun):
@@ -35,15 +68,8 @@ def vm_method(fun):
         conn = _connection(backend)
 
         try:
-            # strip async func specific junk args (ON-429)
-            if args and isinstance(args[-1], dict) and args[-1].get('job_id') and args[-1].get('__logger__'):
-                args = args[:-1]
-            # try without keyword arguments when function fails with typeerror due to unexpected kwargs
-            # XXX: it's a potential performance issue!
-            try:
-                return fun(conn, *args, **kwargs)
-            except TypeError:
-                return fun(conn, *args)
+            args = strip_async_func_junk(args)
+            return fun(conn, *args)
         finally:
             if backend.startswith('test://') and backend != 'test:///default':
                 _dump_state(conn, '/tmp/func_vm_test_state.xml')
@@ -117,8 +143,10 @@ def list_vm_ids(backend):
     conn = _connection(backend)
     return map(str, conn.listDefinedDomains() + conn.listDomainsID())
 
+
 def get_uuid(vm):
     return str(UUID(bytes=vm.UUID()))
+
 
 def _render_vm(conn, vm):
     STATE_MAP = {
@@ -175,19 +203,23 @@ def _render_vm(conn, vm):
             return {'/': openvz.get_diskspace(vm.name())}
         # return a total sum of block devices used by KVM VM
         # get list of block devices of a file type
-        cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
-        devices = execute(cmd).split('\n')
-        total_bytes = 0.0
-        for dev_path in devices:
-            cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
-            total_bytes += int(execute(cmd)) / 1024.0  # we want result to be in MB
+        try:
+            cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
+            devices = execute(cmd).split('\n')
+            total_bytes = 0.0
+            for dev_path in devices:
+                cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
+                total_bytes += int(execute(cmd)) / 1024.0 / 1024.0 # we want result to be in MB
+        except CommandException:
+            total_bytes = 0.0
+        except ValueError:
+            total_bytes = 0.0
         return {'/': total_bytes}
 
     def vm_swap(vm):
+        # we don't support the notion of swap disks for libvirt/KVM for now
         if conn.getType() == 'OpenVZ':
             return openvz.get_swap(vm.name())
-        # we don't support the notion of swap disks for libvirt/KVM for now
-        return
 
     def vm_bmounts(vm):
         if conn.getType() == 'OpenVZ':
@@ -278,7 +310,7 @@ def list_vms(conn):
 @vm_method
 def info_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    return _render_vm(dom)
+    return _render_vm(conn, dom)
 
 
 @vm_method
@@ -338,7 +370,7 @@ def resume_vm(conn, uuid):
     dom.resume()
 
 
-@vm_method
+@vm_method_kw
 def deploy_vm(conn, *args, **kwargs):
     if args:
         vm_parameters = eval(args[0]) if type(args[0]) is str else args[0]
@@ -347,6 +379,7 @@ def deploy_vm(conn, *args, **kwargs):
         vm_parameters = {}
 
     vm_parameters.update(kwargs)
+
     # XXX: unsafe conversion
     vm_parameters['nameservers'] = eval(vm_parameters['nameservers'])
 
@@ -363,7 +396,19 @@ def deploy_vm(conn, *args, **kwargs):
 @vm_method
 def undeploy_vm(conn, uuid):
     dom = conn.lookupByUUIDString(uuid)
-    dom.undefine()
+
+    if dom.info()[0] < libvirt.VIR_DOMAIN_SHUTDOWN:
+        dom.destroy()
+
+    vm_type = conn.getType().lower()
+    compile_cleanup = getattr(get_module(vm_type), 'compile_cleanup', None)
+
+    cleanup_list = compile_cleanup(conn, dom) if callable(compile_cleanup) else []
+
+    dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE |
+                      libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+
+    cleanup_files(cleanup_list)
 
 
 @vm_method
@@ -534,7 +579,7 @@ def _get_stopped_vm_ids(conn):
         return conn.listDefinedDomains()
 
 
-@vm_method
+@vm_method_kw
 def update_vm(conn, uuid, *args, **kwargs):
     """
     Update VM parameters
@@ -571,7 +616,7 @@ def update_vm(conn, uuid, *args, **kwargs):
         action_map.get(key, unknown_param)(value)
 
 
-@vm_method
+@vm_method_kw
 def migrate(conn, uuid, target_host, *args, **kwargs):
     """ Migrate VM to another host """
     if conn.getType() == 'OpenVZ':
@@ -609,7 +654,7 @@ def change_ctid(conn, uuid, new_ctid):
         raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
 
 
-@vm_method
+@vm_method_kw
 def clone_vm(conn, uuid, *args, **kwargs):
     settings = kwargs
     settings.update(args[0] if (len(args) == 1 and
