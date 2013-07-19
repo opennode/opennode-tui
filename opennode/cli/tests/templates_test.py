@@ -81,8 +81,9 @@ class TestTemplates(BaseTestCase):
         try:
             local_templates = templates.get_local_templates('openvz', self.testsp)
 
-            self.assertEqual(0, len(local_templates))
-            self.assertFalse(template in local_templates)
+            self.assertFalse(template in local_templates,
+                             '%s found in %s' % (template, local_templates))
+
             expected_path = '/storage/%s/openvz/unpacked/%s.ovf' % (self.testsp, template)
             self.assertFalse(os.path.exists(expected_path), expected_path)
         finally:

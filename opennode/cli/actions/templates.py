@@ -55,36 +55,47 @@ def get_template_list(remote_repo):
 
 
 def sync_storage_pool(storage_pool, remote_repo, templates,
-                      sync_tasks_fnm=None, force=False):
+                      sync_tasks_fnm=None, force=False, screen=True):
     """Synchronize selected storage pool with the remote repo. Only selected templates
     will be persisted, all of the other templates shall be purged.
     Ignores purely local templates - templates with no matching name in remote repo."""
     config = get_config()
+
     if not sync_tasks_fnm:
         sync_tasks_fnm = config.getstring('general', 'sync_task_list')
+
     vm_type = config.getstring(remote_repo, 'type')
     existing_templates = get_local_templates(vm_type, storage_pool)
+
     # synchronize selected templates
     if templates is None:
         templates = []
+
     purely_local_tmpl = get_purely_local_templates(storage_pool, vm_type, remote_repo)
     # might be not order preserving
     for_update = set(templates) - set(purely_local_tmpl)
+
     for_deletion = set(existing_templates) - for_update - set(templates)
 
     tasks = [(t, storage_pool, remote_repo) for t in for_update]
+
     # XXX at the moment only a single sync process is allowed.
     if os.path.exists(sync_tasks_fnm):
         if not force:
             raise TemplateException("Synchronization task pool already defined.")
+
     set_templates_sync_list(tasks, sync_tasks_fnm)
+
     # delete existing, but not selected templates
     for tmpl in for_deletion:
         delete_template(storage_pool, vm_type, tmpl)
-    # XXX a wrong place for such a construction, not sure what is a correct place
-    cli_command = "from opennode.cli.actions import templates;"
-    cli_command += "templates.sync_templates_list('%s')" % sync_tasks_fnm
-    execute_in_screen('OPENNODE-SYNC', 'python -c "%s"' % cli_command)
+
+    if screen:
+        cli_command = "from opennode.cli.actions import templates;"
+        cli_command += "templates.sync_templates_list('%s')" % sync_tasks_fnm
+        execute_in_screen('OPENNODE-SYNC', 'python -c "%s"' % cli_command)
+    else:
+        sync_templates_list(sync_tasks_fnm)
 
 
 def sync_template(remote_repo, template, storage_pool, silent=False):
@@ -92,8 +103,7 @@ def sync_template(remote_repo, template, storage_pool, silent=False):
     config = get_config()
     url = config.getstring(remote_repo, 'url')
     vm_type = config.getstring(remote_repo, 'type')
-    localfile = os.path.join(storage.get_pool_path(storage_pool),
-                             vm_type, template)
+    localfile = os.path.join(storage.get_pool_path(storage_pool), vm_type, template)
     remotefile = urlparse.urljoin(url.rstrip('/') + '/', template)
 
     # only download if we don't already have a fresh copy
@@ -105,8 +115,9 @@ def sync_template(remote_repo, template, storage_pool, silent=False):
 
     extension = "ova" if _url_exists("%s.ova" % remotefile) else "tar"
     remote_url = "%s.%s" % (remotefile, extension)
+
     if not _url_exists(remote_url):
-        raise RuntimeError("Remote template was not found: %s" % remote_url)
+        raise TemplateException("Remote template was not found: %s" % remote_url)
 
     retries = 5
     retry = 0
@@ -119,30 +130,40 @@ def sync_template(remote_repo, template, storage_pool, silent=False):
         r_template_hash = "%s.%s.pfff" % (remotefile, extension)
         download(r_template_hash, unfinished_local_hash, continue_=True, silent=silent)
 
+    unpack_template(storage_pool, vm_type, localfile)
+
     os.rename(unfinished_local, '%s.%s' % (localfile, extension))
     os.rename(unfinished_local_hash, '%s.%s.pfff' % (localfile, extension))
-
-    unpack_template(storage_pool, vm_type, localfile)
 
 
 def import_template(template, vm_type, storage_pool=None):
     """Import external template into ON storage pool"""
     config = get_config()
+
     if not storage_pool:
         storage_pool = config.getstring('general', 'default-storage-pool')
+
     if not os.path.exists(template):
         raise RuntimeError("Template not found: %s" % template)
+
     if not template.endswith('tar') or template.endswith('ova'):
         raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
-    extension = 'ova' if template.endswith('ova') else 'tar'
+
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage.get_pool_path(storage_pool), vm_type, tmpl_name)
-    log.info("Copying template to the storage pool...")
-    log.info("%s %s" % (template, target_file))
-    shutil.copyfile(template, target_file)
-    calculate_hash(target_file)
-    log.info("Unpacking template...")
+
+    log.info("Copying template to the storage pool... %s -> %s" % (template, target_file))
+
+    unfinished_local = "%s.unfinished" % tmpl_name
+    shutil.copyfile(template, unfinished_local)
+    calculate_hash(unfinished_local)
+
+    log.info("Unpacking template %s..." % tmpl_name)
+    extension = 'ova' if template.endswith('ova') else 'tar'
     unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.%s' % extension))
+
+    os.rename(unfinished_local, target_file)
+    os.rename(unfinished_local + '.pfff', '%s.pfff' % (target_file, extension))
 
 
 def delete_template(storage_pool, vm_type, template):
