@@ -1,4 +1,5 @@
 import unittest
+from functools import wraps
 
 class BaseTestCase(unittest.TestCase):
 
@@ -23,3 +24,13 @@ class BaseTestCase(unittest.TestCase):
     def _addCleanup(self, f, *args, **kwargs):
         """ unittest2-inspired resource management """
         self._cleanup.append((f, args, kwargs))
+
+
+def signal_when_called(good_to_go):
+    def _signal_when_called_arg_wrapper(f):
+        @wraps(f)
+        def _signal_when_called_wrapper(*args, **kwargs):
+            good_to_go.set()
+            return f(*args, **kwargs)
+        return _signal_when_called_wrapper
+    return _signal_when_called_arg_wrapper
