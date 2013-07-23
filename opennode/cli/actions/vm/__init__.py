@@ -47,6 +47,7 @@ def strip_async_func_junk(args):
 
     return args
 
+
 def vm_method_kw(fun):
     @wraps(fun)
     def wrapper(backend, *args, **kwargs):
@@ -208,8 +209,10 @@ def _render_vm(conn, vm):
             devices = execute(cmd).split('\n')
             total_bytes = 0.0
             for dev_path in devices:
+                if dev_path.strip() == '-':
+                    continue  # simple protection against non-disk base devices
                 cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
-                total_bytes += int(execute(cmd)) / 1024.0 / 1024.0 # we want result to be in MB
+                total_bytes += int(execute(cmd)) / 1024.0 / 1024.0  # we want result to be in MB
         except CommandException:
             total_bytes = 0.0
         except ValueError:
