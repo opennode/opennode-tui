@@ -408,8 +408,7 @@ def undeploy_vm(conn, uuid):
 
     cleanup_list = compile_cleanup(conn, dom) if callable(compile_cleanup) else []
 
-    dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE |
-                      libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
+    dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_MANAGED_SAVE)
 
     cleanup_files(cleanup_list)
 
