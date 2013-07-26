@@ -217,7 +217,8 @@ class KvmTemplateForm(Form):
         self.password = PasswordField("passwd", settings.get("passwd", ''), display_name="password")
         self.password2 = PasswordField("passw2", settings.get("passwd", ''), display_name="password")
         Form.__init__(self, screen, title, [self.memory, self.memory_min, self.memory_max,
-                                            self.vcpu, self.vcpu_min, self.vcpu_max])
+                                            self.vcpu, self.vcpu_min, self.vcpu_max,
+                                            self.username, self.password])
 
     def display(self):
         button_save, button_exit = Button("Create"), Button("Back")
@@ -414,12 +415,12 @@ class GenericTemplateEditForm(Form):
 class KvmTemplateEditForm(GenericTemplateEditForm):
 
     def _define_fields(self, settings):
-        self.username = StringField('username', settings.get('username', ''), display_name='username',
-                                    required=False)
+        self.username = StringField('username', settings.get('username', ''),
+                                    display_name='username', required=False)
         self.password = PasswordField('passwd', settings['passwd'],
                                       display_name='password', required=True)
         self.password2 = PasswordField('passwd2', settings['passwd'],
-                                             display_name='password', required=True)
+                                       display_name='password', required=True)
         fields = super(KvmTemplateEditForm, self)._define_fields(settings)
         fields.append(self.username)
         fields.append(self.password)
