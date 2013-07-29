@@ -38,5 +38,5 @@ if __name__ == '__main__':
                 csvwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 csvwriter.writerow(['Name', 'Memory', 'Disk', 'Cores', 'Uptime', 'IP info', 'HN'])
-                dump_info(openvz_vms, csvwriter)
+                dump_info(openvz_vms + kvm_vms, csvwriter)
 
