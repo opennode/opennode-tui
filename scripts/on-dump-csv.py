@@ -15,7 +15,7 @@ def dump_info(vms, csv):
         """Dump information about VMs of a certain hypervisor into a CSV file"""
         for vm in vms:
                 ips = vm['interfaces']
-                if len(ips) > 0
+                if len(ips) > 0:
                     ip = ips[0].get('ipv4_address', ips[0]['mac'])
                 else:
                     ip = 'missing'
