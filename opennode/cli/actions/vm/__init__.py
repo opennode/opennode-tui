@@ -554,11 +554,12 @@ def _deploy_vm(vm_parameters, logger=None):
             disk["source_file"] = '%s--%s.%s' % (volume_name, settings["uuid"],
                                                  disk.get('template_format', 'qcow2'))
 
-    errors = vm.adjust_setting_to_systems_resources(settings)
-    if errors:
-        if logger:
-            logger("Got %s" % (errors,))
-        raise Exception("got errors %s" % (errors,))
+    if not get_config().getboolean('general', 'disable_vm_sys_adjustment', False):
+        errors = vm.adjust_setting_to_systems_resources(settings)
+        if errors:
+            if logger:
+                logger("Got %s" % (errors,))
+            raise Exception("got errors %s" % (errors,))
 
     vm.deploy(settings, storage_pool)
 
