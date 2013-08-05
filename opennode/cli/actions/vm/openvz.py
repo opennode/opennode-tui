@@ -564,7 +564,7 @@ def get_memory(ctid):
 
 def get_diskspace(ctid):
     """Max disk space in MB"""
-    return float(execute("vzlist %s -H -o diskspace.h" % ctid)) / 1024
+    return float(execute("vzlist %s -H -o diskspace.s" % ctid)) / 1024
 
 
 def get_onboot(ctid):
