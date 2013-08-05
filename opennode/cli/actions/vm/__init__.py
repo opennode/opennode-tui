@@ -522,7 +522,7 @@ def _deploy_vm(vm_parameters, logger=None):
     template = vm_parameters['template_name']
     # convert diskspace from MBs to GBs
     if 'disk' in vm_parameters:
-        assert float(vm_parameters['disk']) > 1 and float(vm_parameters['disk']) < 600,
+        assert float(vm_parameters['disk']) > 1 and float(vm_parameters['disk']) < 600,\
                 'Provided disk size is strange - MB vs GB issue?'
 
     if not template:
