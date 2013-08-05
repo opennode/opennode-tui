@@ -520,6 +520,10 @@ def _deploy_vm(vm_parameters, logger=None):
     assert type(vm_parameters) is dict, 'Parameters must be a dict: %s' % vm_parameters
     vm_type = vm_parameters['vm_type']
     template = vm_parameters['template_name']
+    # convert diskspace from MBs to GBs
+    if 'disk' in vm_parameters:
+        assert float(vm_parameters['disk']) > 1 and float(vm_parameters['disk']) < 600,
+                'Provided disk size is strange - MB vs GB issue?'
 
     if not template:
         if logger:
