@@ -76,12 +76,12 @@ def disk_usage(partition=None):
         if (disk.startswith('Filesystem') or not disk):
             continue
         (device, fstype, total, used, available, percentage, mount) = disk.split(None, 7)
-        results[mount] = {'device':device,
-                          'total':str(total),
-                          'used':str(used),
-                          'available':str(available),
-                          'fstype':str(fstype),
-                          'percentage':int(percentage[:-1])}
+        results[mount] = {'device': device,
+                          'total': str(total),
+                          'used': str(used),
+                          'available': str(available),
+                          'fstype': str(fstype),
+                          'percentage': int(percentage[:-1])}
     return results
 
 

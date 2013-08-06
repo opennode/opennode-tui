@@ -300,7 +300,8 @@ class OpenNodeTUI(object):
             repos = actions.templates.get_template_repos()
             if repos is None:
                 return self.display_templates()
-            chosen_repo = display_selection(self.screen, TITLE, repos, 'Please, select template repository from the list')
+            chosen_repo = display_selection(self.screen, TITLE, repos,
+                                            'Please, select template repository from the list')
             if chosen_repo is None:
                 return self.display_templates()
             selected_list = self.display_select_template_from_repo(chosen_repo, storage_pool)
