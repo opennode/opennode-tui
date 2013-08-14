@@ -258,13 +258,17 @@ def generate_ovf_archive_filelist(template_type, ovf_file, template_name, new_na
     if template_type == 'openvz':
         filenames.add(suffix_filename_pair('.scripts.tar.gz'))
     elif template_type in ('kvm', 'qemu'):
-        filenames.add(suffix_filename_pair('.img'))
+        f, _ = suffix_filename_pair('.img')
+        if os.path.exists(f):
+            filenames.add(suffix_filename_pair('.img'))
 
     envelope_dom = ovf_file.document.getElementsByTagName("Envelope")[0]
     references_section_dom = envelope_dom.getElementsByTagName("References")[0]
     file_dom_list = references_section_dom.getElementsByTagName("File")
+
     for file_dom in file_dom_list:
-        filenames.add(os.path.join(unpacked_base, file_dom.getAttribute("ovf:href")))
+        filename = file_dom.getAttribute("ovf:href")
+        filenames.add((os.path.join(unpacked_base, filename), filename))
 
     filenames.add(suffix_filename_pair('.ovf'))
     return list(filenames)

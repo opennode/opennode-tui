@@ -245,8 +245,8 @@ def save_to_tar(tar_filename, filelist):
     'filelist' is list of filename to be added to tar
     [(filename_on_disk, filename in archive),]"""
     tmpl = tarfile.open(tar_filename, 'w')
-    for f in filelist:
-        tmpl.add(f[0], arcname=f[1])
+    for f, nf in filelist:
+        tmpl.add(f, arcname=nf)
     tmpl.close()
 
 
