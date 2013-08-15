@@ -102,13 +102,13 @@ def metrics():
         return float(execute("cat /proc/loadavg | awk '{print $1}'"))
 
     def memory_usage():
-        return float(execute("free | tail -n 2 | head -n 1 |awk '{print $3 / 1024}'"))
+        return float(execute("free | tail -n 2 | head -n 1 | awk '{print $3 / 1024}'"))
 
     def network_usage():
         def get_netstats():
             iface = get_config().getstring('general', 'main_iface')
-            return [int(v) for v in \
-                    execute("grep %s: /proc/net/dev | awk -F: '{print $2}' | awk '{print $1, $9}'" % iface).split(' ')]
+            return [int(v) for v in execute("grep %s: /proc/net/dev | awk -F: '{print $2}' | "
+                                            "awk '{print $1, $9}'" % iface).split(' ')]
         try:
             t2, (rx2, tx2) = time.time(), get_netstats()
             t1, rx1, tx1 = roll_data("/tmp/func-network-host", (t2, rx2, tx2), (0, 0, 0))
@@ -119,10 +119,10 @@ def metrics():
             return (0, 0)  # better this way
 
     def diskspace_usage():
-        return float(execute("df -P |grep ' /$' | head -n 1 | awk '{print $3/1024}'"))
+        return float(execute("df -P | grep ' /$' | head -n 1 | awk '{print $3/1024}'"))
 
-    return dict(cpu_usage=cpu_usage(),
-                load=load(),
-                memory_usage=memory_usage(),
-                network_usage=max(network_usage()),
-                diskspace_usage=diskspace_usage())
+    return {'cpu_usage': cpu_usage(),
+            'load': load(),
+            'memory_usage': memory_usage(),
+            'network_usage': max(network_usage()),
+            'diskspace_usage': diskspace_usage()}
