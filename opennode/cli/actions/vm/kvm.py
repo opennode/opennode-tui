@@ -182,7 +182,7 @@ def prepare_file_system(settings, storage_pool):
                                                                           current_size, diskspace))
                     execute("qemu-img resize %s %sG" % (disk_deploy_path, diskspace))
                 else:
-                    log.warning('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
+                    log.info('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
                                 % (disk_deploy_path, diskspace, current_size))
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
