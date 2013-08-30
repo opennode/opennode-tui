@@ -176,7 +176,7 @@ def prepare_file_system(settings, storage_pool):
             if diskspace:
                 # get the disk size
                 current_size = int(execute("qemu-img info %s |grep 'virtual size' |awk '{print $4}' |cut -b2- "
-                                   % disk_deploy_path)) / 1024 / 1024  # to get to GB
+                                   % disk_deploy_path)) / 1024 / 1024 / 1024  # to get to GB
                 if diskspace > current_size:
                     log.info('Increasing image file %s from %s to %sG' % (disk_deploy_path,
                                                                           current_size, diskspace))
