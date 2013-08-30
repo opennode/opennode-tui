@@ -183,7 +183,7 @@ def prepare_file_system(settings, storage_pool):
                     execute("qemu-img resize %s %sG" % (disk_deploy_path, diskspace))
                 else:
                     log.warning('Ignoring disk (%s) increase request (to %s) as existing image is already larger (%s)'
-                                % (disk_deploy_path, diskspace, diskspace))
+                                % (disk_deploy_path, diskspace, current_size))
         elif disk["deploy_type"] in ["physical", "lvm"]:
             disk_deploy_path = disk["source_dev"]
             execute("qemu-img convert -f qcow2 -O raw %s %s" % (disk_template_path, disk_deploy_path))
