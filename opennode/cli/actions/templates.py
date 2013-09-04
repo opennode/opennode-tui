@@ -110,10 +110,11 @@ def sync_template(remote_repo, template, storage_pool, silent=False):
     if is_fresh(localfile, remotefile):
         return
 
-    unfinished_local = "%s.unfinished" % localfile
-    unfinished_local_hash = "%s.pfff.unfinished" % localfile
-
     extension = "ova" if _url_exists("%s.ova" % remotefile) else "tar"
+
+    unfinished_local = "%s.%s.unfinished" % (localfile, extension)
+    unfinished_local_hash = "%s.%s.pfff.unfinished" % (localfile, extension)
+
     remote_url = "%s.%s" % (remotefile, extension)
 
     if not _url_exists(remote_url):
@@ -130,10 +131,9 @@ def sync_template(remote_repo, template, storage_pool, silent=False):
         r_template_hash = "%s.%s.pfff" % (remotefile, extension)
         download(r_template_hash, unfinished_local_hash, continue_=True, silent=silent)
 
-    unpack_template(storage_pool, vm_type, localfile)
-
     os.rename(unfinished_local, '%s.%s' % (localfile, extension))
     os.rename(unfinished_local_hash, '%s.%s.pfff' % (localfile, extension))
+    unpack_template(storage_pool, vm_type, localfile)
 
 
 def import_template(template, vm_type, storage_pool=None):
