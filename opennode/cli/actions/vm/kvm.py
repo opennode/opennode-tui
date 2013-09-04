@@ -174,6 +174,7 @@ def prepare_file_system(settings, storage_pool):
             # XXX we assume that the size was already adjusted to the template requirements
             diskspace = settings.get('disk')
             if diskspace:
+                diskspace = int(diskspace)  # it's str by default. 'string' > int is always true (LEV-116)
                 # get the disk size
                 current_size = int(execute("qemu-img info %s |grep 'virtual size' |awk '{print $4}' |cut -b2- "
                                    % disk_deploy_path)) / 1024 / 1024 / 1024  # to get to GB
