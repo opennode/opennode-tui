@@ -330,6 +330,12 @@ def shutdown_vm(conn, uuid):
     else:
         dom = conn.lookupByUUIDString(uuid)
         dom.shutdown()
+        try :
+            time.sleep(5*60)
+            dom.destroy()
+        except libvirt.libvirtError as e:
+            logging.error("Got libvirt exception when trying to force shutdown of %s. Error code %s" 
+                                    % (uuid, e.get_error_code()))
 
 
 @vm_method
