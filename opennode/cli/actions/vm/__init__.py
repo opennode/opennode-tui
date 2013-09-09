@@ -155,7 +155,7 @@ def _render_vm(conn, vm):
        1: "active",
        2: "active",
        3: "suspended",
-       4: "inactive",
+       4: "stopping",
        5: "inactive",
        6: "inactive"
     }
