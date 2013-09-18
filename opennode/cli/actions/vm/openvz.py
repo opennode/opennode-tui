@@ -310,7 +310,9 @@ def deploy(ovf_settings, storage_pool):
                                         ' '.join('--nameserver %s' % i for i in nameservers)))
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
-    execute("vzctl set %s --userpasswd root:%s --save" % (ovf_settings["vm_id"], ovf_settings["passwd"]))
+    if len(ovf_settings['passwd']) > 0:
+        execute("vzctl set %s --userpasswd 'root:%s' --save" % (ovf_settings["vm_id"],
+                                                                ovf_settings["passwd"]))
 
     msg = "Setting up action scripts..."
     log.info(msg)
