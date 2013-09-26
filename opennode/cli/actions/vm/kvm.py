@@ -641,22 +641,20 @@ def _generate_ovf_file(vm_settings):
     return ovf
 
 
-def get_id_by_uuid(uuid, backend="qemu:///system"):
-    conn = libvirt.open(backend)
+def get_id_by_uuid(conn, uuid, backend="qemu:///system"):
     return None if conn.lookupByUUIDString(uuid).ID() < 0 else conn.lookupByUUIDString(uuid).ID()
 
 
-def set_owner(uuid, owner):
+def set_owner(conn, uuid, owner):
     """Set ON_OWNER by uuid.
     @param uuid: uuid of the VM
     @param owner: string representing owner
     """
-    vmid = get_id_by_uuid(uuid)
+    vmid = get_id_by_uuid(conn, uuid)
 
     if not vmid:
         return
 
-    conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
     domain = ET.fromstring(vm.XMLDesc(0))
     metadata = domain.find('./metadata') or ET.SubElement(domain, 'metadata')
@@ -674,16 +672,15 @@ def set_owner(uuid, owner):
     return owner_e.text
 
 
-def get_owner(uuid):
+def get_owner(conn, uuid):
     """Get VM owner by id
     @param uuid: uuid of the VM
     """
-    vmid = get_id_by_uuid(uuid)
+    vmid = get_id_by_uuid(conn, uuid)
 
     if not vmid:
         return
 
-    conn = libvirt.open("qemu:///system")
     vm = conn.lookupByID(vmid)
 
     data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
