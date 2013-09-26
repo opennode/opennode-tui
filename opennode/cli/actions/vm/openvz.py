@@ -5,7 +5,6 @@ from uuid import UUID
 
 import datetime
 import errno
-import libvirt
 import operator
 import os
 import shutil
@@ -364,13 +363,13 @@ def get_all_instances():
     candidates = {}
     for r in resources:
         candidates[r[0]] = {"vm_id": r[0],
-                                 "name": r[1],
-                                 "status": r[2],
-                                 "memory": get_memory(r[0]) / 1024,
-                                 "disk": get_diskspace(r[0]) / 1024,
-                                 "vcpu": get_vcpu(r[0]),
-                                 "vm_type": "openvz"
-                                 }
+                            "name": r[1],
+                            "status": r[2],
+                            "memory": get_memory(r[0]) / 1024,
+                            "disk": get_diskspace(r[0]) / 1024,
+                            "vcpu": get_vcpu(r[0]),
+                            "vm_type": "openvz"
+                           }
     return candidates
 
 
@@ -646,13 +645,13 @@ def _update_bmounts(vm_id, bind_mounts):
     os.rename(''.join([conf_fnm, '.new']), conf_fnm)
 
 
-def set_owner(uuid, owner):
+def set_owner(conn, uuid, owner):
     """Set ON_OWNER by uuid.
     @param uuid: uuid of the VM
     @param owner: string representing owner
     """
     # Save logic is similar to one used for bmount
-    ctid = get_ctid_by_uuid(uuid)
+    ctid = get_ctid_by_uuid(conn, uuid)
     conf_fnm = '/etc/vz/conf/%s.conf' % ctid
     with file(conf_fnm, 'rt') as f:
         data = f.read()
@@ -670,9 +669,9 @@ def set_owner(uuid, owner):
     os.rename(''.join([conf_fnm, '.new']), conf_fnm)
 
 
-def update_vm(settings):
+def update_vm(conn, settings):
     """Perform modifications to the VM virtual hardware"""
-    vm_id = get_ctid_by_uuid(settings["uuid"])
+    vm_id = get_ctid_by_uuid(conn, settings["uuid"])
     if settings.get("diskspace"):
         disk = float(settings["diskspace"])
         execute("vzctl set %s --diskspace %sG --save" % (vm_id, disk))
@@ -728,9 +727,8 @@ def get_uuid_by_ctid(ctid):
     return execute("grep \#UUID: /etc/vz/conf/%s.conf" % ctid).split(" ")[1]
 
 
-def get_ctid_by_uuid(uuid, backend='openvz:///system'):
+def get_ctid_by_uuid(conn, uuid):
     """Return container ID with a given UUID"""
-    conn = libvirt.open(backend)
     return conn.lookupByUUIDString(uuid).name()
 
 
@@ -753,11 +751,11 @@ def get_bmounts(ctid):
         return ''
 
 
-def get_owner(uuid):
+def get_owner(conn, uuid):
     """Get VM owner by id
     @param uuid: uuid of the VM
     """
-    ctid = get_ctid_by_uuid(uuid)
+    ctid = get_ctid_by_uuid(conn, uuid)
     parser = SimpleConfigParser()
     parser.read('/etc/vz/conf/%s.conf' % ctid)
     conf = parser.items()
@@ -765,9 +763,9 @@ def get_owner(uuid):
         if 'ON_OWNER' in conf else ''
 
 
-def shutdown_vm(uuid):
+def shutdown_vm(conn, uuid):
     """Shutdown VM with a given UUID"""
-    ctid = get_ctid_by_uuid(uuid)
+    ctid = get_ctid_by_uuid(conn, uuid)
     log = get_logger()
     try:
         msg = execute("vzctl stop %s" % ctid)
@@ -787,7 +785,7 @@ def get_vzcpucheck():
     return tuple([int(v.strip()) for v in execute('vzcpucheck|cut -f 2 -d ":"').split("\n")])
 
 
-def migrate(uid, target_host, live=False, print_=True):
+def migrate(conn, uid, target_host, live=False, print_=True):
     """Migrate given container to a target_host"""
     if not test_passwordless_ssh(target_host):
         raise CommandException("Public key ssh connection with the target host could not be established")
@@ -795,7 +793,7 @@ def migrate(uid, target_host, live=False, print_=True):
     # a workaround for the megadynamic nature of python variable type when called via an agent
     live = live == 'True' if type(live) is str else live
     # is ctid present on the target host?
-    ctid = get_ctid_by_uuid(uid)
+    ctid = get_ctid_by_uuid(conn, uid)
     try:
         execute("ssh %s vzlist %s" % (target_host, ctid))
         raise CommandException("Target host '%s' has an already defined CTID '%s'" % (target_host, ctid))

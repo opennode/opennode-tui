@@ -192,7 +192,6 @@ def _render_vm(conn, vm):
     def vm_uptime(vm, state):
         if state != 'active':
             return
-
         # libvirt doesn't work with openvz
         if conn.getType() == 'OpenVZ':
             return openvz.get_uptime(vm.name())
@@ -237,7 +236,7 @@ def _render_vm(conn, vm):
 
     def vm_owner(vm):
         if conn.getType() == 'OpenVZ':
-            return openvz.get_owner(get_uuid(vm))
+            return openvz.get_owner(conn, get_uuid(vm))
 
     def vm_kernel(vm):
         if conn.getType() == 'OpenVZ':
@@ -326,7 +325,7 @@ def start_vm(conn, uuid):
 def shutdown_vm(conn, uuid):
     # XXX hack for OpenVZ because of a bad libvirt driver
     if conn.getType() == 'OpenVZ':
-        openvz.shutdown_vm(uuid)
+        openvz.shutdown_vm(conn, uuid)
     else:
         dom = conn.lookupByUUIDString(uuid)
         dom.shutdown()
@@ -609,7 +608,7 @@ def update_vm(conn, uuid, *args, **kwargs):
         openvz_settings = {'uuid': uuid}
         openvz_settings.update(dict((param_name_map.get(key, key), value)
                                     for key, value in settings.iteritems()))
-        openvz.update_vm(openvz_settings)
+        openvz.update_vm(conn, openvz_settings)
         return
 
     dom = conn.lookupByUUIDString(uuid)
@@ -634,7 +633,7 @@ def update_vm(conn, uuid, *args, **kwargs):
 def migrate(conn, uuid, target_host, *args, **kwargs):
     """ Migrate VM to another host """
     if conn.getType() == 'OpenVZ':
-        openvz.migrate(uuid, target_host, *args, **kwargs)
+        openvz.migrate(conn, uuid, target_host, *args, **kwargs)
         return
 
     raise NotImplementedError("VM type '%s' is not (yet) supported" % conn.getType())
@@ -655,7 +654,7 @@ def set_owner(conn, uuid, owner):
 def get_owner(conn, uuid):
     vm_type = conn.getType().lower()
     module = get_module(vm_type)
-    return module.get_owner(uuid)
+    return module.get_owner(conn, uuid)
 
 
 @vm_method
@@ -689,7 +688,7 @@ def clone_vm(conn, uuid, *args, **kwargs):
 
         # XXX: uuid must be re-read from disk.
         openvz_settings['uuid'] = openvz.get_uuid_by_ctid(settings['ctid'])
-        openvz.update_vm(openvz_settings)
+        openvz.update_vm(conn, openvz_settings)
         return
     else:
         raise NotImplementedError("VM type '%s' is not (yet) supported" %
