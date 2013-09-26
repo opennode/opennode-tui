@@ -230,7 +230,7 @@ def _render_vm(conn, vm):
 
     def vm_ctid(vm):
         if conn.getType() == 'OpenVZ':
-            return openvz.get_ctid_by_uuid(get_uuid(vm))
+            return openvz.get_ctid_by_uuid(conn, get_uuid(vm))
         else:
             return kvm.get_id_by_uuid(get_uuid(vm))
 
@@ -333,7 +333,7 @@ def shutdown_vm(conn, uuid):
             time.sleep(5*60)
             dom.destroy()
         except libvirt.libvirtError as e:
-            logging.error("Got libvirt exception when trying to force shutdown of %s. Error code %s" 
+            logging.error("Got libvirt exception when trying to force shutdown %s. Error code %s"
                                     % (uuid, e.get_error_code()))
 
 
@@ -660,7 +660,7 @@ def get_owner(conn, uuid):
 @vm_method
 def change_ctid(conn, uuid, new_ctid):
     if conn.getType() == 'OpenVZ':
-        ctid = openvz.get_ctid_by_uuid(uuid)
+        ctid = openvz.get_ctid_by_uuid(conn, uuid)
         get_logger().info('Change ctid from %s to %s', ctid, new_ctid)
         openvz.change_ctid(ctid, new_ctid)
     else:
@@ -674,7 +674,7 @@ def clone_vm(conn, uuid, *args, **kwargs):
                                 type(args[0]) is dict) else {})
     if conn.getType() == 'OpenVZ':
         # XXX: Perform vzmlocal -C ctid:new_ctid - this changes uuid of new VM.
-        openvz.clone_vm(openvz.get_ctid_by_uuid(uuid), settings['ctid'])
+        openvz.clone_vm(openvz.get_ctid_by_uuid(conn, uuid), settings['ctid'])
 
         # XXX: If user changed target ctid in edit form then openvz.update_vm()
         # would perform another vzmlocal move.
