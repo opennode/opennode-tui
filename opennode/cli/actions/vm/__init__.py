@@ -232,7 +232,7 @@ def _render_vm(conn, vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_ctid_by_uuid(conn, get_uuid(vm))
         else:
-            return kvm.get_id_by_uuid(get_uuid(vm))
+            return kvm.get_id_by_uuid(conn, get_uuid(vm))
 
     def vm_owner(vm):
         if conn.getType() == 'OpenVZ':
