@@ -642,7 +642,7 @@ def migrate(conn, uuid, target_host, *args, **kwargs):
 def _set_owner(conn, uuid, owner):
     vm_type = conn.getType().lower()
     module = get_module(vm_type)
-    return module.set_owner(uuid, owner)
+    return module.set_owner(conn, uuid, owner)
 
 
 @vm_method
