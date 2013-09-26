@@ -396,6 +396,8 @@ def deploy_vm(conn, *args, **kwargs):
     owner = vm_parameters.get('owner')
 
     if owner:
+        # XXX: HACK: reconnect to find the newly deployed VM
+        conn = libvirt.open(conn.getType().lower() + ':///system')
         _set_owner(conn, vm_parameters['uuid'], owner)
 
     return "OK"
