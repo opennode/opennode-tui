@@ -215,10 +215,10 @@ def _render_vm(conn, vm):
                 cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
                 total_bytes += int(execute(cmd)) / 1024.0 / 1024.0  # we want result to be in MB
         except CommandException as ce:
-            log.error('Failed diskspace detection: \'%s\'' % ce)
+            log.debug('Failed diskspace detection: \'%s\'' % ce)
             total_bytes = 0.0
         except ValueError as ve:
-            log.error('Failed diskspace conversion: \'%s\'' % ve)
+            log.debug('Failed diskspace conversion: \'%s\'' % ve)
             total_bytes = 0.0
         return {'/': total_bytes}
 
