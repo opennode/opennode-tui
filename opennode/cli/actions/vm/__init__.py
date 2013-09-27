@@ -199,10 +199,12 @@ def _render_vm(conn, vm):
         return vm.info()[4] / 100000000.0
 
     def vm_diskspace(vm):
+        log = get_logger()
         if conn.getType() == 'OpenVZ':
             return {'/': openvz.get_diskspace(vm.name())}
         # return a total sum of block devices used by KVM VM
         # get list of block devices of a file type
+        
         try:
             cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
             devices = execute(cmd).split('\n')
@@ -212,9 +214,11 @@ def _render_vm(conn, vm):
                     continue  # simple protection against non-disk base devices
                 cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
                 total_bytes += int(execute(cmd)) / 1024.0 / 1024.0  # we want result to be in MB
-        except CommandException:
+        except CommandException as ce:
+            log.error('Failed diskspace detection: \'%s\'' % ce)
             total_bytes = 0.0
-        except ValueError:
+        except ValueError as ve:
+            log.error('Failed diskspace conversion: \'%s\'' % ve)
             total_bytes = 0.0
         return {'/': total_bytes}
 
