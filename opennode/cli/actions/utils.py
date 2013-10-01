@@ -61,8 +61,9 @@ def execute(cmd):
     non-0 return code. vzctl gets special treatment.
     TODO: add other vz family commmands
     """
+    cmd = "LC_ALL=C %s" % cmd
     get_logger().debug('execute cmd: %s', cmd)
-    status, output = commands.getstatusoutput("LC_ALL=C %s" % cmd)
+    status, output = commands.getstatusoutput(cmd)
     if status != 0:
         if cmd.startswith('vzctl'):
             raise CommandException("Failed to execute command '%s'. Status: '%s'. Message: '%s'. Output: '%s'"

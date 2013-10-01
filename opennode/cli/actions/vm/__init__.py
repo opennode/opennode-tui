@@ -206,13 +206,15 @@ def _render_vm(conn, vm):
         # get list of block devices of a file type
         
         try:
-            cmd = "virsh domblklist --details %s |  grep ^file | awk '{print $4}'" % vm.name()
+            script_path = get_config().getstring('general', 'script_prefix', '/opt/opennode/bin/')
+            cmd = os.path.join(script_path, 'libvirt_detect_domain_devices.sh %s' % vm.name())
             devices = execute(cmd).split('\n')
             total_bytes = 0.0
             for dev_path in devices:
                 if dev_path.strip() == '-':
                     continue  # simple protection against non-disk base devices
-                cmd = "virsh domblkinfo %s %s |grep ^Capacity| awk '{print $2}'" % (vm.name(), dev_path)
+                cmd = os.path.join(script_path, 'libvirt_get_device_size.sh %s %s' % 
+                                        (vm.name(), dev_path))
                 total_bytes += int(execute(cmd)) / 1024.0 / 1024.0  # we want result to be in MB
         except CommandException as ce:
             log.debug('Failed diskspace detection: \'%s\'' % ce)
