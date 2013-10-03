@@ -558,7 +558,8 @@ class OpenNodeTUI(object):
                     display_info(self.screen, TITLE, "Please stop VM first - as only\nstopped VMs can be cloned!")
                     return self.display_vm_manage()
 
-                ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
+                conn = actions.vm._connection('openvz:///system')
+                ctid = actions.vm.openvz.get_ctid_by_uuid(conn, vm_id)
                 storage_pool = actions.storage.get_default_pool()
                 vm = actions.vm.get_module(vm_type)
                 template_settings = vm.get_active_template_settings(ctid, storage_pool)
@@ -636,7 +637,8 @@ class OpenNodeTUI(object):
             vm_type = available_vms[vm_id]['vm_type']
 
             if vm_type == 'openvz':
-                ctid = actions.vm.openvz.get_ctid_by_uuid(vm_id)
+                conn = actions.vm._connection('openvz:///system')
+                ctid = actions.vm.openvz.get_ctid_by_uuid(conn, vm_id)
                 storage_pool = actions.storage.get_default_pool()
                 vm = actions.vm.get_module(vm_type)
                 template_settings = vm.get_active_template_settings(ctid, storage_pool)
