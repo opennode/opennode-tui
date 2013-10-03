@@ -735,7 +735,7 @@ class OpenNodeTUI(object):
         vm_type = template_settings["vm_type"]
         if vm_type == "openvz":
             template_settings["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
-            form = OpenvzForm(self.screen, TITLE, template_settings)
+            form = NewOpenvzForm(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmForm(self.screen, TITLE, template_settings)
         else:

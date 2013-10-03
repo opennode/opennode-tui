@@ -7,7 +7,7 @@ from snack import Textbox, Button, GridForm
 from opennode.cli.fields import FloatField, IntegerField, StringField
 from opennode.cli.fields import PasswordField, IpField, RadioBarField
 from opennode.cli.fields import BindMountsField, CheckboxField
-from opennode.cli.fields import HostnameField
+from opennode.cli.fields import HostnameField, OneLineListbox
 from opennode.cli.fields import validate_range
 
 
@@ -435,3 +435,99 @@ class KvmTemplateEditForm(GenericTemplateEditForm):
         rows.insert(-2, (Textbox(20, 1, 'Password:', 0, 0), self.password))
         rows.insert(-2, (Textbox(20, 1, 'Password x2:', 0, 0), self.password2))
         return rows
+
+
+class VBox(Grid):
+    def __init__(self, rows=1):
+        Grid.__init__(self, 1, rows)
+        self.lastrow = 0
+        self.rows = rows
+
+    def append(self, widget, *args, **kwargs):
+        if self.lastrow >= self.rows:
+            raise Exception('Row index out of bounds')
+        self.setField(widget, 0, self.lastrow, *args, **kwargs)
+        self.lastrow += 1
+
+
+class HBox(Grid):
+    def __init__(self, cols=1):
+        Grid.__init__(self, cols, 1)
+        self.lastcol = 0
+        self.cols = cols
+
+    def append(self, widget, *args, **kwargs):
+        if self.lastrow >= self.rows:
+            raise Excpetion('Column index out of bounds')
+        self.setField(widget, self.lastcol, 0, *args, **kwargs)
+        self.lastcol += 1
+
+
+class BaseForm(Form):
+    def _set_fields(self, settings):
+        self.fields = {}
+
+    def _set_labels(self, settings):
+        self.labels = {}
+
+    def __init__(self, screen, title, settings):
+        self._set_labels(settings)
+        self._set_fields(settings)
+        Form.__init__(self, screen, title, self.fields)
+
+
+class NewOpenvzForm(BaseForm):
+    def _set_fields(self, settings):
+        _proto_fields = {
+            'memory': (FloatField, {'width': 6}),
+            'swap': (FloatField, {'width': 6}),
+            'disk': (FloatField, {'width': 6}),
+            'vcpu': (IntegerField, {'width': 6}),
+            'hostname': (StringFIeld, {'width': 15}),
+            'ip_address': (IpField, {'width': 16}),
+            'nameserver': (IpField, {'width': 32}),
+            'passwd': (PasswordField, {'width': 36}),
+            'passwd2': (PasswordField, {'width':36}),
+            'startvm': (CheckboxField, {'display_name': 'Start VM'}),
+            'onboot': (CheckboxField, {'display_name': 'Start on boot'})}
+        self.fields = _proto_fields
+        for k, v in _proto_fields.interitems():
+            ftype, kw = v
+            self.fields[k] = ftype.create_with_settings(k, settings, **kw)
+
+    def _set_labels(self, settings):
+        self._proto_labels = ['disk_max',
+                              'disk_min',
+                              'swap_max',
+                              'swap_min',
+                              'memory_max',
+                              'memory_min',
+                              'vcpu_max',
+                              'vcpu_min']
+        self.labels = dict([(k, str(settings.get(k, ''))) for k in self._proto_labels])
+
+    def __init__(self, screen, title, settings):
+        BaseForm.__init__(self, screen, title, settings)
+
+    def display(self):
+        self.base_grid = GridForm(self.screen, self.title, 1, 8)
+        profile_items = [('Custom', 1)]
+        storage_items = [('Local: /storage/local', 1)]
+        cl = OneLineListbox('profile', profile_items, width=36)
+
+        label = Label('* VM Resoures')
+        label.setColors(colorsets['BORDER'])
+        self.base_grid.add(label, 0, 0, anchorLeft=1, padding=(0, 0, 0, 0))
+
+        grid = Grid(3, 2)
+        grid.setField(self.fields['memory'], 0, 0)
+        grid.setField(Label('VSwap (%s .. %s GB)' % (self.labels['swap_min'],
+                                                     self.labels['swap_max'])),
+                      1, 0, padding=(1, 0, 1, 0), anchorLeft=1)
+        grid.setField(self.fields['swap'], 2, 0)
+        grid.setField(self.fields['disk'], 0, 1)
+        grid.setField(Label('CPUs (%s..%s):' % (self.labels['vcpu_min'],
+                                                self.labels['vcpu_max']),
+                      1, 1, padding=(1, 0, 1, 0), anchorLeft=1))
+        grid.setField(self.fields['vcpu'], 2, 1)
+
