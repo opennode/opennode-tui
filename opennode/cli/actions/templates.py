@@ -35,11 +35,17 @@ def get_template_repos():
     """Return a list of formatted strings describing configured repositories"""
     config = get_config()
     repo_groups = config.getstring('general', 'repo-groups').split(',')
+    # XXX: Get autodetexted backends from config. If host has no kvm
+    # capability then don't display KVM repo for template download.
+    backends = config.getstring('general', 'backends').split(',')
+    has_kvm = 'qemu:///system' in backends
     result = []
     for r in repo_groups:
         group = "%s-repo" % r.strip()
         name = config.getstring(group, 'name')
         vm_type = config.getstring(group, 'type')
+        if not has_kvm and 'kvm' in vm_type:
+            continue
         result.append(("%s (%s)" % (name, vm_type), group))
     return result
 
