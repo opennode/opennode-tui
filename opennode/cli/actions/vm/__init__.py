@@ -170,6 +170,7 @@ def _render_vm(conn, vm):
        6: "crashed"
     }
 
+    # vm.info() is a relatively heavy operation, no need to call it multiple times!
     info = vm.info()
 
     # TODO: This needs refactoring!
@@ -187,7 +188,7 @@ def _render_vm(conn, vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_memory(vm.name())
         # memory is expected in MB
-        return vm.info()[1] / 1024
+        return info[1] / 1024
 
     def vm_uptime(vm, state):
         if state != 'active':
@@ -196,7 +197,7 @@ def _render_vm(conn, vm):
         if conn.getType() == 'OpenVZ':
             return openvz.get_uptime(vm.name())
         # uptime in s
-        return vm.info()[4] / 100000000.0
+        return info[4] / 100000000.0
 
     def vm_diskspace(vm):
         if conn.getType() == 'OpenVZ':
