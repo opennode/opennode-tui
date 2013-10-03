@@ -5,6 +5,7 @@ from opennode.cli.actions import oms, console, host, templates, storage, vm, sys
 
 __context__ = {}
 
+_hardware = None
 
 def smolt_hardware_info():
     """ Get hardware information from smolt. """
@@ -14,11 +15,13 @@ def smolt_hardware_info():
     except ImportError:
         return {'_error': 'smolt is not installed'}
 
-    hardware = smolt.Hardware()
+    global _hardware
+    if _hardware is None:
+        _hardware = smolt.Hardware()
 
-    return dict((param, str(getattr(hardware.host, param)))
-                     for param in dir(hardware.host)
-                     if not param.startswith('_') and getattr(hardware.host, param))
+    return dict((param, str(getattr(_hardware.host, param)))
+                     for param in dir(_hardware.host)
+                     if not param.startswith('_') and getattr(_hardware.host, param))
 
 
 def hardware_info():
