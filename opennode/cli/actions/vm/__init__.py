@@ -258,7 +258,7 @@ def _render_vm(conn, vm):
             "vm_uri": conn.getURI(),
             "vm_type": conn.getType().lower(),
             "swap": vm_swap(vm),
-            "vcpu": vm.info()[3],
+            "vcpu": info[3],
             'consoles': [i for i in [_vm_console_vnc(conn, get_uuid(vm)),
                                      _vm_console_pty(conn, get_uuid(vm))] if i],
             'interfaces': _vm_interfaces(conn, get_uuid(vm)),
