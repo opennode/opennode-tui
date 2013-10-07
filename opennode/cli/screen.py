@@ -14,10 +14,10 @@ from opennode.cli.actions.utils import TemplateException, CommandException
 from opennode.cli.actions.utils import test_passwordless_ssh, setup_passwordless_ssh
 from opennode.cli.actions.vm import ovfutil
 from opennode.cli.config import get_config
-from opennode.cli.forms import GenericTemplateEditForm
-from opennode.cli.forms import KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm
-from opennode.cli.forms import KvmTemplateEditForm
-from opennode.cli.forms import OpenvzModificationForm, OpenVZMigrationForm
+from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
+                                OpenvzModificationForm, OpenVZMigrationForm,
+                                CreateVM, NetworkSettings, Storage, Resources,
+                                AddVIF, EditVIF, SetDefaultRoute, EditVM, VenetSettings)
 from opennode.cli.helpers import display_create_template, display_checkbox_selection
 from opennode.cli.helpers import display_selection, display_vm_type_select, display_info
 from opennode.cli.helpers import display_yesno
@@ -634,6 +634,16 @@ class OpenNodeTUI(object):
             return self.display_vm_manage()
 
         if action is None or action == 'edit':
+            logic = {'network': NetworkSettings,
+                     'storage': Storage,
+                     'resources': Resources,
+                     'back': EditVM,
+                     'addvif': AddVIF,
+                     'editvif': EditVIF,
+                     'route': SetDefaultRoute,
+                     'venet': VenetSettings,
+                     'veth': EditVIF,
+                     }
             vm_type = available_vms[vm_id]['vm_type']
 
             if vm_type == 'openvz':
@@ -649,16 +659,51 @@ class OpenNodeTUI(object):
                 available_vms[vm_id]["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
                 available_vms[vm_id]["ioprio"] = actions.vm.openvz.get_ioprio(ctid)
                 available_vms[vm_id]["ioprio_old"] = available_vms[vm_id]["ioprio"]
-                available_vms[vm_id]["ctid"] = available_vms[vm_id]["consoles"][0]["cid"]
-                available_vms[vm_id]["ctid_old"] = available_vms[vm_id]["consoles"][0]["cid"]
-                form = OpenvzModificationForm(self.screen, TITLE, available_vms[vm_id])
+
+                settings = available_vms[vm_id].copy()
+                settings.update(vm.get_edit_form_extras(available_vms[vm_id]))
+                settings["memory"] = settings["memory"] / 1024.0
+                settings["swap"] = settings["swap"] / 1024.0
+                settings["diskspace"]["/"] /= 1024.0
+                form = EditVM(self.screen, TITLE, settings)
             else:
                 display_info(self.screen, TITLE,
                              "Editing of '%s' VMs is not currently supported." % vm_type)
                 return self.display_vm_manage()
 
             # TODO KVM specific form
-            user_settings = self._display_custom_form(form, available_vms[vm_id])
+            while 1:
+                rv = form.display()
+                self.screen.finish()
+                self.screen = SnackScreen()
+                if rv == 'menu':
+                    user_settings = None
+                    break
+                if rv == 'back':
+                    form = logic[rv](self.screen, TITLE, settings)
+                    continue
+                if rv == 'commit':
+                    if form.validate():
+                        settings.update(form.data)
+                        user_settings = settings
+                        break
+                    else:
+                        errors = form.errors
+                        key, msg = errors[0]
+                        display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                if isinstance(form, VenetSettings):
+                    if form.validate():
+                        settings['interfaces'].append(form.data['interfaces'])
+                        form = logic['network'](self.screen, TITLE, settings)
+                if form.validate():
+                    settings.update(form.data)
+                    form = logic.get(rv, EditVM)(self.screen, TITLE, settings)
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
 
             if user_settings is None:
                 return self.display_vm_manage()
@@ -732,26 +777,58 @@ class OpenNodeTUI(object):
 
     def display_template_settings(self, template_settings):
         """ Display configuration details of a new VM """
+        logic = {'network': NetworkSettings,
+                 'storage': Storage,
+                 'resources': Resources,
+                 'back': CreateVM,
+                 'addvif': AddVIF,
+                 'editvif': EditVIF,
+                 'route': SetDefaultRoute,
+                 }
         vm_type = template_settings["vm_type"]
         if vm_type == "openvz":
             template_settings["cpuutilization"] = actions.vm.openvz.get_vzcpucheck()
-            form = NewOpenvzForm(self.screen, TITLE, template_settings)
+            form = CreateVM(self.screen, TITLE, template_settings)
         elif vm_type == "kvm":
             form = KvmForm(self.screen, TITLE, template_settings)
         else:
             raise ValueError("Unsupported vm type '%s'" % vm_type)
-        while 1:
-            if not form.display():
-                return
-            if form.validate():
-                settings = template_settings.copy()
-                settings.update(form.data)
-                return settings
-            else:
-                errors = form.errors
-                key, msg = errors[0]
-                display_info(self.screen, TITLE, msg, width=75)
-                continue
+        if vm_type == 'openvz':
+            settings = template_settings.copy()
+            while 1:
+                rv = form.display()
+                if rv == 'menu':
+                    return None
+                if rv == 'create':
+                    if form.validate():
+                        settings.update(form.data)
+                        return settings
+                    else:
+                        errors = form.errors
+                        key, msg = errors[0]
+                        display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                if form.validate():
+                    settings.update(form.data)
+                    form = logic.get(rv, CreateVM)(self.screen, TITLE, settings)
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
+        else:
+            while 1:
+                if not form.display():
+                    return None
+                if form.validate():
+                    settings = template_settings.copy()
+                    settings.update(form.data)
+                    return settings
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
 
     def display_template_min_max_errors(self, errors):
         msg = "\n".join("* " + error for error in errors)
