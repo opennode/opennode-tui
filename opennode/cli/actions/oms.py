@@ -57,6 +57,6 @@ def register_oms_server(server, port):
 ## OMS VM specific ##
 def configure_oms_vm(ctid, ipaddr):
     """Adjust configuration of the VM hosting OMS"""
-    base = "/vz/private/%s/" % ctid
+    pass
     # this hook is not needed at the moment after migration from Func
     # however, keeping it here for the future use
