@@ -256,7 +256,9 @@ def generate_ovf_archive_filelist(template_type, ovf_file, template_name, new_na
         return (os.path.join(unpacked_base, template_name + suffix), new_name + suffix)
 
     if template_type == 'openvz':
-        filenames.add(suffix_filename_pair('.scripts.tar.gz'))
+        f, _ = suffix_filename_pair('.scripts.tar.gz')
+        if os.path.exists(f):
+            filenames.add(suffix_filename_pair('.scripts.tar.gz'))
     elif template_type in ('kvm', 'qemu'):
         f, _ = suffix_filename_pair('.img')
         if os.path.exists(f):
@@ -321,10 +323,14 @@ def update_template_and_name(vm_type, ovf_file, settings, new_name):
                 os.path.join(unpacked_base, new_name + suffix))
 
     if vm_type == 'openvz':
-        os.rename(suffix_filename_pair('.scripts.tar.gz'))
-        os.rename(suffix_filename_pair('.tar.gz'))
+        try:
+            os.rename(*suffix_filename_pair('.scripts.tar.gz'))
+        except OSError:
+            # Pass if template_name.scripts.tar.gz does not exist
+            pass
+        os.rename(*suffix_filename_pair('.tar.gz'))
     elif vm_type in ('kvm', 'qemu'):
-        os.rename(suffix_filename_pair('.img'))
+        os.rename(*suffix_filename_pair('.img'))
 
     _package_files(vm_type, ovf_file, template_name, new_name)
 
