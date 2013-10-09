@@ -231,14 +231,29 @@ def update_referenced_files(ovf_file, template_name, new_name):
     VirtualSystem = ovf_file.document.getElementsByTagName('VirtualSystem')
     VirtualSystem[0].attributes['ovf:id'].value = new_name
     References = ovf_file.document.getElementsByTagName('References')
+
+    # XXX: This code still expects referenced filenames
+    # to start with same name as template
     # TODO: until our packaged templates contain incorrect .ovf
-    # we can not rely on files defined in References section
+    # (multiple referenced files belonging to other openvz templates)
+    # we can not rely on files defined in References section.
     for ref_node in References:
         file_nodes = ref_node.getElementsByTagName('File')
         for item in file_nodes:
-            if item.attributes['ovf:href'].value == template_name + '.tar.gz':
-                item.attributes['ovf:href'].value = new_name + '.tar.gz'
+            value = item.attributes['ovf:href'].value
+            if value.startswith(template_name):
+                item.attributes['ovf:href'].value = value.replace(template_name, new_name)
     return ovf_file
+
+
+def get_ref_files_from_ovf(ovf_file):
+    References = ovf_file.document.getElementsByTagName('References')
+    ref_files = []
+    for ref_node in References:
+        file_nodes = ref_node.getElementsByTagName('File')
+        for item in file_nodes:
+            ref_files.append(item.attributes['ovf:href'].value)
+    return ref_files
 
 
 def generate_ovf_archive_filelist(template_type, ovf_file, template_name, new_name=None):
@@ -312,10 +327,6 @@ def update_template_and_name(vm_type, ovf_file, settings, new_name):
     if os.path.exists(os.path.join(unpacked_base, '..', new_name, '.ova')):
         return
 
-    ovf_file = update_referenced_files(ovf_file, settings['template_name'], new_name)
-    save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base, new_name + '.ovf'))
-    os.unlink(ovf_file.path)
-
     template_name = settings['template_name']
 
     def suffix_filename_pair(suffix):
@@ -330,7 +341,23 @@ def update_template_and_name(vm_type, ovf_file, settings, new_name):
             pass
         os.rename(*suffix_filename_pair('.tar.gz'))
     elif vm_type in ('kvm', 'qemu'):
-        os.rename(*suffix_filename_pair('.img'))
+        # Get referenced files form ovf and rename them accordingly.
+        # This should be used for openvz template too but they work as-is.
+        referenced_files = get_ref_files_from_ovf(ovf_file)
+        _new_name = new_name
+        _template_name = template_name
+        for k, v in enumerate(referenced_files):
+            if settings['template_name'] in v and v.endswith('.img'):
+                v = os.path.splitext(v)[0]
+                template_name = v
+                new_name = v.replace(settings['template_name'], _new_name)
+                os.rename(*suffix_filename_pair('.img'))
+        template_name = _template_name
+        new_name = _new_name
+
+    ovf_file = update_referenced_files(ovf_file, settings['template_name'], new_name)
+    save_cpu_mem_to_ovf(ovf_file, settings, os.path.join(unpacked_base, new_name + '.ovf'))
+    os.unlink(ovf_file.path)
 
     _package_files(vm_type, ovf_file, template_name, new_name)
 
