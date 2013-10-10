@@ -153,23 +153,18 @@ def import_template(template, vm_type, storage_pool=None):
         raise RuntimeError("Template not found: %s" % template)
 
     if not (template.endswith('tar') or template.endswith('ova')):
-        raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
+        raise RuntimeError("Expecting a file ending with .tar or .ova for a template, %s" % template)
 
     tmpl_name = os.path.basename(template)
     target_file = os.path.join(storage.get_pool_path(storage_pool), vm_type, tmpl_name)
 
     log.info("Copying template to the storage pool... %s -> %s" % (template, target_file))
+    shutil.copyfile(template, target_file)
+    calculate_hash(target_file)
 
-    unfinished_local = "%s.unfinished" % tmpl_name
-    shutil.copyfile(template, unfinished_local)
-    calculate_hash(unfinished_local)
-
-    log.info("Unpacking template %s..." % tmpl_name)
+    log.info("Unpacking template %s..." % target_file)
     extension = 'ova' if template.endswith('ova') else 'tar'
     unpack_template(storage_pool, vm_type, tmpl_name.rstrip('.%s' % extension))
-
-    os.rename(unfinished_local, target_file)
-    os.rename(unfinished_local + '.pfff', '%s.pfff' % (target_file, extension))
 
 
 def delete_template(storage_pool, vm_type, template):
@@ -201,6 +196,7 @@ def unpack_template(storage_pool, vm_type, tmpl_name):
        Adds symlinks as needed by the VM template vm_type."""
     # we assume location of the 'unpacked' to be the same as the location of the file
     basedir = os.path.join(storage.get_pool_path(storage_pool), vm_type)
+    tar_name = ""
     if os.path.exists(os.path.join(basedir, "%s.tar" % tmpl_name)):
         tar_name = os.path.join(basedir, "%s.tar" % tmpl_name)
     if os.path.exists(os.path.join(basedir, "%s.ova" % tmpl_name)):
