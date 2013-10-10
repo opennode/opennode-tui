@@ -152,7 +152,7 @@ def import_template(template, vm_type, storage_pool=None):
     if not os.path.exists(template):
         raise RuntimeError("Template not found: %s" % template)
 
-    if not template.endswith('tar') or not template.endswith('ova'):
+    if not (template.endswith('tar') or template.endswith('ova')):
         raise RuntimeError("Expecting a file ending with .tar or .ova for a template")
 
     tmpl_name = os.path.basename(template)
