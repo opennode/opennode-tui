@@ -655,6 +655,26 @@ def set_owner(conn, uuid, owner):
     if not vmid:
         return
 
+    owners_file = '/etc/opennode/kvmowners'
+    # XXX: touch owners_file if it does not exist.
+    if not os.path.exists(owners_file):
+        open(owners_file, 'a').close()
+
+    with open(owners_file, 'rt') as f:
+        kvmowners = f.read()
+    kvmowners = kvmowners.split('\n')
+    added = False
+    for k, v in enumerate(kvmowners):
+        if uuid in v:
+            kvmowners[k] = '='.join([str(uuid), str(owner)])
+            added = True
+    if not added:
+        kvmowners.append('='.join([str(uuid), str(owner)]))
+    with open(owners_file + '.new', 'wt') as f:
+        f.write('\n'.join(kvmowners))
+    os.rename(owners_file, owners_file + '.bak')
+    os.rename(owners_file + '.new', owners_file)
+
     vm = conn.lookupByID(vmid)
     domain = ET.fromstring(vm.XMLDesc(0))
     metadata = domain.find('./metadata') or ET.SubElement(domain, 'metadata')
@@ -681,6 +701,15 @@ def get_owner(conn, uuid):
     if not vmid:
         return
 
+    owners_file = '/etc/opennode/kvmowners'
+    with open(owners_file, 'rt') as f:
+        kvmowners = f.read()
+    kvmowners = kvmowners.split('\n')
+    for k, v in enumerate(kvmowners):
+        if uuid in v:
+            return v.split('=')[1]
+
+    # TODO: find why this block returns None even though owner is defined
     vm = conn.lookupByID(vmid)
 
     data = open('/etc/libvirt/qemu/%s.xml' % (vm.name()), 'r').read()
