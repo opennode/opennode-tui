@@ -656,6 +656,10 @@ def set_owner(conn, uuid, owner):
         return
 
     owners_file = '/etc/opennode/kvmowners'
+    # XXX: touch owners_file if it does not exist.
+    if not os.path.exists(owners_file):
+        open(owners_file, 'a').close()
+
     with open(owners_file, 'rt') as f:
         kvmowners = f.read()
     kvmowners = kvmowners.split('\n')
