@@ -650,10 +650,8 @@ def set_owner(conn, uuid, owner):
     @param uuid: uuid of the VM
     @param owner: string representing owner
     """
-    vmid = get_id_by_uuid(conn, uuid)
-
-    if not vmid:
-        return
+    # Save owener regardless if VM is working or not
+    # Old logic will write owner info only if VM is working.
 
     owners_file = '/etc/opennode/kvmowners'
     # XXX: touch owners_file if it does not exist.
@@ -674,6 +672,11 @@ def set_owner(conn, uuid, owner):
         f.write('\n'.join(kvmowners))
     os.rename(owners_file, owners_file + '.bak')
     os.rename(owners_file + '.new', owners_file)
+
+    vmid = get_id_by_uuid(conn, uuid)
+
+    if not vmid:
+        return
 
     vm = conn.lookupByID(vmid)
     domain = ET.fromstring(vm.XMLDesc(0))
@@ -696,11 +699,9 @@ def get_owner(conn, uuid):
     """Get VM owner by id
     @param uuid: uuid of the VM
     """
-    vmid = get_id_by_uuid(conn, uuid)
-
-    if not vmid:
-        return
-
+    
+    # Return owner regardless if VM ir running or not.
+    # If owner isn't find then fall back to old logic.
     owners_file = '/etc/opennode/kvmowners'
     with open(owners_file, 'rt') as f:
         kvmowners = f.read()
@@ -708,6 +709,11 @@ def get_owner(conn, uuid):
     for k, v in enumerate(kvmowners):
         if uuid in v:
             return v.split('=')[1]
+
+    vmid = get_id_by_uuid(conn, uuid)
+
+    if not vmid:
+        return
 
     # TODO: find why this block returns None even though owner is defined
     vm = conn.lookupByID(vmid)
