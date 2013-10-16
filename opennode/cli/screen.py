@@ -712,6 +712,10 @@ class OpenNodeTUI(object):
                         key, msg = form.errors[0]
                         display_info(self.creen, TITLE, msg, width=75)
                         continue
+                if rv == 'veth':
+                    settings['edit_veth'] = True
+                    form = logic['editvif'](self.screen, TITLE, settings)
+                    continue
                 if isinstance(form, VenetSettings):
                     if form.validate():
                         settings['interfaces'].append(form.data['interfaces'])

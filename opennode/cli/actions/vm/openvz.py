@@ -61,6 +61,7 @@ def get_ovf_template_settings(ovf_file):
     # In case of template, both next items should be at default values
     settings["bind_mounts"] = get_bmounts(settings["vm_id"])
     settings["ioprio"] = 4
+    settings["netif"] = []
     return settings
 
 
@@ -307,9 +308,12 @@ def deploy(ovf_settings, storage_pool):
 
     execute("vzctl set %s %s --save" % (ovf_settings["vm_id"],
                                         ' '.join('--nameserver %s' % i for i in nameservers)))
-    execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
 
-    # If we have other venet IP's when creating VM
+    # XXX: When creating vm with VETH device, venet interfaces might not be present.
+    if 'ip_address' in ovf_settings and ovf_settings['ip_address']:
+        execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
+
+    # XXX: If we have other venet IP's when creating VM
     if 'interfaces' in ovf_settings:
         for iface in ovf_settings['interfaces']:
             execute('vzctl set %s --ipadd %s --save' % (ovf_settings['vm_id'], iface['ipaddr']))
@@ -646,15 +650,20 @@ def get_edit_form_extras(vm_settings):
     on_netifs = netifs_dict['on_netif']
     netifs = netifs_dict['netif']
     for key in on_netifs.keys():
-        on_netifs[key].update(netifs[key])
+        if key in netifs:
+            on_netifs[key].update(netifs[key])
     vm_settings['num_venet'] = 0
     vm_settings['num_veth'] = 0
+    from opennode.cli.debug import ar_debug
+    ar_debug('get_edit_form_extras', vm_settings)
     for idx, iface in enumerate(vm_settings['interfaces']):
         # Update interfaces list and get rid of ipv4_address field (replaced by ipaddr)
         if iface['mac'] != '00:00:00:00:00:00':
             for netif in on_netifs:
                 # We should match with something other than MAC as it could change
                 # on running VM and it will not mirror on conf
+                ar_debug('------ IFACE ------', iface)
+                ar_debug('------ on_netifs[netif] ------', on_netifs[netif])
                 if on_netifs[netif]['mac'].lower() == iface['mac'].lower():
                     vm_settings['interfaces'][idx].update(on_netifs[netif])
                     vm_settings['interfaces'][idx]['name'] = on_netifs[netif]['ifname']
@@ -802,7 +811,9 @@ def get_from_config_by_ctid(ctid, key):
 
 def get_netifaces_by_ctid(ctid):
     netif = get_from_config_by_ctid(ctid, 'NETIF')
+    netif = 'ifname=eth0,mac=00:18:51:D7:6C:0A,host_ifname=veth101.0,host_mac=00:18:51:F7:B0:FD'
     on_netif = get_from_config_by_ctid(ctid, 'ON_NETIF')
+    on_netif = 'ifname=eth0,ipaddr=192.168.100.10,mask=255.255.255.0,gw=192.168.100.1,managed=yes,default=yes,vlan=10,ingress_policing_rate=1000,ingress_policing_burst=100;ifname=eth1,dhcp=yes,managed=yes'
     netif_dict = {}
     on_netif_dict = {}
     if netif:
