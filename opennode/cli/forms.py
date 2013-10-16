@@ -448,7 +448,8 @@ class NetworkSettings(Form):
         self.gf.add(Label(self.labels['default_route']), 0, 5, anchorLeft=True)
 
         bb = ButtonBar(self.screen, (('Back', 'back', 'F12'),('Save', ' ns_save'),
-                                     ('Add VIF', 'addvif'), ('Edit VIF', 'editvif'),
+                                     ('Add', 'addvif'), ('Edit', 'editvif'),
+                                     ('Delete', 'deletevif'),
                                      ('Set Default RT', 'route')))
         self.gf.add(bb, 0, 6, anchorLeft=True, padding=(0, 1, 0, 0))
         rv = self.gf.runOnce()
@@ -584,15 +585,21 @@ class EditVIF(Form):
 
     def validate(self):
         Form.validate(self)
+        if self.errors:
+            return not self.errors
         if 'dhcp' in self.data and self.data['dhcp']:
             iface = {'name': self.interface['name'],
                      'managed': self.data['managed'],
                      'dhcp': 'Yes'}
-            self.settings['interfaces']['editvif'] = iface
+            if 'netif' not in self.settings:
+                self.settings['netif'] = []
+            self.settings['netif'].append(iface)
         else:
             if 'vif_mac' in self.data:
                 del (self.data['vif_mac'])
-        self.settings['interfaces']['editvif'] = self.data
+        if 'netif' not in self.settings:
+            self.settings['netif'] = []
+        self.settings['netif'].append(self.data)
         return not self.errors
 
 
@@ -615,7 +622,7 @@ class VenetSettings(Form):
         vbox.append(Label('IP Addr:'), padding=(0, 0, 2, 0))
         vbox.append(self.fields['ipaddr'])
         self.gf.add(vbox, 0, 2, anchorLeft=1)
-        bb = ButtonBar(self.screen, (('Cancel', 'back', 'F12'), ('Ok', 'network')))
+        bb = ButtonBar(self.screen, (('Cancel', 'back_venet', 'F12'), ('Ok', 'network')))
         self.gf.add(bb, 0, 3, padding=(0, 2, 0, 0))
         self.rv = self.gf.runOnce()
         return bb.buttonPressed(self.rv)
@@ -1186,6 +1193,9 @@ class IpField(Field):
 
     def validate(self):
         if Field.validate(self):
+            # XXX: If field is not required and is empty, pass validation.
+            if not self.required and self.value() == '':
+                return True
             try:
                 socket.inet_aton(self.value())
             except socket.error:

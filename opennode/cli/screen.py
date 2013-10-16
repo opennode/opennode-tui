@@ -22,6 +22,8 @@ from opennode.cli.helpers import display_create_template, display_checkbox_selec
 from opennode.cli.helpers import display_selection, display_vm_type_select, display_info
 from opennode.cli.helpers import display_yesno
 
+from opennode.cli.debug import ar_debug
+
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -638,6 +640,7 @@ class OpenNodeTUI(object):
                      'storage': Storage,
                      'resources': Resources,
                      'back': EditVM,
+                     'back_venet': NetworkSettings,
                      'addvif': AddVIF,
                      'editvif': EditVIF,
                      'route': SetDefaultRoute,
@@ -691,6 +694,23 @@ class OpenNodeTUI(object):
                         errors = form.errors
                         key, msg = errors[0]
                         display_info(self.screen, TITLE, msg, width=75)
+                        continue
+                if rv == 'deletevif':
+                    if form.validate():
+                        interfaces = settings['interfaces']
+                        settings['interfaces'] = []
+                        for k, iface in enumerate(interfaces):
+                            if k == settings['editvif']:
+                                if 'remove_venet' not in settings:
+                                    settings['remove_venet'] = []
+                                settings['remove_venet'].append(iface)
+                                continue
+                            settings['interfaces'].append(iface)
+                        form = logic['network'](self.screen, TITLE, settings)
+                        continue
+                    else:
+                        key, msg = form.errors[0]
+                        display_info(self.creen, TITLE, msg, width=75)
                         continue
                 if isinstance(form, VenetSettings):
                     if form.validate():
@@ -781,6 +801,7 @@ class OpenNodeTUI(object):
                  'storage': Storage,
                  'resources': Resources,
                  'back': CreateVM,
+                 'back_venet': NetworkSettings,
                  'addvif': AddVIF,
                  'editvif': EditVIF,
                  'route': SetDefaultRoute,

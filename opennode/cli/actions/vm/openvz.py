@@ -308,6 +308,12 @@ def deploy(ovf_settings, storage_pool):
     execute("vzctl set %s %s --save" % (ovf_settings["vm_id"],
                                         ' '.join('--nameserver %s' % i for i in nameservers)))
     execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
+
+    # If we have other venet IP's when creating VM
+    if 'interfaces' in ovf_settings:
+        for iface in ovf_settings['interfaces']:
+            execute('vzctl set %s --ipadd %s --save' % (ovf_settings['vm_id'], iface['ipaddr']))
+
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     if len(ovf_settings['passwd']) > 0:
         execute("vzctl set %s --userpasswd 'root:%s' --save" % (ovf_settings["vm_id"],
@@ -761,6 +767,13 @@ def update_vm(conn, settings):
             settings.get('ctid_old') is not None:
         if settings.get('ctid') != settings.get('ctid_old'):
             execute('vzmlocal %(ctid_old)s:%(ctid)s' % settings)
+
+    if 'interfaces' in settings:
+        for iface in settings['interfaces']:
+            execute('vzctl set %s --ipadd %s --save' % (vm_id, iface['ipaddr']))
+    if 'remove_venet' in settings:
+        for iface in settings['remove_venet']:
+            execute('vzctl set %s --ipdel %s --save' % (vm_id, iface['ipaddr']))
 
 
 def get_uuid_by_ctid(ctid):
