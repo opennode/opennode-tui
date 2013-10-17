@@ -10,7 +10,7 @@ Actions are wrapped as [Saltstack](http://saltstack.com/) modules and can be cal
 Installation
 ============
 
-A preferred method of installation by installing RPM packages. The latest RPMs can be downloaded from the Opennode repository: http://www.opennodecloud.com/CentOS/6/opennode-test/x86_64/RPMS/
+A preferred method of installation by installing RPM packages. The latest RPMs can be downloaded from the Opennode repository: http://www.opennodecloud.com/CentOS/6/opennode-dev/x86_64/RPMS/
 
 For development, do the following:
 
