@@ -316,7 +316,8 @@ def deploy(ovf_settings, storage_pool):
     # XXX: If we have other venet IP's when creating VM
     if 'interfaces' in ovf_settings:
         for iface in ovf_settings['interfaces']:
-            execute('vzctl set %s --ipadd %s --save' % (ovf_settings['vm_id'], iface['ipaddr']))
+            if iface['type'] == 'ethernet':
+                execute('vzctl set %s --ipadd %s --save' % (ovf_settings['vm_id'], iface['ipaddr']))
 
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     if len(ovf_settings['passwd']) > 0:
@@ -654,19 +655,15 @@ def get_edit_form_extras(vm_settings):
             on_netifs[key].update(netifs[key])
     vm_settings['num_venet'] = 0
     vm_settings['num_veth'] = 0
-    from opennode.cli.debug import ar_debug
-    ar_debug('get_edit_form_extras', vm_settings)
     for idx, iface in enumerate(vm_settings['interfaces']):
         # Update interfaces list and get rid of ipv4_address field (replaced by ipaddr)
         if iface['mac'] != '00:00:00:00:00:00':
             for netif in on_netifs:
                 # We should match with something other than MAC as it could change
                 # on running VM and it will not mirror on conf
-                ar_debug('------ IFACE ------', iface)
-                ar_debug('------ on_netifs[netif] ------', on_netifs[netif])
                 if on_netifs[netif]['mac'].lower() == iface['mac'].lower():
                     vm_settings['interfaces'][idx].update(on_netifs[netif])
-                    vm_settings['interfaces'][idx]['name'] = on_netifs[netif]['ifname']
+                    vm_settings['interfaces'][idx]['ifname'] = on_netifs[netif]['ifname']
                     if vm_settings['interfaces'][idx].get('ipv4_address', None):
                         vm_settings['interfaces'][idx]['ipaddr'] = vm_settings['interfaces'][idx]['ipv4_address']
                         del (vm_settings['interfaces'][idx]['ipv4_address'])
@@ -779,10 +776,25 @@ def update_vm(conn, settings):
 
     if 'interfaces' in settings:
         for iface in settings['interfaces']:
-            execute('vzctl set %s --ipadd %s --save' % (vm_id, iface['ipaddr']))
+            if iface['type'] == 'ethernet':
+                execute('vzctl set %s --ipadd %s --save' % (vm_id, iface['ipaddr']))
+            if iface['type'] == 'bridge':
+                if iface.get('mac'):
+                    execute('vzctl set %s --netif_add %s,%s --save' % (vm_id,
+                                                                       iface['ifname'],
+                                                                       iface['mac']))
+                else:
+                    execute('vzctl set %s --netif_add %s --save' % (vm_id,
+                                                                    iface['ifname']))
     if 'remove_venet' in settings:
         for iface in settings['remove_venet']:
-            execute('vzctl set %s --ipdel %s --save' % (vm_id, iface['ipaddr']))
+            if iface['type'] == 'ethernet':
+                execute('vzctl set %s --ipdel %s --save' % (vm_id, iface['ipaddr']))
+    if 'remove_veth' in settings:
+        for iface in settings['remove_veth']:
+            if iface['type'] == 'bridge':
+                execute('vzctl set %s --netif_del %s --save' % (vm_id, iface['ifname']))
+    set_netifaces_by_ctid(vm_id, settings)
 
 
 def get_uuid_by_ctid(ctid):
@@ -811,9 +823,9 @@ def get_from_config_by_ctid(ctid, key):
 
 def get_netifaces_by_ctid(ctid):
     netif = get_from_config_by_ctid(ctid, 'NETIF')
-    netif = 'ifname=eth0,mac=00:18:51:D7:6C:0A,host_ifname=veth101.0,host_mac=00:18:51:F7:B0:FD'
+    # XXX: debug - netif = 'ifname=das0,mac=00:18:51:08:BB:57,host_ifname=veth101.0,host_mac=00:18:51:3B:1B:36'
     on_netif = get_from_config_by_ctid(ctid, 'ON_NETIF')
-    on_netif = 'ifname=eth0,ipaddr=192.168.100.10,mask=255.255.255.0,gw=192.168.100.1,managed=yes,default=yes,vlan=10,ingress_policing_rate=1000,ingress_policing_burst=100;ifname=eth1,dhcp=yes,managed=yes'
+    # XXX: debug - on_netif = 'ifname=das0,ipaddr=192.168.100.10,mask=255.255.255.0,gw=192.168.100.1,managed=yes,default=yes,vlan=10,ingress_policing_rate=1000,ingress_policing_burst=100'
     netif_dict = {}
     on_netif_dict = {}
     if netif:
@@ -837,10 +849,22 @@ def set_netifaces_by_ctid(ctid, settings):
     # ON_NETIF is list of dictionaries in settings structure.
     # When saved it is converted to ';' separated string that has
     # individual parameters separated by ','
-    if 'on_netif' not in settings or not settings['on_netif']:
+    on_netif_list = []
+    rv_iface = {}
+    for iface in settings['interfaces']:
+        if iface['type'] == 'bridge':
+            rv_iface.update(iface)
+            # Filter out unnecessary keys
+            # name, host_mac, host_ifname, type
+            rv_iface.pop('name', None)
+            rv_iface.pop('host_mac', None)
+            rv_iface.pop('host_ifname', None)
+            rv_iface.pop('type', None)
+            on_netif_list.append(rv_iface)
+    if not on_netif_list:
         return
-    on_netif_list = settings['on_netif']
     on_netif_conf = ''
+
     # Nested join that converts list of dicts to
     # 'key1=value1,key2=value2;key3=value3,key4=value4'
     on_netif_conf = ';'.join(

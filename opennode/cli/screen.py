@@ -22,8 +22,6 @@ from opennode.cli.helpers import display_create_template, display_checkbox_selec
 from opennode.cli.helpers import display_selection, display_vm_type_select, display_info
 from opennode.cli.helpers import display_yesno
 
-from opennode.cli.debug import ar_debug
-
 
 VERSION = '2.0.0a'
 TITLE = 'OpenNode TUI v%s' % VERSION
@@ -646,6 +644,7 @@ class OpenNodeTUI(object):
                      'route': SetDefaultRoute,
                      'venet': VenetSettings,
                      'veth': EditVIF,
+                     'back_net': NetworkSettings
                      }
             vm_type = available_vms[vm_id]['vm_type']
 
@@ -677,8 +676,8 @@ class OpenNodeTUI(object):
             # TODO KVM specific form
             while 1:
                 rv = form.display()
-                self.screen.finish()
-                self.screen = SnackScreen()
+                #self.screen.finish()
+                #self.screen = SnackScreen()
                 if rv == 'menu':
                     user_settings = None
                     break
@@ -703,18 +702,45 @@ class OpenNodeTUI(object):
                             if k == settings['editvif']:
                                 if 'remove_venet' not in settings:
                                     settings['remove_venet'] = []
-                                settings['remove_venet'].append(iface)
+                                if 'remove_veth' not in settings:
+                                    settings['remove_veth'] = []
+                                if iface['type'] == 'bridge':
+                                    settings['remove_veth'].append(iface)
+                                else:
+                                    settings['remove_venet'].append(iface)
                                 continue
                             settings['interfaces'].append(iface)
                         form = logic['network'](self.screen, TITLE, settings)
                         continue
                     else:
                         key, msg = form.errors[0]
-                        display_info(self.creen, TITLE, msg, width=75)
+                        display_info(self.screen, TITLE, msg, width=75)
                         continue
                 if rv == 'veth':
-                    settings['edit_veth'] = True
+                    if available_vms[vm_id]['run_state'] == 'running':
+                        display_info(self.screen, TITLE,
+                                     'VETH can not be added to running machine.')
+                        form = logic['network'](self.screen, TITLE, settings)
+                        continue
+                    settings['add_veth'] = True
                     form = logic['editvif'](self.screen, TITLE, settings)
+                    continue
+                if rv == 'network_vif':
+                    form.validate()
+                    if 'new_veth' in form.data:
+                        form.data.pop('new_veth', None)
+                        settings['interfaces'].append(form.data)
+                        settings.pop('add_veth', None)
+                    else:
+                        if 'editvif' in settings:
+                            settings['interfaces'][settings['editvif']].update(form.data)
+                            # TODO: remove ip/mask/gw when enabling DHCP
+                    form = logic.get('network', EditVM)(self.screen, TITLE, settings)
+                    continue
+                if rv == 'ns_save':
+                    form.validate()
+                    actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id, settings)
+                    form = logic.get('network')(self.screen, TITLE, settings)
                     continue
                 if isinstance(form, VenetSettings):
                     if form.validate():
@@ -731,7 +757,6 @@ class OpenNodeTUI(object):
 
             if user_settings is None:
                 return self.display_vm_manage()
-
             actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id, user_settings)
 
             if available_vms[vm_id]["state"] == "inactive":
