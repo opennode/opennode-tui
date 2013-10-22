@@ -391,11 +391,11 @@ class NetworkSettings(Form):
             for iface in self.interfaces:
                 if 'dhcp' in iface and iface['dhcp'] == 'yes':
                     vlan = 'VLAN%-4s DHCP=yes' % iface['vlan']
-                if iface.has_key('vlan'):
+                if iface.get('vlan', None):
                     vlan = 'VLAN%-4s' % iface['vlan']
                 else:
                     vlan = 'VLAN%-4s' % str(1)
-                if iface.has_key('gw'):
+                if iface.get('gw'):
                     gw = 'gw: %-15s' % iface['gw']
                 else:
                     gw = ''
