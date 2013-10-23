@@ -311,14 +311,24 @@ def deploy(ovf_settings, storage_pool):
 
     # XXX: When creating vm with VETH device, venet interfaces might not be present.
     if 'ip_address' in ovf_settings and ovf_settings['ip_address']:
-        execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
+        if ovf_settings['ip_address'] != 'dhcp':
+            execute("vzctl set %s --ipadd %s --save" % (ovf_settings["vm_id"], ovf_settings["ip_address"]))
 
     # XXX: If we have other venet IP's when creating VM
     if 'interfaces' in ovf_settings:
         for iface in ovf_settings['interfaces']:
             if iface['type'] == 'ethernet':
                 execute('vzctl set %s --ipadd %s --save' % (ovf_settings['vm_id'], iface['ipaddr']))
+                if iface['type'] == 'bridge':
+                    if iface.get('mac'):
+                        execute('vzctl set %s --netif_add %s,%s --save' % (ovf_settings['vm_id'],
+                                                                           iface['ifname'],
+                                                                           iface['mac']))
+                    else:
+                        execute('vzctl set %s --netif_add %s --save' % (ovf_settings['vm_id'],
+                                                                        iface['ifname']))
 
+    set_netifaces_by_ctid(ovf_settings['vm_id'], ovf_settings)
     execute("vzctl set %s --hostname %s --save" % (ovf_settings["vm_id"], ovf_settings["hostname"]))
     if len(ovf_settings['passwd']) > 0:
         execute("vzctl set %s --userpasswd 'root:%s' --save" % (ovf_settings["vm_id"],

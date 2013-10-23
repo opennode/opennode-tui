@@ -17,7 +17,7 @@ from opennode.cli.config import get_config
 from opennode.cli.forms import (KvmForm, OpenvzForm, OpenvzTemplateForm, KvmTemplateForm,
                                 OpenvzModificationForm, OpenVZMigrationForm,
                                 CreateVM, NetworkSettings, Storage, Resources,
-                                AddVIF, EditVIF, SetDefaultRoute, EditVM, VenetSettings)
+                                AddVIF, EditVIF, EditVM, VenetSettings)
 from opennode.cli.helpers import display_create_template, display_checkbox_selection
 from opennode.cli.helpers import display_selection, display_vm_type_select, display_info
 from opennode.cli.helpers import display_yesno
@@ -641,7 +641,6 @@ class OpenNodeTUI(object):
                      'back_venet': NetworkSettings,
                      'addvif': AddVIF,
                      'editvif': EditVIF,
-                     'route': SetDefaultRoute,
                      'venet': VenetSettings,
                      'veth': EditVIF,
                      'back_net': NetworkSettings
@@ -734,7 +733,10 @@ class OpenNodeTUI(object):
                     else:
                         if 'editvif' in settings:
                             settings['interfaces'][settings['editvif']].update(form.data)
-                            # TODO: remove ip/mask/gw when enabling DHCP
+                            if settings['interfaces'][settings['editvif']]['dhcp']:
+                                settings['interfaces'][settings['editvif']].pop('ipaddr', None)
+                                settings['interfaces'][settings['editvif']].pop('gw', None)
+                                settings['interfaces'][settings['editvif']].pop('mask', None)
                     form = logic.get('network', EditVM)(self.screen, TITLE, settings)
                     continue
                 if rv == 'ns_save':
@@ -742,6 +744,16 @@ class OpenNodeTUI(object):
                     actions.vm.update_vm(available_vms[vm_id]['vm_uri'], vm_id, settings)
                     form = logic.get('network')(self.screen, TITLE, settings)
                     continue
+                if rv == 'route':
+                    form.validate()
+                    if 'editvif' in settings:
+                        for k, iface in enumerate(settings['interfaces']):
+                            if iface['type'] == 'bridge':
+                                if k == settings['editvif']:
+                                    iface['default'] = 'yes'
+                                else:
+                                    iface.pop('default', None)
+                    form = logic.get('network')(self.screen, TITLE, settings)
                 if isinstance(form, VenetSettings):
                     if form.validate():
                         settings['interfaces'].append(form.data['interfaces'])
@@ -833,7 +845,9 @@ class OpenNodeTUI(object):
                  'back_venet': NetworkSettings,
                  'addvif': AddVIF,
                  'editvif': EditVIF,
-                 'route': SetDefaultRoute,
+                 'venet': VenetSettings,
+                 'veth': EditVIF,
+                 'back_net': NetworkSettings
                  }
         vm_type = template_settings["vm_type"]
         if vm_type == "openvz":
@@ -845,27 +859,113 @@ class OpenNodeTUI(object):
             raise ValueError("Unsupported vm type '%s'" % vm_type)
         if vm_type == 'openvz':
             settings = template_settings.copy()
-            while 1:
-                rv = form.display()
-                if rv == 'menu':
-                    return None
-                if rv == 'create':
-                    if form.validate():
-                        settings.update(form.data)
-                        return settings
-                    else:
-                        errors = form.errors
-                        key, msg = errors[0]
-                        display_info(self.screen, TITLE, msg, width=75)
-                        continue
+        while 1:
+            rv = form.display()
+            #self.screen.finish()
+            #self.screen = SnackScreen()
+            if rv == 'menu':
+                return None
+            if rv == 'create':
                 if form.validate():
                     settings.update(form.data)
-                    form = logic.get(rv, CreateVM)(self.screen, TITLE, settings)
+                    return settings
                 else:
                     errors = form.errors
                     key, msg = errors[0]
                     display_info(self.screen, TITLE, msg, width=75)
                     continue
+            if rv == 'back':
+                form = logic[rv](self.screen, TITLE, settings)
+                continue
+            if rv == 'ns_back':
+
+            if rv == 'commit':
+                if form.validate():
+                    settings.update(form.data)
+                    user_settings = settings
+                    break
+                else:
+                    errors = form.errors
+                    key, msg = errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
+            if rv == 'deletevif':
+                if form.validate():
+                    settings.update(form.data)
+                    interfaces = settings['interfaces']
+                    settings['interfaces'] = []
+                    for k, iface in enumerate(interfaces):
+                        if k == settings['editvif']:
+                            if 'remove_venet' not in settings:
+                                settings['remove_venet'] = []
+                            if 'remove_veth' not in settings:
+                                settings['remove_veth'] = []
+                            if iface['type'] == 'bridge':
+                                settings['remove_veth'].append(iface)
+                            else:
+                                settings['remove_venet'].append(iface)
+                            continue
+                        settings['interfaces'].append(iface)
+                    form = logic['network'](self.screen, TITLE, settings)
+                    continue
+                else:
+                    key, msg = form.errors[0]
+                    display_info(self.screen, TITLE, msg, width=75)
+                    continue
+            if rv == 'veth':
+                settings['add_veth'] = True
+                form = logic['editvif'](self.screen, TITLE, settings)
+                continue
+            if rv == 'network_vif':
+                form.validate()
+                if 'new_veth' in form.data:
+                    form.data.pop('new_veth', None)
+                    settings['interfaces'].append(form.data)
+                    settings.pop('add_veth', None)
+                else:
+                    if 'editvif' in settings:
+                        settings['interfaces'][settings['editvif']].update(form.data)
+                        if settings['interfaces'][settings['editvif']]['dhcp']:
+                            settings['interfaces'][settings['editvif']].pop('ipaddr', None)
+                            settings['interfaces'][settings['editvif']].pop('gw', None)
+                            settings['interfaces'][settings['editvif']].pop('mask', None)
+                form = logic.get('network', CreateVM)(self.screen, TITLE, settings)
+                continue
+            if rv == 'ns_save':
+                form.validate()
+                settings.update(form.data)
+                form = logic.get('network')(self.screen, TITLE, settings)
+                continue
+            if rv == 'route':
+                form.validate()
+                settings.update(form.data)
+                if 'editvif' in settings:
+                    for k, iface in enumerate(settings['interfaces']):
+                        if iface['type'] == 'bridge':
+                            if k == settings['editvif']:
+                                iface['default'] = 'yes'
+                            else:
+                                iface.pop('default', None)
+                form = logic.get('network')(self.screen, TITLE, settings)
+                continue
+            if rv == 'editvif':
+                form.validate()
+                settings.update(form.data)
+                if settings['editvif'] is None:
+                    form = logic.get('network')(self.screen, TITLE, settings)
+                    continue
+            if isinstance(form, VenetSettings):
+                if form.validate():
+                    settings['interfaces'].append(form.data['interfaces'])
+                    form = logic['network'](self.screen, TITLE, settings)
+            if form.validate():
+                settings.update(form.data)
+                form = logic.get(rv, CreateVM)(self.screen, TITLE, settings)
+            else:
+                errors = form.errors
+                key, msg = errors[0]
+                display_info(self.screen, TITLE, msg, width=75)
+                continue
         else:
             while 1:
                 if not form.display():

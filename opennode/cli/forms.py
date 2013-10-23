@@ -216,6 +216,11 @@ class CreateVM(Form):
         if (self.fields['passwd'].validate() and self.fields['passwd2'].validate() and
                 self.fields['passwd'].value() != self.fields['passwd2'].value()):
             self.errors.append(("passwd", "Passwords don't match."))
+        if not self.data.get('interfaces') and self.data:
+            self.data['interfaces'] = [{'ipaddr': self.data['ip_address'],
+                                        'mac': '00:00:00:00:00:00',
+                                        'name': 'venet0:0',
+                                        'type': 'ethernet'}]
         return not self.errors
 
 
@@ -389,7 +394,7 @@ class NetworkSettings(Form):
         self.interfaces = settings.get('interfaces', [])
         if self.interfaces:
             for iface in self.interfaces:
-                if 'dhcp' in iface and iface['dhcp'] == 'yes':
+                if 'dhcp' in iface and (iface['dhcp'] == 'yes' or iface['dhcp']):
                     vlan = 'VLAN%-4s DHCP=yes' % iface['vlan']
                 if iface.get('vlan', None):
                     vlan = 'VLAN%-4s' % iface['vlan']
@@ -457,7 +462,7 @@ class NetworkSettings(Form):
         self.gf.add(label3, 0, 4, anchorLeft=True, padding=(0, 1, 0, 0))
         self.gf.add(Label(self.labels['default_route']), 0, 5, anchorLeft=True)
 
-        bb = ButtonBar(self.screen, (('Back', 'back', 'F12'),('Save', 'ns_save'),
+        bb = ButtonBar(self.screen, (('Back', 'ns_back', 'F12'),('Save', 'ns_save'),
                                      ('Add', 'addvif'), ('Edit', 'editvif'),
                                      ('Delete', 'deletevif'),
                                      ('Default RT', 'route')))
@@ -1262,6 +1267,9 @@ class IpField(Field):
         if Field.validate(self):
             # XXX: If field is not required and is empty, pass validation.
             if not self.required and self.value() == '':
+                return True
+            # XXX: If field contains word 'dhcp', it will be acceptable.
+            if self.value().lower() == 'dhcp':
                 return True
             try:
                 socket.inet_aton(self.value())
