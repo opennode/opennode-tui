@@ -36,9 +36,9 @@ parameters = {'template_type': ('t', 'template-type',
                     'Set repository name (as defined in the opennode-tui configuration file)'),
               'log_verbosity': ('v', 'log-verbosity',
                     'Set log verbosity level. Default is INFO, supported are DEBUG, INFO, WARN'),
-              'oms_hostname': ('o', 'oms_hostname',
+              'oms_hostname': ('o', 'oms-hostname',
                     'Set OMS hostname to use for sending registration request.'),
-              'oms_port': ('p', 'oms_port',
+              'oms_port': ('p', 'oms-port',
                     'Set OMS port to use for sending registration request (default: 4506)'),
               }
 
@@ -72,7 +72,7 @@ EXAMPLES:
         opennode -l
 
     Register HN with OMS:
-        opennode --register --oms_hostname oms.local
+        opennode --register --oms-hostname oms.local
         opennode -r -o oms.local
 
 SEE ALSO:
