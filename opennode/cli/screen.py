@@ -498,7 +498,8 @@ class OpenNodeTUI(object):
 
         self.screen.finish()
         try:
-            vm.migrate(vm_id, target_host, live=live)
+            conn = actions.vm._connection('openvz:///system')
+            vm.migrate(conn, vm_id, target_host, live=live)
             self.screen = SnackScreen()
         except libvirtError as e:
             errmsg = e.get_error_message()
