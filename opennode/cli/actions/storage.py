@@ -105,6 +105,7 @@ def add_pool(pool_name, careful=True):
                                  pool_name)
         mkdir_p(pool_path)
         prepare_storage_pool(pool_name)
+        execute("service libvirt start")
         execute("virsh 'pool-define-as %s dir --target %s'" % (pool_name, pool_path))
         execute("virsh 'pool-start %s'" % pool_name)
         execute("virsh 'pool-autostart %s'" % pool_name)
