@@ -697,6 +697,9 @@ def clone_vm(conn, uuid, *args, **kwargs):
 
         # XXX: uuid must be re-read from disk.
         openvz_settings['uuid'] = openvz.get_uuid_by_ctid(settings['ctid'])
+        # XXX: connection to libvirt must be re-opened as old connection does
+        # not know about newly created VM.
+        conn = _connection(openvz_settings['vm_uri'])
         openvz.update_vm(conn, openvz_settings)
         return
     else:
