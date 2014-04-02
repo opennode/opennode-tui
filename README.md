@@ -5,7 +5,6 @@ Opennode TUI contains a library of typical actions performed on OpenNode node an
 
 Actions are wrapped as [Saltstack](http://saltstack.com/) modules and can be called remotely.
 
-[![Build Status](https://gate1.hep.kbfi.ee:10000/job/opennode-tui/badge/icon)](https://gate1.hep.kbfi.ee:10000/job/opennode-tui/)
 
 Installation
 ============
