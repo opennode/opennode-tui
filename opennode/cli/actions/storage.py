@@ -97,34 +97,39 @@ def add_pool(pool_name, careful=True):
     if careful and filter(lambda p: p[0] == pool_name, list_pools()):
         msg = "Pool '%s' already exists." % pool_name
         get_logger().warn(msg)
-        print msg
         return
     try:
         pool_name = re.sub(" ", "_", pool_name)  # safety measure
         pool_path = os.path.join(get_config().getstring('general', 'storage-endpoint'),
                                  pool_name)
         mkdir_p(pool_path)
-        prepare_storage_pool(pool_name)
+        prepare_storage_pool(pool_name, check_libvirt=False)
         execute("virsh 'pool-define-as %s dir --target %s'" % (pool_name, pool_path))
         execute("virsh 'pool-start %s'" % pool_name)
         execute("virsh 'pool-autostart %s'" % pool_name)
     except Exception, e:
         msg = "Failed to create a new pool: %s" % e
         get_logger().error(msg)
-        print msg
-
-
-def prepare_storage_pool(storage_pool=get_default_pool()):
-    """Assures that storage pool has the correct folder structure"""
-    # create structure
-    storage_pool = "%s/%s" % (get_config().getstring('general', 'storage-endpoint'),
-                              storage_pool)
-    mkdir_p("%s/iso/" % storage_pool)
-    mkdir_p("%s/images/" % storage_pool)
-    mkdir_p("%s/openvz/unpacked" % storage_pool)
-    mkdir_p("%s/kvm/unpacked" % storage_pool)
 
 
 def get_pool_path(storage_pool):
     return parseString(execute("virsh 'pool-dumpxml %s'" % storage_pool)).\
         getElementsByTagName('path')[0].lastChild.nodeValue
+
+
+def prepare_storage_pool(storage_pool=get_default_pool(), check_libvirt=True):
+    """Assures that storage pool has the correct folder structure"""
+    # create structure
+    storage_pool_path = "%s/%s" % (get_config().getstring('general', 'storage-endpoint'),
+                              storage_pool)
+    mkdir_p("%s/iso/" % storage_pool_path)
+    mkdir_p("%s/images/" % storage_pool_path)
+    mkdir_p("%s/openvz/unpacked" % storage_pool_path)
+    mkdir_p("%s/kvm/unpacked" % storage_pool_path)
+    # assure that the storage is created also in libvirt
+    if check_libvirt:
+        try:
+            get_pool_path(storage_pool)
+        except CommandException, e:
+            get_logger().warning('Default pool %s was missing from libvirt. Adding...')
+            add_pool(storage_pool)
