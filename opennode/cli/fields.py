@@ -1,7 +1,7 @@
 import re
 import os
 
-from snack import Entry, Checkbox, RadioBar
+from snack import Entry, Checkbox, RadioBar, Listbox
 import socket
 
 
@@ -84,6 +84,30 @@ class BindMountsField(Field):
                                         "'%s' is not a valid path."
                                         % (items[0])))
         return self.errors
+
+
+class OneLineListbox(Listbox):
+    """Helper for one line listboxes
+    Adds visual aids ('<' and '>') and fits list item label string if neded"""
+    def __init__(self, name, items, width=24, current=None):
+        self.name = name
+        self.active = items[0][1]
+        Listbox.__init__(self, 1, width=width, oneline=True)
+        for (k, v) in items:
+            spaces = width - len(k) - 3
+            if spaces < 0:
+                nv = '<' + k[:(width - 3)] + '>'
+            nv = '<' + k + ' ' * spaces + '>'
+            self.append(nv, v)
+        if current:
+            self.setCurrent(current)
+            self.active = current
+
+    def validate(self):
+        return True
+
+    def value(self):
+        return self.current()
 
 
 class RadioBarField(RadioBar):
